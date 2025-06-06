@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+
+# Editor/OS
+.DS_Store
+.vscode/
+
+# Logs
+*.log
+*.log.*
+
+# Dependencies
+# Si usas pip-tools (pip compile), también puedes ignorar los archivos .txt generados
+# Por ejemplo: requirements.txt podría ser generado si usas pip-tools
+# requirements.txt
+
+# Environment variables
+.env
