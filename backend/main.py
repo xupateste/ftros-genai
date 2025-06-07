@@ -22,6 +22,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "https://rentabilizate.ferreteros.app"
+        "https://inteligencia.ferreteros.app"
+        "https://ia.ferreteros.app"
         # "*"
     ],
     allow_credentials=True,

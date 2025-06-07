@@ -11,7 +11,7 @@ export default {
         'primary2': '#7209b7',
         'secondary1': '#b5179e',
         'secondary2': '#f72585',
-        'background': '#11023c',
+        'background': '#470891',
       }, 
       fontFamily: {
         default: ['Poppins', 'sans-serif'],

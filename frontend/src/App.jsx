@@ -14,7 +14,7 @@ function App() {
     	<main className='font-default'>
         <Routes>
             <Route path="/" element={<LandingPage />} />
-            <Route path="/dashboard" element={<Dashboard />} />
+            {/*<Route path="/dashboard" element={<Dashboard />} />*/}
         </Routes>
       </main>    	      
     </BrowserRouter>
