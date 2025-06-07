@@ -21,8 +21,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
-        "https://rentabilizate.ferreteros.app"
-        "https://inteligencia.ferreteros.app"
+        "https://rentabilizate.ferreteros.app",
+        "https://inteligencia.ferreteros.app",
         "https://ia.ferreteros.app"
         # "*"
     ],

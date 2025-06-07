@@ -390,6 +390,7 @@ function LandingPage() {
             📂 Por favor, sube ambos archivos (Ventas e Inventario) para habilitar los análisis.
           </p>
         )}
+        <a href="https://web.ferreteros.app" className="max-w-sm max-w-[200px] mt-4 opacity-15 hover:opacity-25 text-white text-sm">Ferretero.IA<br/><img src="ferreteros-app-white.png"/></a>
       </div>
     </>
   );
