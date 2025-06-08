@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react'
-import { FiUpload } from 'react-icons/fi'
+import { FiUpload, FiCheck } from 'react-icons/fi'
+
 import { CSVImporter } from "csv-import-react";
 
 function CsvDropZone({ onFile }) {
@@ -98,16 +99,16 @@ function CsvDropZone({ onFile }) {
             <div
             // htmlFor="csv-upload"
             className={`cursor-pointer flex flex-col items-center justify-center
-                        border border-white border-opacity-30 rounded-lg
+                        border border-white border-opacity-30 ${file ? 'solid border-2' : 'border-2 border-dashed'} rounded-lg
                         hover:ring-1 hover:ring-white hover:ring-opacity-60
                         p-4 sm:p-12 w-full max-w-md mx-auto
                         transition-colors duration-300
                         bg-transparent text-white`}
              onClick={() => setIsOpen(true)}
             >
-            <FiUpload className="text-5xl mb-4 opacity-70" />
-            <span className="text-lg font-semibold mb-2">Historial de Ventas</span>
-            <span className="text-sm opacity-70">click para importar</span>
+            {file ? <FiCheck className="text-5xl mb-4 opacity-100" /> : <FiUpload className="text-5xl mb-4 opacity-20" />}
+            <span className={`text-lg font-semibold mb-2 ${file ? 'opacity-100' : 'opacity-20'}`}>Historial de Ventas</span>
+            {file ? <span className="text-sm opacity-700">click para cambiar</span> : <span className="text-sm opacity-20">click para importar</span> }
             <input
                 id="csv-upload"
                 type="file"
@@ -115,13 +116,13 @@ function CsvDropZone({ onFile }) {
                 className="hidden"
                 onChange={handleFileInput}
             />
-            {file && (
-              <div className="max-h-16 overflow-y-auto mt-2">
-                <span className="text-xs opacity-20 break-words text-center truncate block">
-                  Historial de Ventas seleccionado ✅
+            {/*{file && (
+              <div className="max-h-16 truncate mt-2 ">
+                <span className="max-w-[170px] text-xs opacity-20 break-words truncate text-center block">
+                  ✅ {file.name}
                 </span>
               </div>
-            )}
+            )}*/}
             </div>
             <CSVImporter
                 modalIsOpen={isOpen}

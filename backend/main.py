@@ -12,7 +12,7 @@ from io import StringIO
 import openpyxl
 from typing import Optional, Dict, Any # Any para pd.ExcelWriter
 from datetime import datetime # Para pd.Timestamp.now()
-from track_expenses import process_csv, process_csv_abc, process_csv_reponer_stock, procesar_stock_muerto, generar_reporte_stock_minimo_sugerido, summarise_expenses, clean_data, get_top_expenses_by_month
+from track_expenses import process_csv, process_csv_abc, procesar_stock_muerto, generar_reporte_stock_minimo_sugerido, summarise_expenses, clean_data, get_top_expenses_by_month, process_csv_rotacion_general, process_csv_reponer_stock
 
 app = FastAPI()
 
@@ -149,6 +149,57 @@ async def upload_csvs_abc_analysis(
     # return StreamingResponse(stream, media_type="text/csv", headers={
     #     "Content-Disposition": "attachment; filename=analisis_abc.csv"
     # })
+
+@app.post("/rotacion-general")
+async def upload_csv_rotacion_general(
+    ventas: UploadFile = File(...),
+    inventario: UploadFile = File(...)
+):
+    # Leer archivo de ventas
+    ventas_contents = await ventas.read()
+    df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+
+    # Leer archivo de inventario
+    inventario_contents = await inventario.read()
+    df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+
+    # Procesamiento conjunto
+    # processed_df = process_csv_reponer_stock(df_ventas, df_inventario)
+    processed_df = process_csv_rotacion_general(
+        df_ventas,
+        df_inventario,
+        # Parámetros de periodos para análisis de ventas
+        dias_analisis_ventas_recientes=30, #(P/FRONTEND) Anteriormente dias_importancia
+        dias_analisis_ventas_general=240,   #(P/FRONTEND) Anteriormente dias_promedio
+        # Parámetros para cálculo de Stock Ideal
+        dias_cobertura_ideal_base=10, #(P/FRONTEND) Días base para cobertura ideal
+        coef_importancia_para_cobertura_ideal=0.25, # e.g., 0.25 (0 a 1), aumenta días de cobertura ideal por importancia
+        coef_rotacion_para_stock_ideal=0.20,       # e.g., 0.2 (0 a 1), aumenta stock ideal por rotación
+        # Parámetros para Pedido Mínimo
+        dias_cubrir_con_pedido_minimo=3, #(P/FRONTEND) Días de venta que un pedido mínimo debería cubrir
+        coef_importancia_para_pedido_minimo=0.5, # e.g., 0.5 (0 a 1), escala el pedido mínimo por importancia
+        # Otros parámetros de comportamiento
+        importancia_minima_para_redondeo_a_1=0.1, # e.g. 0.1, umbral de importancia para redondear pedidos pequeños a 1
+        incluir_productos_pasivos=True,
+        cantidad_reposicion_para_pasivos=1, # e.g., 1 o 2, cantidad a reponer para productos pasivos
+        excluir_productos_sin_sugerencia_ideal=True # Filtro para el resultado final
+    )
+
+
+    # output = io.BytesIO()
+    # processed_df.to_excel(output, index=False, engine='openpyxl')
+    # output.seek(0)
+
+    # return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=analisis_abc.xls"})
+    return StreamingResponse(
+        # output,
+        to_excel_with_autofit(processed_df, sheet_name='Hoja 1'),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={
+            "Content-Disposition": "attachment; filename=reposicion-stock.xlsx"
+        }
+    )
+
 
 @app.post("/reposicion-stock")
 async def upload_csvs(
