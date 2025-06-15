@@ -12,7 +12,10 @@ from io import StringIO
 import openpyxl
 from typing import Optional, Dict, Any # Any para pd.ExcelWriter
 from datetime import datetime # Para pd.Timestamp.now()
-from track_expenses import process_csv, process_csv_abc, procesar_stock_muerto, generar_reporte_stock_minimo_sugerido, summarise_expenses, clean_data, get_top_expenses_by_month, process_csv_rotacion_general, process_csv_reponer_stock
+from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
+from track_expenses import process_csv_abc, procesar_stock_muerto, process_csv_rotacion_general
+from track_expenses import process_csv_puntos_alerta_stock, generar_reporte_stock_minimo_sugerido, process_csv_reponer_stock
+from track_expenses import process_csv_lista_basica_reposicion_historico
 
 app = FastAPI()
 
@@ -255,7 +258,7 @@ async def upload_csvs(
 async def diagnostico_stock_muerto(
     ventas: UploadFile = File(...),
     inventario: UploadFile = File(...),
-    meses_analisis: int = Form(...)
+    # meses_analisis: int = Form(...)
     # meses: int = Query(6, description="Cantidad de meses hacia atrás para analizar")
 ):
     # Leer archivo de ventas
@@ -294,10 +297,10 @@ async def diagnostico_stock_muerto(
     resultado = procesar_stock_muerto(
         df_ventas,
         df_inventario,
-        meses_analisis,
-        dias_sin_venta_baja = 90,
-        dias_sin_venta_muerto = 180,
-        umbral_valor_stock_alto = 3000
+        # meses_analisis,
+        # dias_sin_venta_baja = 90,
+        # dias_sin_venta_muerto = 180,
+        # umbral_valor_stock_alto = 3000
         )
 
     # Exportar a Excel
@@ -310,6 +313,189 @@ async def diagnostico_stock_muerto(
         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={"Content-Disposition": "attachment; filename=diagnostico_baja_rotacion.xlsx"}
     )
+
+@app.post("/reporte-puntos-alerta-stock", summary="Recomendación Puntos de Alerta de Stock", tags=["Análisis"])
+async def reporte_puntos_alerta_stock(
+    ventas: UploadFile = File(..., description="Archivo CSV con datos de ventas."),
+    inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario."),
+    lead_time_dias: int = Form(...),
+    dias_seguridad_base: int = Form(...)
+):
+    """
+    Sube archivos CSV de ventas e inventario, y realiza un análisis ABC
+    según los criterios y período especificados.
+    """
+
+    # --- Leer archivo de ventas ---
+    ventas_contents = await ventas.read()
+    try:
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al leer el archivo CSV de ventas: {e}. Verifique el formato.")
+
+    # --- Leer archivo de inventario ---
+    inventario_contents = await inventario.read()
+    try:
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al leer el archivo CSV de inventario: {e}. Verifique el formato.")
+
+    # --- Procesamiento de los datos ---
+    try:
+        processed_df = process_csv_puntos_alerta_stock(
+            df_ventas,
+            df_inventario,
+            # Parámetros de periodos para análisis de ventas
+            # dias_analisis_ventas_recientes=30, #(P/FRONTEND) Anteriormente dias_importancia
+            # dias_analisis_ventas_general=240,   #(P/FRONTEND) Anteriormente dias_promedio
+            peso_ventas_historicas=0.6, # 0.0 = 100% reciente; 1.0 = 100% histórico
+            # Parámetros para cálculo de Stock Ideal
+            dias_cobertura_ideal_base=10, #(P/FRONTEND) Días base para cobertura ideal
+            coef_importancia_para_cobertura_ideal=0.05, # e.g., 0.25 (0 a 1), aumenta días de cobertura ideal por importancia
+            coef_rotacion_para_stock_ideal=0.10,       # e.g., 0.2 (0 a 1), aumenta stock ideal por rotación
+            coef_rotacion_para_stock_minimo=0.15,
+            # Parámetros para Pedido Mínimo
+            dias_cubrir_con_pedido_minimo=5, #(P/FRONTEND) Días de venta que un pedido mínimo debería cubrir
+            coef_importancia_para_pedido_minimo=0.1, # e.g., 0.5 (0 a 1), escala el pedido mínimo por importancia
+            # Otros parámetros de comportamiento
+            importancia_minima_para_redondeo_a_1=0.1, # e.g. 0.1, umbral de importancia para redondear pedidos pequeños a 1
+            incluir_productos_pasivos=True,
+            cantidad_reposicion_para_pasivos=1, # e.g., 1 o 2, cantidad a reponer para productos pasivos
+            excluir_productos_sin_sugerencia_ideal=False, # Filtro para el resultado final
+            # --- NUEVOS PARÁMETROS PARA EL PUNTO DE ALERTA ---
+            lead_time_dias=lead_time_dias,
+            dias_seguridad_base=dias_seguridad_base,
+            factor_importancia_seguridad=1.0
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=f"Error de validación: {str(ve)}")
+    except Exception as e:
+        # En un entorno de producción, se debería loggear este error de forma más robusta.
+        print(f"Error interno durante el procesamiento: {e}") # Log para debugging
+        raise HTTPException(status_code=500, detail=f"Error interno al procesar los datos. Por favor, contacte al administrador. Detalles: {str(e)}")
+
+    # --- Manejo de DataFrame vacío ---
+    if processed_df.empty:
+        empty_excel = to_excel_with_autofit(pd.DataFrame(), sheet_name='Sin Datos')
+        return StreamingResponse(
+            empty_excel,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                "Content-Disposition": f"attachment; filename=stock_minimo_sugerido_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                "X-Status-Message": "No se encontraron datos para los criterios o período seleccionados."
+            }
+        )
+
+    # --- Exportar a Excel ---
+    try:
+        excel_output = to_excel_with_autofit(processed_df, sheet_name='Analisis_ABC')
+    except Exception as e:
+        print(f"Error al generar el archivo Excel: {e}") # Log para debugging
+        raise HTTPException(status_code=500, detail=f"Error al generar el archivo Excel: {str(e)}")
+
+    # filename_period = "todo_historial" if periodo_abc == 0 else f"ultimos_{periodo_abc}_meses"
+    final_filename = f"stock_minimo_sugerido_{datetime.now().strftime('%Y%m%d')}.xlsx"
+
+    return StreamingResponse(
+        excel_output,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={"Content-Disposition": f"attachment; filename={final_filename}"}
+    )
+
+
+
+
+@app.post("/lista-basica-reposicion-historico", summary="Recomendación de Lista básica de reposición en funcion del histórico de ventas", tags=["Análisis"])
+async def lista_basica_reposicion_historico(
+    ventas: UploadFile = File(..., description="Archivo CSV con datos de ventas."),
+    inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario."),
+    lead_time_dias: int = Form(...),
+    dias_seguridad_base: int = Form(...)
+):
+    """
+    Sube archivos CSV de ventas e inventario, y realiza un análisis ABC
+    según los criterios y período especificados.
+    """
+
+    # --- Leer archivo de ventas ---
+    ventas_contents = await ventas.read()
+    try:
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al leer el archivo CSV de ventas: {e}. Verifique el formato.")
+
+    # --- Leer archivo de inventario ---
+    inventario_contents = await inventario.read()
+    try:
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error al leer el archivo CSV de inventario: {e}. Verifique el formato.")
+
+    # --- Procesamiento de los datos ---
+    try:
+        processed_df = process_csv_lista_basica_reposicion_historico(
+            df_ventas,
+            df_inventario,
+            # Parámetros de periodos para análisis de ventas
+            # dias_analisis_ventas_recientes=30, #(P/FRONTEND) Anteriormente dias_importancia
+            # dias_analisis_ventas_general=240,   #(P/FRONTEND) Anteriormente dias_promedio
+            peso_ventas_historicas=0.6, # 0.0 = 100% reciente; 1.0 = 100% histórico
+            # Parámetros para cálculo de Stock Ideal
+            dias_cobertura_ideal_base=10, #(P/FRONTEND) Días base para cobertura ideal
+            coef_importancia_para_cobertura_ideal=0.05, # e.g., 0.25 (0 a 1), aumenta días de cobertura ideal por importancia
+            coef_rotacion_para_stock_ideal=0.10,       # e.g., 0.2 (0 a 1), aumenta stock ideal por rotación
+            coef_rotacion_para_stock_minimo=0.15,
+            # Parámetros para Pedido Mínimo
+            dias_cubrir_con_pedido_minimo=5, #(P/FRONTEND) Días de venta que un pedido mínimo debería cubrir
+            coef_importancia_para_pedido_minimo=0.1, # e.g., 0.5 (0 a 1), escala el pedido mínimo por importancia
+            # Otros parámetros de comportamiento
+            importancia_minima_para_redondeo_a_1=0.1, # e.g. 0.1, umbral de importancia para redondear pedidos pequeños a 1
+            incluir_productos_pasivos=True,
+            cantidad_reposicion_para_pasivos=1, # e.g., 1 o 2, cantidad a reponer para productos pasivos
+            excluir_productos_sin_sugerencia_ideal=False, # Filtro para el resultado final
+            # --- NUEVOS PARÁMETROS PARA EL PUNTO DE ALERTA ---
+            lead_time_dias=lead_time_dias,
+            dias_seguridad_base=dias_seguridad_base,
+            factor_importancia_seguridad=1.0
+        )
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=f"Error de validación: {str(ve)}")
+    except Exception as e:
+        # En un entorno de producción, se debería loggear este error de forma más robusta.
+        print(f"Error interno durante el procesamiento: {e}") # Log para debugging
+        raise HTTPException(status_code=500, detail=f"Error interno al procesar los datos. Por favor, contacte al administrador. Detalles: {str(e)}")
+
+    # --- Manejo de DataFrame vacío ---
+    if processed_df.empty:
+        empty_excel = to_excel_with_autofit(pd.DataFrame(), sheet_name='Sin Datos')
+        return StreamingResponse(
+            empty_excel,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                "Content-Disposition": f"attachment; filename=stock_minimo_sugerido_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                "X-Status-Message": "No se encontraron datos para los criterios o período seleccionados."
+            }
+        )
+
+    # --- Exportar a Excel ---
+    try:
+        excel_output = to_excel_with_autofit(processed_df, sheet_name='Analisis_ABC')
+    except Exception as e:
+        print(f"Error al generar el archivo Excel: {e}") # Log para debugging
+        raise HTTPException(status_code=500, detail=f"Error al generar el archivo Excel: {str(e)}")
+
+    # filename_period = "todo_historial" if periodo_abc == 0 else f"ultimos_{periodo_abc}_meses"
+    final_filename = f"stock_minimo_sugerido_{datetime.now().strftime('%Y%m%d')}.xlsx"
+
+    return StreamingResponse(
+        excel_output,
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={"Content-Disposition": f"attachment; filename={final_filename}"}
+    )
+
+
+
+
 
 @app.post("/reporte-stock-minimo-sugerido", summary="Recomendación Stock de Alerta ó Mínimo Sugerido", tags=["Análisis"])
 async def reporte_stock_minimo_sugerido(
@@ -339,11 +525,30 @@ async def reporte_stock_minimo_sugerido(
 
     # --- Procesamiento de los datos ---
     try:
-        processed_df = generar_reporte_stock_minimo_sugerido(
+        processed_df = process_csv_puntos_alerta_stock(
             df_ventas,
             df_inventario,
-            dias_cobertura_deseados,
-            meses_analisis_historicos
+            # Parámetros de periodos para análisis de ventas
+            # dias_analisis_ventas_recientes=30, #(P/FRONTEND) Anteriormente dias_importancia
+            # dias_analisis_ventas_general=240,   #(P/FRONTEND) Anteriormente dias_promedio
+            peso_ventas_historicas=0.6, # 0.0 = 100% reciente; 1.0 = 100% histórico
+            # Parámetros para cálculo de Stock Ideal
+            dias_cobertura_ideal_base=10, #(P/FRONTEND) Días base para cobertura ideal
+            coef_importancia_para_cobertura_ideal=0.05, # e.g., 0.25 (0 a 1), aumenta días de cobertura ideal por importancia
+            coef_rotacion_para_stock_ideal=0.10,       # e.g., 0.2 (0 a 1), aumenta stock ideal por rotación
+            coef_rotacion_para_stock_minimo=0.15,
+            # Parámetros para Pedido Mínimo
+            dias_cubrir_con_pedido_minimo=5, #(P/FRONTEND) Días de venta que un pedido mínimo debería cubrir
+            coef_importancia_para_pedido_minimo=0.1, # e.g., 0.5 (0 a 1), escala el pedido mínimo por importancia
+            # Otros parámetros de comportamiento
+            importancia_minima_para_redondeo_a_1=0.1, # e.g. 0.1, umbral de importancia para redondear pedidos pequeños a 1
+            incluir_productos_pasivos=True,
+            cantidad_reposicion_para_pasivos=1, # e.g., 1 o 2, cantidad a reponer para productos pasivos
+            excluir_productos_sin_sugerencia_ideal=False, # Filtro para el resultado final
+            # --- NUEVOS PARÁMETROS PARA EL PUNTO DE ALERTA ---
+            lead_time_dias=10.0,
+            dias_seguridad_base=0,
+            factor_importancia_seguridad=1.0
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=f"Error de validación: {str(ve)}")
@@ -421,19 +626,45 @@ def to_excel_with_autofit(df, sheet_name='Sheet1'):
     """
     output = io.BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    df.to_excel(writer, sheet_name=sheet_name, index=False)
+    df.to_excel(writer, sheet_name=sheet_name, index=False, startrow=1, header=False)
 
     workbook = writer.book
     worksheet = writer.sheets[sheet_name]
 
     worksheet.freeze_panes(1, 2)
 
+    # worksheet.set_row(0, 50, None, {'align':'vcenter', 'center_across':True, 'bold': True})
+
+    # Add a header format.
+    header_format = workbook.add_format({
+        'bold': True,
+        'text_wrap': True,
+        'valign': 'vcenter',
+        'align': 'center',
+        'font_color': 'black',
+        'fg_color': '#E5E0EC',
+        'border_color': 'white',
+        'border': 1})
+
+    # Write the column headers with the defined format.
+    for col_num, value in enumerate(df.columns.values):
+        worksheet.write(0, col_num, value, header_format)
+
+    worksheet.set_row(0, 52)
+
+    worksheet.autofilter(0, 0, df.shape[0], df.shape[1])
+
     for i, column in enumerate(df.columns):
-        column_width = max(df[column].astype(str).map(len).max(), len(column))
+        # column_width = max(df[column].astype(str).map(len).max(), len(column))
+        column_width = 13
         if (i == 0):
             column_width = 8
         if (i == 1):
             column_width = 50
+        if (i == 2):
+            column_width = 24
+        if (i == 3):
+            column_width = 24
         worksheet.set_column(i, i, column_width + 2)
 
     writer.close()

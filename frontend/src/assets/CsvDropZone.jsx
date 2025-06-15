@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react'
-import { FiUpload, FiCheck } from 'react-icons/fi'
+import { FiUpload, FiCheckCircle } from 'react-icons/fi'
 
 import { CSVImporter } from "csv-import-react";
 
@@ -12,7 +12,9 @@ function CsvDropZone({ onFile }) {
     const customTranslations = {
         es: {
           Upload: "Cargar Historial de Ventas",
-          "Browse files": "Examinar..."
+          "Browse files": "Examinar...",
+          "Drop your file here": "Historial de Ventas",
+          or: "👇"
         }
       }
 
@@ -106,7 +108,7 @@ function CsvDropZone({ onFile }) {
                         bg-transparent text-white`}
              onClick={() => setIsOpen(true)}
             >
-            {file ? <FiCheck className="text-5xl mb-4 opacity-100" /> : <FiUpload className="text-5xl mb-4 opacity-20" />}
+            {file ? <FiCheckCircle className="text-5xl mb-4 opacity-100" /> : <FiUpload className="text-5xl mb-4 opacity-20" />}
             <span className={`text-lg font-semibold mb-2 ${file ? 'opacity-100' : 'opacity-20'}`}>Historial de Ventas</span>
             {file ? <span className="text-sm opacity-700">click para cambiar</span> : <span className="text-sm opacity-20">click para importar</span> }
             <input
