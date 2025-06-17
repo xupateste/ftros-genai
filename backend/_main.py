@@ -404,83 +404,76 @@ async def reporte_puntos_alerta_stock(
 
 
 
+
 @app.post("/lista-basica-reposicion-historico", summary="Recomendación de Lista básica de reposición en funcion del histórico de ventas", tags=["Análisis"])
 async def lista_basica_reposicion_historico(
     ventas: UploadFile = File(..., description="Archivo CSV con datos de ventas."),
-    inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario."),
-    # --- 2. RECIBIR LOS NUEVOS PARÁMETROS DEL FORMULARIO ---
-    # Se definen con un valor por defecto por si el frontend no los envía.
-    ordenar_por: str = Form("Importancia", description="Criterio para ordenar el reporte final."),
-    excluir_sin_ventas: str = Form("true", description="String 'true' o 'false' para excluir productos sin ventas."),
-    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
-    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas.")
+    inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario.")
 ):
     """
-    Sube archivos CSV de ventas e inventario y genera una lista de reposición.
-    Acepta parámetros adicionales para filtrar y ordenar el análisis.
+    Sube archivos CSV de ventas e inventario, y realiza un análisis ABC
+    según los criterios y período especificados.
     """
 
-    # --- Leer archivo de ventas (sin cambios) ---
+    # --- Leer archivo de ventas ---
     ventas_contents = await ventas.read()
     try:
         df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al leer el archivo CSV de ventas: {e}. Verifique el formato.")
 
-    # --- Leer archivo de inventario (sin cambios) ---
+    # --- Leer archivo de inventario ---
     inventario_contents = await inventario.read()
     try:
         df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al leer el archivo CSV de inventario: {e}. Verifique el formato.")
-        
-    # --- 3. PROCESAR PARÁMETROS RECIBIDOS DEL FRONTEND ---
-    # Convertir el string 'true'/'false' a un booleano real
-    excluir_bool = excluir_sin_ventas.lower() == 'true'
-
-    # Convertir el string de categorías separado por comas a una lista
-    # Esto también limpia espacios en blanco y omite valores vacíos.
-    categorias_list = [cat.strip() for cat in incluir_solo_categorias.split(',') if cat.strip()] if incluir_solo_categorias else None
-    
-    # Convertir el string de marcas separado por comas a una lista
-    marcas_list = [marca.strip() for marca in incluir_solo_marcas.split(',') if marca.strip()] if incluir_solo_marcas else None
-
 
     # --- Procesamiento de los datos ---
     try:
-        # --- 4. LLAMAR A LA FUNCIÓN DE PROCESAMIENTO CON LOS PARÁMETROS DINÁMICOS ---
         processed_df = process_csv_lista_basica_reposicion_historico(
-            df_ventas=df_ventas,
-            df_stock=df_inventario,
-            ordenar_por=ordenar_por,
-            excluir_sin_ventas=excluir_bool,
-            incluir_solo_categorias=categorias_list,
-            incluir_solo_marcas=marcas_list
+            df_ventas,
+            df_inventario,
+            # ordenar_por='Importancia'
+            # ordenar_por='Próximos a Agotarse'
+            ordenar_por='Índice de Urgencia',
+            incluir_solo_marcas=['TRUPER', 'PRETUL']
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=f"Error de validación: {str(ve)}")
     except Exception as e:
-        print(f"Error interno durante el procesamiento: {e}")
+        # En un entorno de producción, se debería loggear este error de forma más robusta.
+        print(f"Error interno durante el procesamiento: {e}") # Log para debugging
         raise HTTPException(status_code=500, detail=f"Error interno al procesar los datos. Por favor, contacte al administrador. Detalles: {str(e)}")
 
-    # --- Manejo de DataFrame vacío y exportación a Excel (sin cambios) ---
+    # --- Manejo de DataFrame vacío ---
     if processed_df.empty:
-        # ... (código sin cambios)
-        pass # Reemplaza este pass con tu código de manejo de DF vacío
+        empty_excel = to_excel_with_autofit(pd.DataFrame(), sheet_name='Sin Datos')
+        return StreamingResponse(
+            empty_excel,
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={
+                "Content-Disposition": f"attachment; filename=stock_minimo_sugerido_{datetime.now().strftime('%Y%m%d')}.xlsx",
+                "X-Status-Message": "No se encontraron datos para los criterios o período seleccionados."
+            }
+        )
 
+    # --- Exportar a Excel ---
     try:
-        excel_output = to_excel_with_autofit(processed_df, sheet_name='Reposicion_Sugerida')
+        excel_output = to_excel_with_autofit(processed_df, sheet_name='Analisis_ABC')
     except Exception as e:
-        print(f"Error al generar el archivo Excel: {e}")
+        print(f"Error al generar el archivo Excel: {e}") # Log para debugging
         raise HTTPException(status_code=500, detail=f"Error al generar el archivo Excel: {str(e)}")
 
-    final_filename = f"lista_reposicion_{datetime.now().strftime('%Y%m%d_%H%M')}.xlsx"
+    # filename_period = "todo_historial" if periodo_abc == 0 else f"ultimos_{periodo_abc}_meses"
+    final_filename = f"stock_minimo_sugerido_{datetime.now().strftime('%Y%m%d')}.xlsx"
 
     return StreamingResponse(
         excel_output,
         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         headers={"Content-Disposition": f"attachment; filename={final_filename}"}
     )
+
 
 
 

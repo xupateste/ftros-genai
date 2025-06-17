@@ -78,26 +78,47 @@ const reportData = {
         }
       ]
     },
-    { label: 'Lista básica de reposición según histórico ✓',
+    {
+      label: 'Lista básica de reposición según histórico ✓',
       endpoint: '/lista-basica-reposicion-historico',
       insights: [],
+      // --- ESTA ES LA SECCIÓN MODIFICADA ---
       parameters: [
-        { name: 'lead_time_dias', label: 'El tiempo promedio de entrega del proveedor en días', type: 'select',
+        {
+          name: 'ordenar_por',
+          label: 'Ordenar reporte por:',
+          type: 'select', // Un desplegable estándar
           options: [
-            { value: '5', label: '5 días' },
-            { value: '7', label: '7 días' },
-            { value: '10', label: '10 días' },
-            { value: '12', label: '12 días' },
-            { value: '15', label: '15 días' }
+            { value: 'Importancia', label: 'Índice de Importancia (Recomendado)' },
+            { value: 'Índice de Urgencia', label: 'Índice de Urgencia (Stock bajo + Importancia)' },
+            { value: 'Inversion Requerida', label: 'Mayor Inversión Requerida' },
+            { value: 'Cantidad a Comprar', label: 'Mayor Cantidad a Comprar' },
+            { value: 'Margen Potencial', label: 'Mayor Margen Potencial de Ganancia' },
+            { value: 'Próximos a Agotarse', label: 'Próximos a Agotarse (Cobertura)' },
+            { value: 'rotacion', label: 'Mayor Rotación' },
+            { value: 'Categoría', label: 'Categoría (A-Z)' }
           ]
         },
-        { name: 'dias_seguridad_base', label: 'Días adicionales de cobertura para stock de seguridad', type: 'select',
+        {
+          name: 'excluir_sin_ventas',
+          label: '¿Excluir productos con CERO ventas en el período?',
+          type: 'boolean_select', // Un nuevo tipo para manejar booleanos con un select
           options: [
-            { value: '0', label: 'Ninguno' },
-            { value: '1', label: '1 día adicional' },
-            { value: '2', label: '2 días adicionales' },
-            { value: '3', label: '3 días adicionales' }
+            { value: 'true', label: 'Sí, excluir (Recomendado)' },
+            { value: 'false', label: 'No, incluirlos' }
           ]
+        },
+        {
+          name: 'incluir_solo_categorias',
+          label: 'Filtrar por Categorías (opcional)',
+          type: 'text_list', // Un nuevo tipo para listas de texto
+          placeholder: 'Ej: Herramientas, Tornillería, Pinturas' // Ayuda visual para el usuario
+        },
+        {
+          name: 'incluir_solo_marcas',
+          label: 'Filtrar por Marcas (opcional)',
+          type: 'text_list',
+          placeholder: 'Ej: Bosch, 3M, Makita'
         }
       ]
     },
@@ -367,7 +388,8 @@ function LandingPage() {
                 <div className="mb-6 p-4 border border-2 rounded-md shadow-md bg-gray-100">
                   <h3 className="text-lg font-semibold text-gray-700 mb-3">Parámetros del Reporte</h3>
                   {selectedReport.parameters.map((param) => {
-                    if (param.type === 'select') {
+                    // Caso 1: Para desplegables (select y nuestro nuevo boolean_select)
+                    if (param.type === 'select' || param.type === 'boolean_select') {
                       return (
                         <div key={param.name} className="mb-4">
                           <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
@@ -391,6 +413,30 @@ function LandingPage() {
                         </div>
                       );
                     }
+
+                    // Caso 2: Para campos de texto donde el usuario escribe una lista
+                    if (param.type === 'text_list') {
+                      return (
+                        <div key={param.name} className="mb-4">
+                          <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                            {param.label} <span className="text-gray-400">(separar con comas)</span>:
+                          </label>
+                          <input
+                            type="text"
+                            id={param.name}
+                            name={param.name}
+                            value={parameterValues[param.name] || ''}
+                            placeholder={param.placeholder || ''}
+                            onChange={(e) => {
+                              setParameterValues(prev => ({ ...prev, [param.name]: e.target.value }));
+                            }}
+                            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                          />
+                        </div>
+                      );
+                    }
+
+                    // Si en el futuro agregas más tipos, puedes añadir más 'if' aquí.
                     return null;
                   })}
                 </div>
