@@ -101,7 +101,7 @@ const reportData = {
         },
         {
           name: 'excluir_sin_ventas',
-          label: '¿Excluir productos con CERO ventas en el período?',
+          label: '¿Excluir productos con CERO ventas?',
           type: 'boolean_select', // Un nuevo tipo para manejar booleanos con un select
           options: [
             { value: 'true', label: 'Sí, excluir (Recomendado)' },

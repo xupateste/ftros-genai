@@ -1230,9 +1230,22 @@ def process_csv_lista_basica_reposicion_historico(
     if excluir_sin_ventas:
         df_analisis = df_analisis[df_analisis['Ventas_Total_General'] > 0].copy()
     if incluir_solo_categorias and categoria_col_stock in df_analisis.columns:
-        df_analisis = df_analisis[df_analisis[categoria_col_stock].isin(incluir_solo_categorias)].copy()
+        # Normalizamos la lista de categorías a minúsculas y sin espacios
+        categorias_normalizadas = [cat.strip().lower() for cat in incluir_solo_categorias]
+        
+        # Comparamos contra la columna del DataFrame también normalizada
+        # El .str.lower() y .str.strip() se aplican a cada valor de la columna antes de la comparación
+        df_analisis = df_analisis[
+            df_analisis[categoria_col_stock].str.strip().str.lower().isin(categorias_normalizadas)
+        ].copy()
     if incluir_solo_marcas and marca_col_stock in df_analisis.columns:
-        df_analisis = df_analisis[df_analisis[marca_col_stock].isin(incluir_solo_marcas)].copy()
+        # Normalizamos la lista de marcas
+        marcas_normalizadas = [marca.strip().lower() for marca in incluir_solo_marcas]
+        
+        # Comparamos contra la columna de marcas normalizada
+        df_analisis = df_analisis[
+            df_analisis[marca_col_stock].str.strip().str.lower().isin(marcas_normalizadas)
+        ].copy()
 
     if df_analisis.empty: return pd.DataFrame()
     
