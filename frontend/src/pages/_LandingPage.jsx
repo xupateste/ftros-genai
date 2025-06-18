@@ -4,7 +4,7 @@ import '../index.css';
 import { FiDownload } from 'react-icons/fi'
 
 import axios from 'axios';
-import Select from 'react-select';
+
 import CsvDropZone from '../assets/CsvDropZone';
 import CsvDropZone2 from '../assets/CsvDropZone2';
 
@@ -111,14 +111,14 @@ const reportData = {
         {
           name: 'incluir_solo_categorias',
           label: 'Filtrar por Categorías (opcional)',
-          type: 'multi-select',
-          optionsKey: 'categorias'
+          type: 'text_list', // Un nuevo tipo para listas de texto
+          placeholder: 'Ej: Herramientas, Tornillería, Pinturas' // Ayuda visual para el usuario
         },
         {
           name: 'incluir_solo_marcas',
           label: 'Filtrar por Marcas (opcional)',
-          type: 'multi-select',
-          optionsKey: 'marcas'
+          type: 'text_list',
+          placeholder: 'Ej: Bosch, 3M, Makita'
         }
       ]
     },
@@ -155,8 +155,6 @@ function LandingPage() {
   const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
   const [isLoading, setIsLoading] = useState(false); // Para feedback visual
 
-  const [availableFilters, setAvailableFilters] = useState({ categorias: [], marcas: [] });
-  const [isLoadingFilters, setIsLoadingFilters] = useState(false);
 
   const handleVentasInput = (file) => setVentasFile(file);
   const handleInventarioInput = (file) => setInventarioFile(file);
@@ -178,17 +176,15 @@ function LandingPage() {
     const initialParams = {};
     if (reportItem.parameters && reportItem.parameters.length > 0) {
       reportItem.parameters.forEach(param => {
-        // Inicializa los valores por defecto
-        if (param.type === 'select' || param.type === 'boolean_select') {
+        if (param.type === 'select' && param.options && param.options.length > 0) {
           initialParams[param.name] = param.options[0].value;
-        } else if (param.type === 'multi-select') {
-          initialParams[param.name] = []; // El valor inicial para un multi-select es un array vacío
         } else {
           initialParams[param.name] = '';
         }
       });
     }
     setParameterValues(initialParams);
+    // No limpiar caché aquí, se limpia al cerrar modal o si los parámetros cambian ANTES de descargar
     setShowModal(true);
   };
 
@@ -239,15 +235,8 @@ function LandingPage() {
 
     if (selectedReport.parameters && selectedReport.parameters.length > 0) {
       selectedReport.parameters.forEach(param => {
-        const value = parameterValues[param.name];
-        if (value !== undefined && value !== null) {
-          // --- 3. ADAPTAR EL ENVÍO DE DATOS ---
-          // Si el valor es un array (de nuestro multi-select), lo convertimos a un string separado por comas
-          if (Array.isArray(value)) {
-            formData.append(param.name, value.join(','));
-          } else {
-            formData.append(param.name, value);
-          }
+        if (parameterValues[param.name] !== undefined && parameterValues[param.name] !== null) {
+          formData.append(param.name, parameterValues[param.name]);
         }
       });
     }
@@ -280,32 +269,6 @@ function LandingPage() {
       // La limpieza del caché se centraliza en el useEffect de showModal
     }
   }, []); // No depende de nada que cambie
-
-  useEffect(() => {
-    if (inventarioFile instanceof File) {
-      const fetchFilters = async () => {
-        setIsLoadingFilters(true);
-        const formData = new FormData();
-        formData.append("inventario", inventarioFile);
-        try {
-          const response = await axios.post(`${API_URL}/extract-metadata`, formData, {
-            // headers: { "Content-Type": "multipart/form-data" },
-            responseType: 'json',
-          });
-          setAvailableFilters({
-            categorias: response.data.categorias_disponibles || [],
-            marcas: response.data.marcas_disponibles || []
-          });
-        } catch (error) {
-          console.error("Error al extraer los filtros:", error);
-          alert("No se pudieron cargar los filtros desde el archivo de inventario.");
-        } finally {
-          setIsLoadingFilters(false);
-        }
-      };
-      fetchFilters();
-    }
-  }, [inventarioFile]);
 
   useEffect(() => {
     if (showModal) {
@@ -447,37 +410,6 @@ function LandingPage() {
                               </option>
                             ))}
                           </select>
-                        </div>
-                      );
-                    }
-
-                    if (param.type === 'multi-select') {
-                      // Mapea las listas de strings a un formato que react-select entiende: { value: '...', label: '...' }
-                      const options = availableFilters[param.optionsKey].map(opt => ({ value: opt, label: opt }));
-                      
-                      // Mapea los valores seleccionados (que son strings) de vuelta al formato de objeto
-                      const value = (parameterValues[param.name] || []).map(val => ({ value: val, label: val }));
-
-                      return (
-                        <div key={param.name} className="mb-4">
-                          <label className="block text-sm font-medium text-gray-600 mb-1">
-                            {param.label}:
-                          </label>
-                          <Select
-                            isMulti
-                            name={param.name}
-                            options={options}
-                            className="mt-1 block w-full basic-multi-select"
-                            classNamePrefix="select"
-                            value={value}
-                            isLoading={isLoadingFilters}
-                            placeholder={isLoadingFilters ? "Cargando filtros..." : "Selecciona..."}
-                            onChange={(selectedOptions) => {
-                              // Guardamos solo el array de valores (strings) en nuestro estado
-                              const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-                              setParameterValues(prev => ({ ...prev, [param.name]: values }));
-                            }}
-                          />
                         </div>
                       );
                     }

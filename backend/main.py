@@ -4,7 +4,7 @@ import uvicorn
 
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi import HTTPException
 import pandas as pd
 import io
@@ -48,6 +48,59 @@ if __name__ == "__main__":
 # ===================================================
 # ============== INICIO: FULL REPORTES ==============
 # ===================================================
+
+@app.post("/extract-metadata", summary="Extrae metadatos (categorías, marcas) de un archivo de inventario", tags=["Utilidades"])
+async def extract_metadata(
+    inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario.")
+):
+    """
+    Lee un archivo de inventario y devuelve una lista de todas las categorías y marcas únicas.
+    Este endpoint es robusto e intenta leer el CSV con diferentes codificaciones y separadores.
+    """
+    contents = await inventario.read()
+    
+    # --- LÓGICA DE LECTURA ROBUSTA ---
+    try:
+        # Intento 1: La configuración más común (UTF-8, separado por comas)
+        df_inventario = pd.read_csv(io.BytesIO(contents), sep=',')
+    except (UnicodeDecodeError, pd.errors.ParserError):
+        try:
+            # Intento 2: Codificación Latin-1 (muy común en Excel de Windows/Español)
+            print("Intento 1 (UTF-8, coma) falló. Reintentando con latin-1 y coma.")
+            df_inventario = pd.read_csv(io.BytesIO(contents), sep=',', encoding='latin1')
+        except (UnicodeDecodeError, pd.errors.ParserError):
+            try:
+                # Intento 3: Codificación UTF-8 con punto y coma como separador
+                print("Intento 2 (latin-1, coma) falló. Reintentando con UTF-8 y punto y coma.")
+                df_inventario = pd.read_csv(io.BytesIO(contents), sep=';', encoding='utf-8')
+            except Exception as e:
+                # Si todos los intentos fallan, entonces sí lanzamos el error.
+                print(f"Todos los intentos de lectura de CSV fallaron. Error final: {e}")
+                raise HTTPException(
+                    status_code=400, 
+                    detail=f"No se pudo leer el archivo CSV. Verifique que esté delimitado por comas o punto y coma y tenga una codificación estándar (UTF-8 o Latin-1). Error: {e}"
+                )
+
+    # --- El resto de la lógica es la misma ---
+    try:
+        categoria_col = 'Categoría'
+        marca_col = 'Marca'
+        categorias_disponibles = []
+        marcas_disponibles = []
+
+        if categoria_col in df_inventario.columns:
+            categorias_disponibles = sorted(df_inventario[categoria_col].dropna().unique().tolist())
+        if marca_col in df_inventario.columns:
+            marcas_disponibles = sorted(df_inventario[marca_col].dropna().unique().tolist())
+        
+        return JSONResponse(content={
+            "categorias_disponibles": categorias_disponibles,
+            "marcas_disponibles": marcas_disponibles
+        })
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"El archivo se leyó, pero hubo un error al procesar las columnas: {e}")
+
+
 
 @app.post("/abc", summary="Realizar Análisis ABC", tags=["Análisis"])
 async def upload_csvs_abc_analysis(
