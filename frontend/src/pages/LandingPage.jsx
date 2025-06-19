@@ -52,11 +52,38 @@ const reportData = {
       basic_parameters: []
     },
     {
-      label: 'Análisis Rotación de Productos ✓',
-      endpoint: '/rotacion-general',
-      insights: [],
-      basic_parameters: []
+      label: 'Análisis Estratégico de Rotación ✓',
+      endpoint: '/rotacion-general-estrategico',
+      insights: diccionarioData['Análisis Estratégico de Rotación ✓'],
+      basic_parameters: [
+        { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente', type: 'number', defaultValue: 30, min: 1 },
+        { name: 'sort_by', label: 'Ordenar Reporte Por', type: 'select',
+          options: [
+            { value: 'Importancia_Dinamica', label: 'Índice de Importancia (Recomendado)' },
+            { value: 'Inversion_Stock_Actual', label: 'Mayor Inversión en Stock' },
+            { value: 'Dias_Cobertura_Stock_Actual', label: 'Próximos a Agotarse (Cobertura)' },
+            { value: 'Ventas_Total_Reciente', label: 'Más Vendidos (Unidades Recientes)' },
+            { value: 'Clasificacion', label: 'Clasificación (A, B, C, D)' },
+          ],
+          defaultValue: 'Importancia_Dinamica'
+        },
+        { name: 'filtro_categorias_json', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
+        { name: 'filtro_marcas_json', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] },
+        { name: 'min_importancia', label: 'Mostrar solo con Importancia mayor a', type: 'number', defaultValue: '', min: 0, max: 1, step: 0.1, placeholder: 'Ej: 0.7' },
+        { name: 'max_dias_cobertura', label: 'Mostrar solo con Cobertura menor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 15 (para ver bajo stock)' },
+        { name: 'min_dias_cobertura', label: 'Mostrar solo con Cobertura mayor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 180 (para ver sobre-stock)' },
+      ],
+      advanced_parameters: [
+        { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 1 },
+        { name: 'umbral_stock_bajo_dias', label: 'Umbral para Alerta "Stock Bajo" (días)', type: 'number', defaultValue: 15, min: 1 },
+        { name: 'umbral_sobre_stock_dias', label: 'Umbral para Alerta "Sobre-stock" (días)', type: 'number', defaultValue: 180, min: 1 },
+        { name: 'pesos_importancia_json', label: 'Pesos para Índice de Importancia (JSON)', type: 'textarea', // Textarea es mejor para JSON
+          defaultValue: '{"ventas": 0.4, "ingreso": 0.3, "margen": 0.2, "dias_venta": 0.1}',
+          placeholder: 'Escribe los pesos en formato JSON. La suma debe ser 1.'
+        },
+      ]
     },
+
   ],
   "📦 Reposición Inteligente y Sugerencias de Pedido": [
     { label: 'Puntos de Alerta de Stock ✓',
@@ -100,7 +127,7 @@ const reportData = {
             { value: 'rotacion', label: 'Mayor Rotación' },
             { value: 'Categoría', label: 'Categoría (A-Z)' }
           ],
-          defaultValue: 'Importancia' // Default explícito
+          defaultValue: 'Índice de Urgencia' // Default explícito
         },
         { name: 'incluir_solo_categorias', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
         { name: 'incluir_solo_marcas', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] }
@@ -176,29 +203,30 @@ function LandingPage() {
   const handleInventarioInput = (file) => setInventarioFile(file);
 
   const getParameterLabelsForFilename = () => {
-    // Combina ambos arrays de parámetros en uno solo.
-    const allParameters = [
-      ...(selectedReport?.basic_parameters || []),
-      ...(selectedReport?.advanced_parameters || [])
-    ];
+  // Ahora, la lista de parámetros a incluir en el nombre se basa SOLO en los básicos.
+  const basicParameters = selectedReport?.basic_parameters || [];
 
-    if (allParameters.length === 0) return "";
+  if (basicParameters.length === 0) return "";
 
-    // Ahora itera sobre la lista combinada usando los valores del estado del modal.
-    return allParameters.map(param => {
-      const selectedValue = modalParams[param.name];
+  // La lógica de iteración ahora solo recorre los parámetros básicos.
+  return basicParameters.map(param => {
+    const selectedValue = modalParams[param.name];
 
-      // Si el valor no existe o es un array vacío, no lo incluye en el nombre.
-      if (!selectedValue || (Array.isArray(selectedValue) && selectedValue.length === 0)) {
-        return null;
-      }
-      
-      // Si es un array, lo une con guiones para el nombre del archivo.
-      const valueString = Array.isArray(selectedValue) ? selectedValue.join('-') : selectedValue;
+    // Si el valor no existe, es el default, o es un array vacío, no lo incluye.
+    // (Esta es una mejora opcional para no incluir parámetros con su valor por defecto)
+    if (!selectedValue || selectedValue === param.defaultValue || (Array.isArray(selectedValue) && selectedValue.length === 0)) {
+      return null;
+    }
+    
+    // Si es un array, lo une con guiones para el nombre del archivo.
+    const valueString = Array.isArray(selectedValue) ? selectedValue.join('-') : selectedValue;
 
-      return `${param.name}-${valueString}`;
-    }).filter(Boolean).join('_');
-  };
+    // Usamos una etiqueta más corta para el nombre del archivo, si está disponible
+    const paramLabel = param.shortLabel || param.name;
+
+    return `${paramLabel}-${valueString}`;
+  }).filter(Boolean).join('_');
+};
 
   const handleReportView = (reportItem) => {
     setSelectedReport(reportItem);
@@ -317,15 +345,34 @@ function LandingPage() {
     ];
 
     allParameters.forEach(param => {
-      const value = modalParams[param.name];
-      if (value !== undefined && value !== null) {
-        if (Array.isArray(value)) {
-          formData.append(param.name, value.join(','));
-        } else {
-          formData.append(param.name, value);
+        const value = modalParams[param.name];
+
+        // No enviar parámetros nulos, indefinidos o strings vacíos
+        if (value === undefined || value === null || value === '') {
+            return; 
         }
-      }
+
+        // --- LÓGICA MEJORADA PARA ENVÍO DE PARÁMETROS ---
+        // Si el nombre del parámetro indica que debe ser JSON (como definimos en el backend)
+        if (param.name.endsWith('_json')) {
+            // Convierte el array a un string JSON. Asegúrate de que no sea un array vacío.
+            if (Array.isArray(value) && value.length > 0) {
+                formData.append(param.name, JSON.stringify(value));
+            }
+            // Si no es un array o está vacío, no se envía.
+        } 
+        // Para otros reportes que puedan usar arrays y esperen una lista separada por comas
+        else if (Array.isArray(value)) {
+            if (value.length > 0) {
+                formData.append(param.name, value.join(','));
+            }
+        } 
+        // Para todos los demás tipos (string, number, boolean)
+        else {
+            formData.append(param.name, value);
+        }
     });
+
 
     try {
       // He quitado la cabecera Content-Type para dejar que el navegador la gestione
@@ -538,7 +585,7 @@ function LandingPage() {
             <div className="flex-1 min-h-0 overflow-y-auto">
               <div className="flex-1 min-h-0 gap-4 p-4">
                 {(selectedReport.basic_parameters?.length > 0 || selectedReport.advanced_parameters?.length > 0) && (
-                    <div className="mb-6 p-4 border-2 rounded-md shadow-md bg-gray-50">
+                    <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
                       <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
                       
                       {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
@@ -648,9 +695,9 @@ function LandingPage() {
                     </div>
                 )}
               </div>
-              <div className="p-4">🔹 Resultado<span className="text-xs flex">Ejemplo de como se vería una fila:</span></div>
+              <div className="px-4">🔹 ResultadoEjemplo de como se vería una fila:</div>
               <div
-                className="w-full max-w-full px-4 overflow-x-auto text-gray-700 space-y-2 text-left text-sm"
+                className="w-full max-w-full px-4 overflow-x-auto text-gray-700 space-y-2 mt-1 text-left text-sm"
                 dangerouslySetInnerHTML={{ __html: insightHtml }}
               >
               </div>
@@ -676,7 +723,7 @@ function LandingPage() {
                 ) : isCacheValid ? (
                   <div className="flex items-center justify-center gap-2">
                     <FiDownload className="font-bold text-xl"/>
-                    <span>Descargar Reporte (desde caché)</span>
+                    <span>Descargar Reporte (guardada)</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">

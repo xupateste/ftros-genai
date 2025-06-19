@@ -360,24 +360,244 @@ def process_csv_abc(
 
     return resultado
 
-def process_csv_rotacion_general(
+
+def process_csv_analisis_estrategico_rotacion(
     df_ventas: pd.DataFrame,
     df_stock: pd.DataFrame,
-    # Parámetros de periodos para análisis de ventas - AHORA OPCIONALES
+    # Parámetros de periodos
+    dias_analisis_ventas_recientes: Optional[int] = 30,
+    dias_analisis_ventas_general: Optional[int] = 180,
+    # Parámetros de cálculo estratégico
+    pesos_importancia: Optional[Dict[str, float]] = None,
+    umbral_sobre_stock_dias: int = 180,
+    umbral_stock_bajo_dias: int = 15,
+    # Parámetros de Filtro
+    filtro_categorias: Optional[List[str]] = None,
+    filtro_marcas: Optional[List[str]] = None,
+    min_importancia: Optional[float] = None,
+    max_dias_cobertura: Optional[float] = None,
+    min_dias_cobertura: Optional[float] = None,
+    # Parámetros de Ordenamiento
+    sort_by: str = 'Importancia_Dinamica',
+    sort_ascending: bool = False
+) -> pd.DataFrame:
+    """
+    Genera un análisis estratégico de rotación de inventario (Radar Estratégico).
+    Se enfoca en diagnosticar la salud y la importancia de los productos,
+    omitiendo los detalles operativos de la reposición.
+    """
+    
+    # --- 1. Definición y Limpieza de Datos ---
+    sku_col = 'SKU / Código de producto'
+    fecha_col_ventas = 'Fecha de venta'
+    cantidad_col_ventas = 'Cantidad vendida'
+    precio_venta_col_ventas = 'Precio de venta unitario (S/.)'
+    marca_col_stock = 'Marca'
+    stock_actual_col_stock = 'Cantidad en stock actual'
+    nombre_prod_col_stock = 'Nombre del producto'
+    categoria_col_stock = 'Categoría'
+    subcategoria_col_stock = 'Subcategoría'
+    precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
+
+    df_ventas_proc = df_ventas.copy()
+    df_stock_proc = df_stock.copy()
+
+    # Normalización de datos (igual que antes)
+    df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
+    df_stock_proc[sku_col] = df_stock_proc[sku_col].astype(str).str.strip()
+    df_stock_proc[stock_actual_col_stock] = pd.to_numeric(df_stock_proc[stock_actual_col_stock], errors='coerce').fillna(0)
+    df_stock_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_stock_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
+    df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
+    df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
+    df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
+    df_ventas_proc.dropna(subset=[fecha_col_ventas], inplace=True)
+
+    if df_ventas_proc.empty: return pd.DataFrame()
+    fecha_max_venta = df_ventas_proc[fecha_col_ventas].max()
+    if pd.isna(fecha_max_venta): return pd.DataFrame()
+
+    # La lógica de sugerencia/ajuste de periodos permanece igual...
+    final_dias_recientes = dias_analisis_ventas_recientes
+    final_dias_general = dias_analisis_ventas_general
+
+    # Si el usuario no proporciona los periodos, los sugerimos
+    if dias_analisis_ventas_recientes is None or dias_analisis_ventas_general is None:
+        print("\nInformación: Calculando periodos de análisis sugeridos...")
+        # Asegúrate de que la función _sugerir_periodos_analisis esté disponible
+        sug_rec, sug_gen = _sugerir_periodos_analisis(df_ventas_proc, fecha_col_ventas)
+        
+        if final_dias_recientes is None:
+            final_dias_recientes = sug_rec
+            print(f"  - Periodo de análisis reciente sugerido y utilizado: {final_dias_recientes} días.")
+        
+        if final_dias_general is None:
+            final_dias_general = sug_gen
+            print(f"  - Periodo de análisis general sugerido y utilizado: {final_dias_general} días.")
+
+    # Se realizan validaciones para asegurar que los periodos sean lógicos
+    final_dias_recientes = max(1, final_dias_recientes)
+    final_dias_general = max(1, final_dias_general)
+    if final_dias_general < final_dias_recientes:
+        print(f"Advertencia: El periodo general ({final_dias_general}) es menor que el reciente ({final_dias_recientes}). Ajustando general para igualar a reciente.")
+        final_dias_general = final_dias_recientes
+
+    # --- 2. Cálculo de Métricas de Ventas Agregadas ---
+    def agregar_ventas_periodo(df_v, periodo_dias, fecha_max, sku_c, fecha_c, cant_c, p_venta_c, sufijo):
+        fecha_inicio = fecha_max - pd.Timedelta(days=periodo_dias)
+        df_periodo = df_v[df_v[fecha_c] >= fecha_inicio]
+        if df_periodo.empty:
+             return pd.DataFrame(columns=[sku_c, f'Ventas_Total{sufijo}', f'Dias_Con_Venta{sufijo}', f'Precio_Venta_Prom{sufijo}'])
+        agg_ventas = df_periodo.groupby(sku_c).agg(
+            Ventas_Total=(cant_c, 'sum'),
+            Dias_Con_Venta=(fecha_c, 'nunique'),
+            Precio_Venta_Prom=(p_venta_c, 'mean')
+        ).reset_index()
+        agg_ventas.columns = [sku_c] + [f'{col}{sufijo}' for col in agg_ventas.columns[1:]]
+        return agg_ventas
+
+    df_ventas_rec_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_recientes, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_Reciente')
+    
+    # --- 3. Merge y Enriquecimiento de Datos ---
+    df_analisis = pd.merge(df_stock_proc, df_ventas_rec_agg, on=sku_col, how='left')
+    cols_a_rellenar = ['Ventas_Total_Reciente', 'Dias_Con_Venta_Reciente', 'Precio_Venta_Prom_Reciente']
+    for col in cols_a_rellenar:
+        if col not in df_analisis.columns: df_analisis[col] = 0.0
+        else: df_analisis[col] = df_analisis[col].fillna(0)
+
+    # --- 4. Cálculo de Métricas Financieras y de Importancia ---
+    df_analisis['Inversion_Stock_Actual'] = df_analisis[stock_actual_col_stock] * df_analisis[precio_compra_actual_col_stock]
+    
+    df_analisis['Margen_Bruto_Reciente'] = df_analisis['Precio_Venta_Prom_Reciente'] - df_analisis[precio_compra_actual_col_stock]
+    df_analisis['Ingreso_Total_Reciente'] = df_analisis['Ventas_Total_Reciente'] * df_analisis['Precio_Venta_Prom_Reciente']
+    
+    pesos_default = {'ventas': 0.4, 'ingreso': 0.3, 'margen': 0.2, 'dias_venta': 0.1}
+    pesos_finales = pesos_default
+    if pesos_importancia:
+        pesos_finales = {**pesos_default, **pesos_importancia}
+
+    df_analisis['Importancia_Dinamica'] = (
+        df_analisis['Ventas_Total_Reciente'].rank(pct=True) * pesos_finales['ventas'] +
+        df_analisis['Ingreso_Total_Reciente'].rank(pct=True) * pesos_finales['ingreso'] +
+        df_analisis['Margen_Bruto_Reciente'].rank(pct=True) * pesos_finales['margen'] +
+        df_analisis['Dias_Con_Venta_Reciente'].rank(pct=True) * pesos_finales['dias_venta']
+    ).fillna(0)
+
+    # --- 5. (NUEVO) Clasificación por Importancia ---
+    condiciones_clasificacion = [
+        df_analisis['Importancia_Dinamica'] > 0.8,
+        df_analisis['Importancia_Dinamica'] > 0.5,
+        df_analisis['Importancia_Dinamica'] > 0.2
+    ]
+    opciones_clasificacion = ['Clase A (Crítico)', 'Clase B (Importante)', 'Clase C (Regular)']
+    df_analisis['Clasificacion'] = np.select(condiciones_clasificacion, opciones_clasificacion, default='Clase D (Baja Prioridad)')
+
+    # --- 6. Cálculo de Métricas de Cobertura ---
+    pda_efectivo_reciente = np.where(df_analisis['Dias_Con_Venta_Reciente'] > 0, df_analisis['Ventas_Total_Reciente'] / df_analisis['Dias_Con_Venta_Reciente'], 0)
+    pda_calendario_reciente = df_analisis['Ventas_Total_Reciente'] / final_dias_recientes if final_dias_recientes > 0 else 0
+    df_analisis['PDA_Final'] = np.where(pda_efectivo_reciente > 0, pda_efectivo_reciente, pda_calendario_reciente)
+
+    df_analisis['Dias_Cobertura_Stock_Actual'] = np.where(
+        df_analisis['PDA_Final'] > 1e-6,
+        df_analisis[stock_actual_col_stock] / df_analisis['PDA_Final'],
+        np.inf
+    )
+    df_analisis.loc[df_analisis[stock_actual_col_stock] == 0, 'Dias_Cobertura_Stock_Actual'] = 0
+
+    # --- 7. (NUEVO) Clasificación de Alerta de Stock ---
+    condiciones_alerta = [
+        df_analisis[stock_actual_col_stock] == 0,
+        df_analisis['Dias_Cobertura_Stock_Actual'] <= umbral_stock_bajo_dias,
+        df_analisis['Dias_Cobertura_Stock_Actual'] > umbral_sobre_stock_dias
+    ]
+    opciones_alerta = ['Agotado', 'Stock Bajo', 'Sobre-stock']
+    df_analisis['Alerta_Stock'] = np.select(condiciones_alerta, opciones_alerta, default='Saludable')
+
+    # --- 8. Filtros y Ordenamiento Final ---
+    df_resultado = df_analisis.copy()
+
+    # Aplicación de filtros dinámicos...
+    if filtro_categorias and categoria_col_stock in df_resultado.columns:
+        df_resultado = df_resultado[df_resultado[categoria_col_stock].isin(filtro_categorias)]
+    if filtro_marcas and marca_col_stock in df_resultado.columns:
+        df_resultado = df_resultado[df_resultado[marca_col_stock].isin(filtro_marcas)]
+    if min_importancia is not None:
+        df_resultado = df_resultado[df_resultado['Importancia_Dinamica'] >= min_importancia]
+    if max_dias_cobertura is not None:
+        cond_cobertura = (df_resultado['Dias_Cobertura_Stock_Actual'] <= max_dias_cobertura) & (df_resultado['Dias_Cobertura_Stock_Actual'] != np.inf)
+        df_resultado = df_resultado[cond_cobertura]
+    if min_dias_cobertura is not None:
+        df_resultado = df_resultado[df_resultado['Dias_Cobertura_Stock_Actual'] >= min_dias_cobertura]
+    
+    # Aplicación de ordenamiento dinámico...
+    if sort_by in df_resultado.columns:
+        df_resultado = df_resultado.sort_values(by=sort_by, ascending=sort_ascending)
+    else:
+        df_resultado = df_resultado.sort_values(by='Importancia_Dinamica', ascending=False)
+    
+    # --- 9. Selección y Renombrado de Columnas Finales ---
+    columnas_salida_optimas = [
+        # Identificación
+        sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock,
+        # Situación Actual y Financiera
+        stock_actual_col_stock, precio_compra_actual_col_stock, 'Inversion_Stock_Actual',
+        # Diagnóstico y Rendimiento
+        'Ventas_Total_Reciente', 'Dias_Cobertura_Stock_Actual', 'Alerta_Stock',
+        'Importancia_Dinamica', 'Clasificacion'
+    ]
+    
+    df_final = df_resultado[[col for col in columnas_salida_optimas if col in df_resultado.columns]].copy()
+    
+    # REEMPLAZO DE 'inf' POR UN NÚMERO ALTO Y ENTENDIBLE
+    df_final['Dias_Cobertura_Stock_Actual'].replace(np.inf, 9999, inplace=True)
+
+
+    column_rename_map = {
+        stock_actual_col_stock: 'Stock Actual (Unds)',
+        precio_compra_actual_col_stock: 'Precio Compra (S/.)',
+        'Inversion_Stock_Actual': 'Inversión Stock Actual (S/.)',
+        'Ventas_Total_Reciente': f'Ventas Recientes ({final_dias_recientes}d)',
+        'Dias_Cobertura_Stock_Actual': 'Cobertura Actual (Días)',
+        'Alerta_Stock': 'Alerta de Stock',
+        'Importancia_Dinamica': 'Índice de Importancia',
+        'Clasificacion': 'Clasificación'
+    }
+
+    df_final = df_final.rename(columns=column_rename_map)
+    
+    # Redondeo final para mejor visualización
+    df_final['Inversión Stock Actual (S/.)'] = df_final['Inversión Stock Actual (S/.)'].round(2)
+    df_final['Índice de Importancia'] = df_final['Índice de Importancia'].round(3)
+    df_final['Cobertura Actual (Días)'] = df_final['Cobertura Actual (Días)'].round(1)
+
+    return df_final
+
+
+def process_csv_rotacion_general_version_anterior(
+    df_ventas: pd.DataFrame,
+    df_stock: pd.DataFrame,
+    # Parámetros de periodos
     dias_analisis_ventas_recientes: Optional[int] = None,
     dias_analisis_ventas_general: Optional[int] = None,
-    # Parámetros para cálculo de Stock Ideal
-    dias_cobertura_ideal_base: int = 10, # Ejemplo de default
+    # Parámetros de cálculo
+    dias_cobertura_ideal_base: int = 10,
     coef_importancia_para_cobertura_ideal: float = 0.25,
     coef_rotacion_para_stock_ideal: float = 0.2,
-    # Parámetros para Pedido Mínimo
-    dias_cubrir_con_pedido_minimo: int = 3, # Ejemplo de default
+    dias_cubrir_con_pedido_minimo: int = 3,
     coef_importancia_para_pedido_minimo: float = 0.5,
-    # Otros parámetros de comportamiento
     importancia_minima_para_redondeo_a_1: float = 0.1,
-    incluir_productos_pasivos: bool = True, # Ejemplo de default
     cantidad_reposicion_para_pasivos: int = 1,
-    excluir_productos_sin_sugerencia_ideal: bool = True # Ejemplo de default
+    pesos_importancia: Optional[Dict[str, float]] = None, # <-- NUEVO
+    # Parámetros de Filtro
+    incluir_productos_pasivos: bool = True,
+    excluir_productos_sin_sugerencia_ideal: bool = True,
+    filtro_categorias: Optional[List[str]] = None,      # <-- NUEVO
+    filtro_marcas: Optional[List[str]] = None,          # <-- NUEVO
+    min_importancia: Optional[float] = None,            # <-- NUEVO
+    max_dias_cobertura: Optional[float] = None,         # <-- NUEVO
+    min_dias_cobertura: Optional[float] = None,         # <-- NUEVO
+    # Parámetros de Ordenamiento
+    sort_by: str = 'Importancia_Dinamica',              # <-- NUEVO
+    sort_ascending: bool = False                        # <-- NUEVO
 ) -> pd.DataFrame:
 
     sku_col = 'SKU / Código de producto'
@@ -513,6 +733,11 @@ def process_csv_rotacion_general(
     df_analisis['Dias_Con_Venta_Reciente'] = pd.to_numeric(df_analisis.get('Dias_Con_Venta_Reciente', 0), errors='coerce').fillna(0)
 
     # --- 4. Cálculo de Importancia Dinámica (directamente en df_analisis) ---
+    pesos_default = {'ventas': 0.4, 'ingreso': 0.3, 'margen': 0.2, 'dias_venta': 0.1}
+    pesos_finales = pesos_default
+    if pesos_importancia:
+        pesos_finales = {**pesos_default, **pesos_importancia}
+
     df_analisis['Margen_Bruto_con_PCA'] = df_analisis['Precio_Venta_Prom_Reciente'] - df_analisis[precio_compra_actual_col_stock]
     df_analisis['Ingreso_Total_Reciente'] = df_analisis['Ventas_Total_Reciente'] * df_analisis['Precio_Venta_Prom_Reciente']
     
@@ -529,10 +754,10 @@ def process_csv_rotacion_general(
         rank_cols_exist = all(col in df_analisis.columns for col in cols_for_rank)
         if rank_cols_exist:
             df_analisis['Importancia_Dinamica'] = (
-                df_analisis['Ventas_Total_Reciente'].rank(pct=True) * 0.4 +
-                df_analisis['Ingreso_Total_Reciente'].rank(pct=True) * 0.3 +
-                df_analisis['Margen_Bruto_con_PCA'].rank(pct=True) * 0.2 +
-                df_analisis['Dias_Con_Venta_Reciente'].rank(pct=True) * 0.1
+                df_analisis['Ventas_Total_Reciente'].rank(pct=True) * pesos_finales['ventas'] +
+                df_analisis['Ingreso_Total_Reciente'].rank(pct=True) * pesos_finales['ingreso'] +
+                df_analisis['Margen_Bruto_con_PCA'].rank(pct=True) * pesos_finales['margen'] +
+                df_analisis['Dias_Con_Venta_Reciente'].rank(pct=True) * pesos_finales['dias_venta']
             ).fillna(0).round(3)
         else:
             print("Advertencia: Faltan una o más columnas para calcular Importancia Dinámica. Se asignará 0.")
@@ -627,20 +852,30 @@ def process_csv_rotacion_general(
     # --- 11. Filtros y Selección de Columnas Finales ---
     df_resultado = df_analisis.copy()
 
+    # --- 11a. Aplicación de Filtros Flexibles ---
+    if filtro_categorias and categoria_col_stock in df_resultado.columns:
+        df_resultado = df_resultado[df_resultado[categoria_col_stock].isin(filtro_categorias)]
+    if filtro_marcas and marca_col_stock in df_resultado.columns:
+        df_resultado = df_resultado[df_resultado[marca_col_stock].isin(filtro_marcas)]
+    if min_importancia is not None and 'Importancia_Dinamica' in df_resultado.columns:
+        df_resultado = df_resultado[df_resultado['Importancia_Dinamica'] >= min_importancia]
+    if max_dias_cobertura is not None and 'Dias_Cobertura_Stock_Actual' in df_resultado.columns:
+        cond_cobertura = (df_resultado['Dias_Cobertura_Stock_Actual'] <= max_dias_cobertura) & (df_resultado['Dias_Cobertura_Stock_Actual'] != np.inf)
+        df_resultado = df_resultado[cond_cobertura]
+    if min_dias_cobertura is not None and 'Dias_Cobertura_Stock_Actual' in df_resultado.columns:
+        df_resultado = df_resultado[df_resultado['Dias_Cobertura_Stock_Actual'] >= min_dias_cobertura]
+
     if excluir_productos_sin_sugerencia_ideal:
-        # Asegurarse de que la columna existe antes de filtrar
         if 'Sugerencia_Pedido_Ideal_Unds' in df_resultado.columns:
-             df_resultado = df_resultado[df_resultado['Sugerencia_Pedido_Ideal_Unds'] > 0]
-        else:
-            print("Advertencia: La columna 'Sugerencia_Pedido_Ideal_Unds' no existe para el filtro de exclusión.")
+            df_resultado = df_resultado[df_resultado['Sugerencia_Pedido_Ideal_Unds'] > 0]
 
-
-    # Asegurar que Importancia_Dinamica exista para ordenar
-    if 'Importancia_Dinamica' in df_resultado.columns:
-        df_resultado = df_resultado.sort_values(by='Importancia_Dinamica', ascending=False)
+    # --- 11b. Aplicación de Ordenamiento Flexible ---
+    if sort_by in df_resultado.columns:
+        df_resultado = df_resultado.sort_values(by=sort_by, ascending=sort_ascending)
     else:
-        print("Advertencia: La columna 'Importancia_Dinamica' no existe para ordenar los resultados.")
-
+        print(f"Advertencia: La columna para ordenar '{sort_by}' no existe. Se usará el orden por defecto (Importancia).")
+        if 'Importancia_Dinamica' in df_resultado.columns:
+            df_resultado = df_resultado.sort_values(by='Importancia_Dinamica', ascending=False)
 
     columnas_salida_deseadas = [
         sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock,

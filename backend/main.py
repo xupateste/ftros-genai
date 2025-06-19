@@ -1,6 +1,6 @@
 import os
 import uvicorn
-
+import json
 
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,9 +13,9 @@ import openpyxl
 from typing import Optional, Dict, Any # Any para pd.ExcelWriter
 from datetime import datetime # Para pd.Timestamp.now()
 from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
-from track_expenses import process_csv_abc, procesar_stock_muerto, process_csv_rotacion_general
+from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, generar_reporte_stock_minimo_sugerido, process_csv_reponer_stock
-from track_expenses import process_csv_lista_basica_reposicion_historico
+from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 
 app = FastAPI()
 
@@ -206,56 +206,74 @@ async def upload_csvs_abc_analysis(
     #     "Content-Disposition": "attachment; filename=analisis_abc.csv"
     # })
 
-@app.post("/rotacion-general")
-async def upload_csv_rotacion_general(
+@app.post("/rotacion-general-estrategico") # Endpoint renombrado para mayor claridad
+async def run_analisis_estrategico_rotacion(
+    # --- Archivos Requeridos ---
     ventas: UploadFile = File(...),
-    inventario: UploadFile = File(...)
+    inventario: UploadFile = File(...),
+
+    # --- Parámetros Básicos (Controles Principales) ---
+    dias_analisis_ventas_recientes: Optional[int] = Form(30, description="Ventana principal de análisis en días. Ej: 30, 60, 90."),
+    sort_by: str = Form('Importancia_Dinamica', description="Columna para ordenar el resultado."),
+    sort_ascending: bool = Form(False, description="True para orden ascendente (ej: ver lo más bajo en cobertura)."),
+    filtro_categorias_json: Optional[str] = Form(None, description='Filtra por una o más categorías. Formato JSON: \'["Tornillería"]\''),
+    filtro_marcas_json: Optional[str] = Form(None, description='Filtra por una o más marcas. Formato JSON: \'["Marca A"]\''),
+    min_importancia: Optional[float] = Form(None, description="Filtro para ver productos con importancia >= a este valor (0 a 1)."),
+    max_dias_cobertura: Optional[float] = Form(None, description="Filtro para encontrar productos con bajo stock (cobertura <= X días)."),
+    min_dias_cobertura: Optional[float] = Form(None, description="Filtro para encontrar productos con sobre-stock (cobertura >= X días)."),
+
+    # --- Parámetros Avanzados (Ajustes del Modelo) ---
+    dias_analisis_ventas_general: Optional[int] = Form(180, description="Ventana secundaria de análisis para productos sin ventas recientes."),
+    umbral_sobre_stock_dias: int = Form(180, description="Días a partir de los cuales un producto se considera 'Sobre-stock'."),
+    umbral_stock_bajo_dias: int = Form(15, description="Días por debajo de los cuales un producto se considera con 'Stock Bajo'."),
+    pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
 ):
-    # Leer archivo de ventas
-    ventas_contents = await ventas.read()
-    df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+    # --- 1. Leer Archivos CSV ---
+    try:
+        ventas_contents = await ventas.read()
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+        inventario_contents = await inventario.read()
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+    except Exception as e:
+        return {"error": f"Error al leer los archivos CSV: {e}"}
 
-    # Leer archivo de inventario
-    inventario_contents = await inventario.read()
-    df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+    # --- 2. Procesar Parámetros Complejos desde JSON ---
+    pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+    filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
+    filtro_marcas = json.loads(filtro_marcas_json) if filtro_marcas_json else None
+    # (Se podría añadir un try-except más robusto aquí si se desea)
 
-    # Procesamiento conjunto
-    # processed_df = process_csv_reponer_stock(df_ventas, df_inventario)
-    processed_df = process_csv_rotacion_general(
-        df_ventas,
-        df_inventario,
-        # Parámetros de periodos para análisis de ventas
-        dias_analisis_ventas_recientes=30, #(P/FRONTEND) Anteriormente dias_importancia
-        dias_analisis_ventas_general=240,   #(P/FRONTEND) Anteriormente dias_promedio
-        # Parámetros para cálculo de Stock Ideal
-        dias_cobertura_ideal_base=10, #(P/FRONTEND) Días base para cobertura ideal
-        coef_importancia_para_cobertura_ideal=0.25, # e.g., 0.25 (0 a 1), aumenta días de cobertura ideal por importancia
-        coef_rotacion_para_stock_ideal=0.20,       # e.g., 0.2 (0 a 1), aumenta stock ideal por rotación
-        # Parámetros para Pedido Mínimo
-        dias_cubrir_con_pedido_minimo=3, #(P/FRONTEND) Días de venta que un pedido mínimo debería cubrir
-        coef_importancia_para_pedido_minimo=0.5, # e.g., 0.5 (0 a 1), escala el pedido mínimo por importancia
-        # Otros parámetros de comportamiento
-        importancia_minima_para_redondeo_a_1=0.1, # e.g. 0.1, umbral de importancia para redondear pedidos pequeños a 1
-        incluir_productos_pasivos=True,
-        cantidad_reposicion_para_pasivos=1, # e.g., 1 o 2, cantidad a reponer para productos pasivos
-        excluir_productos_sin_sugerencia_ideal=True # Filtro para el resultado final
+    # --- 3. Llamar a la Función de Procesamiento Estratégico ---
+    processed_df = process_csv_analisis_estrategico_rotacion(
+        df_ventas=df_ventas,
+        df_stock=df_inventario,
+        # Pasa todos los parámetros estratégicos recibidos
+        dias_analisis_ventas_recientes=dias_analisis_ventas_recientes,
+        dias_analisis_ventas_general=dias_analisis_ventas_general,
+        pesos_importancia=pesos_importancia,
+        umbral_sobre_stock_dias=umbral_sobre_stock_dias,
+        umbral_stock_bajo_dias=umbral_stock_bajo_dias,
+        filtro_categorias=filtro_categorias,
+        filtro_marcas=filtro_marcas,
+        min_importancia=min_importancia,
+        max_dias_cobertura=max_dias_cobertura,
+        min_dias_cobertura=min_dias_cobertura,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending
     )
 
+    # --- 4. Generar y Devolver el Archivo Excel ---
+    if processed_df.empty:
+        empty_df = pd.DataFrame([{"NOTA": "No se encontraron resultados con los filtros y parámetros aplicados."}])
+        excel_bytes = to_excel_with_autofit(empty_df, sheet_name='Sin_Resultados')
+    else:
+        excel_bytes = to_excel_with_autofit(processed_df, sheet_name='Analisis_Estrategico')
 
-    # output = io.BytesIO()
-    # processed_df.to_excel(output, index=False, engine='openpyxl')
-    # output.seek(0)
-
-    # return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=analisis_abc.xls"})
     return StreamingResponse(
-        # output,
-        to_excel_with_autofit(processed_df, sheet_name='Analisis_Rotacion_General'),
+        excel_bytes,
         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={
-            "Content-Disposition": "attachment; filename=reposicion-stock.xlsx"
-        }
+        headers={"Content-Disposition": "attachment; filename=analisis_estrategico_rotacion.xlsx"}
     )
-
 
 @app.post("/reposicion-stock")
 async def upload_csvs(
