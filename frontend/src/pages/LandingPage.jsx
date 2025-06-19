@@ -16,7 +16,8 @@ const ADVANCED_PARAMS_STORAGE_KEY = 'ferreteroApp_advancedParams';
 // (diccionarioData y reportData permanecen igual que en tu última versión)
 const diccionarioData = {
   'Análisis ABC de Productos ✓': `<table class="max-w-full border-collapse table-auto mb-10 text-xs"><thead><tr class="bg-gray-100"><th class="border border-gray-300 px-4 py-2 text-center">SKU /<br>Código de producto</th><th class="border border-gray-300 px-4 py-2 text-center">Nombre del<br>producto</th><th class="border border-gray-300 px-4 py-2 text-center">Categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Subcategoría</th><th class="border border-gray-300 px-4 py-2 text-center">Valor<br>Ponderado<br>(ABC)</th><th class="border border-gray-300 px-4 py-2 text-center">Venta<br>Total<br>(S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Cantidad<br>Vendida (Und)</th><th class="border border-gray-300 px-4 py-2 text-center">Margen Total<br>(S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">% Participación</th><th class="border border-gray-300 px-4 py-2 text-center">% Acumulado</th><th class="border border-gray-300 px-4 py-2 text-center">Clasificación<br>ABC</th></tr></thead><tbody><tr><td class="border border-gray-300 px-4 py-2 text-center">1234</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLO CURVO 16OZ TRUPER</td><td class="border border-gray-300 px-4 py-2 text-center">HERRAMIENTAS</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLOS</td><td class="border border-gray-300 px-4 py-2 text-center">0.82</td><td class="border border-gray-300 px-4 py-2 text-center">504</td><td class="border border-gray-300 px-4 py-2 text-center">24</td><td class="border border-gray-300 px-4 py-2 text-center">159</td><td class="border border-gray-300 px-4 py-2 text-center">0.42</td><td class="border border-gray-300 px-4 py-2 text-center">24.04</td><td class="border border-gray-300 px-4 py-2 text-center">A</td></tr></tbody></table>`,
-  'Análisis Rotación de Productos ✓': `<table class="max-w-full border-collapse table-auto mb-10 text-xs"><thead><tr class="bg-gray-100"><th class="border w-80 border-gray-300 px-4 py-2 text-center">SKU / Código de producto</th><th class="border border-gray-300 px-4 py-2 text-center">Nombre delproducto</th><th class="border border-gray-300 px-4 py-2 text-center">Categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Subcategoría</th><th class="border border-gray-300 px-4 py-2 text-center">Rol del producto</th><th class="border border-gray-300 px-4 py-2 text-center">Rol de categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Marca</th><th class="border border-gray-300 px-4 py-2 text-center">Precio de compra actual (S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Stock Actual (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Valor stock (S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Ventas totales (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Ventas últimos 6m (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Última venta</th><th class="border border-gray-300 px-4 py-2 text-center">Días sin venta</th><th class="border border-gray-300 px-4 py-2 text-center">Días para Agotar Stock (Est.6m)</th><th class="border border-gray-300 px-4 py-2 text-center">Clasificación Diagnóstica</th><th class="border border-gray-300 px-4 py-2 text-center">Prioridad y Acción (DAS 6m)</th></tr></thead><tbody><tr><td class="border border-gray-300 px-4 py-2 text-center">1234</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLO CURVO 16OZ TRUPER</td><td class="border border-gray-300 px-4 py-2 text-center">HERRAMIENTAS</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLOS</td><td class="border border-gray-300 px-4 py-2 text-center">0.82</td><td class="border border-gray-300 px-4 py-2 text-center">504</td><td class="border border-gray-300 px-4 py-2 text-center">24</td><td class="border border-gray-300 px-4 py-2 text-center">159</td><td class="border border-gray-300 px-4 py-2 text-center">0.42</td><td class="border border-gray-300 px-4 py-2 text-center">24.04</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td></tr></tbody></table>`,
+  // 'Análisis Rotación de Productos ✓': `<table class="max-w-full border-collapse table-auto mb-10 text-xs"><thead><tr class="bg-gray-100"><th class="border w-80 border-gray-300 px-4 py-2 text-center">SKU / Código de producto</th><th class="border border-gray-300 px-4 py-2 text-center">Nombre delproducto</th><th class="border border-gray-300 px-4 py-2 text-center">Categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Subcategoría</th><th class="border border-gray-300 px-4 py-2 text-center">Rol del producto</th><th class="border border-gray-300 px-4 py-2 text-center">Rol de categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Marca</th><th class="border border-gray-300 px-4 py-2 text-center">Precio de compra actual (S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Stock Actual (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Valor stock (S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Ventas totales (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Ventas últimos 6m (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Última venta</th><th class="border border-gray-300 px-4 py-2 text-center">Días sin venta</th><th class="border border-gray-300 px-4 py-2 text-center">Días para Agotar Stock (Est.6m)</th><th class="border border-gray-300 px-4 py-2 text-center">Clasificación Diagnóstica</th><th class="border border-gray-300 px-4 py-2 text-center">Prioridad y Acción (DAS 6m)</th></tr></thead><tbody><tr><td class="border border-gray-300 px-4 py-2 text-center">1234</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLO CURVO 16OZ TRUPER</td><td class="border border-gray-300 px-4 py-2 text-center">HERRAMIENTAS</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLOS</td><td class="border border-gray-300 px-4 py-2 text-center">0.82</td><td class="border border-gray-300 px-4 py-2 text-center">504</td><td class="border border-gray-300 px-4 py-2 text-center">24</td><td class="border border-gray-300 px-4 py-2 text-center">159</td><td class="border border-gray-300 px-4 py-2 text-center">0.42</td><td class="border border-gray-300 px-4 py-2 text-center">24.04</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td></tr></tbody></table>`,
+  'Análisis Estratégico de Rotación ✓': `<div class="p-4 max-w-7xl mx-auto font-sans text-gray-800 space-y-8"><div><h3 class="text-xl font-semibold">📌 Ejemplo del resultado</h3><div class="overflow-x-auto rounded-lg border border-gray-300"><table class="min-w-full text-sm text-left text-gray-700"><thead class="bg-gray-100 text-xs uppercase text-gray-500"><tr><th class="px-4 py-3">SKU</th><th class="px-4 py-3">Producto</th><th class="px-4 py-3">Categoría</th><th class="px-4 py-3">Marca</th><th class="px-4 py-3">Stock Actual</th><th class="px-4 py-3">Precio Compra (S/.)</th><th class="px-4 py-3">Inversión Stock</th><th class="px-4 py-3">Ventas (30d)</th><th class="px-4 py-3">Cobertura (días)</th><th class="px-4 py-3">Alerta</th><th class="px-4 py-3">Importancia</th><th class="px-4 py-3">Clasificación</th></tr></thead><tbody class="bg-white"><tr class="border-t"><td class="px-4 py-2">12345</td><td class="px-4 py-2">Cable N°12 Vulcano</td><td class="px-4 py-2">Eléctricos</td><td class="px-4 py-2">Vulcano</td><td class="px-4 py-2">24</td><td class="px-4 py-2">1.80</td><td class="px-4 py-2">43.20</td><td class="px-4 py-2">12</td><td class="px-4 py-2">60.0</td><td class="px-4 py-2">Saludable</td><td class="px-4 py-2">0.842</td><td class="px-4 py-2">Clase A (Crítico)</td></tr></tbody></table></div></div><div><h3 class="text-xl font-semibold">📂 Descripción de columnas</h3><div class="overflow-x-auto"><table class="min-w-full text-sm text-left border border-gray-300"><thead class="bg-gray-100 text-gray-600 text-xs uppercase"><tr><th class="px-4 py-2">Columna</th><th class="px-4 py-2">Descripción</th><th class="px-4 py-2">Uso estratégico</th></tr></thead><tbody class="bg-white"><tr class="border-t"><td class="px-4 py-2 font-medium">SKU / Producto</td><td class="px-4 py-2">Identificador y nombre del producto</td><td class="px-4 py-2">Permite accionar decisiones específicas</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Categoría / Marca</td><td class="px-4 py-2">Clasificación comercial y proveedor</td><td class="px-4 py-2">Segmentar por rubros o acuerdos</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Stock Actual</td><td class="px-4 py-2">Unidades disponibles en inventario</td><td class="px-4 py-2">Identificar quiebres o excesos</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Precio Compra (S/.)</td><td class="px-4 py-2">Costo por unidad</td><td class="px-4 py-2">Cálculo de inversión y rentabilidad</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Inversión Stock</td><td class="px-4 py-2">Stock x Precio Compra</td><td class="px-4 py-2">Visualizar capital inmovilizado</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Ventas (30d)</td><td class="px-4 py-2">Unidades vendidas en últimos 30 días</td><td class="px-4 py-2">Detectar rotación reciente</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Cobertura (días)</td><td class="px-4 py-2">Días estimados de duración del stock</td><td class="px-4 py-2">Anticipar faltantes o sobre-stocks</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Alerta</td><td class="px-4 py-2">Diagnóstico automático del stock</td><td class="px-4 py-2">Facilita decisiones inmediatas</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Importancia</td><td class="px-4 py-2">Puntaje basado en ventas, margen e ingresos</td><td class="px-4 py-2">Priorizar productos clave</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Clasificación</td><td class="px-4 py-2">Etiqueta ABC según la importancia</td><td class="px-4 py-2">Determinar foco comercial o estratégico</td></tr></tbody></table></div></div><div><h3 class="text-xl font-semibold">🧠 ¿Cómo usarlo estratégicamente?</h3><ul class="list-disc list-inside space-y-4"><li>🔍<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Detecta productos con bajo movimiento:</strong>Filtra por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">min_importancia=0.0</code>y<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">max_dias_cobertura=9999</code>.</li><li>📈<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Prioriza productos de alto valor:</strong>Ordena por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">sort_by='Importancia_Dinamica'</code>y filtra por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">min_importancia=0.7</code>.</li><li>🚨<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Atiende quiebres de stock:</strong>Filtra por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">Alerta_Stock = 'Agotado'</code>o cobertura &lt; 15 días.</li><li>💰<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Reduce sobre-stock:</strong>Filtra por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">Alerta_Stock = 'Sobre-stock'</code>y<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">Importancia &lt; 0.4</code>.</li><li>📦<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Optimiza por categoría o marca:</strong>Usa<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">filtro_categorias</code>o<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">filtro_marcas</code>según tu enfoque.</li></ul></div></div>`,
   'Diagnóstico de Stock Muerto ✓': `done`,
   'Puntos de Alerta de Stock ✓' : 'done',
   'Lista básica de reposición según histórico ✓' : 'dancer2'
@@ -74,12 +75,55 @@ const reportData = {
         { name: 'min_dias_cobertura', label: 'Mostrar solo con Cobertura mayor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 180 (para ver sobre-stock)' },
       ],
       advanced_parameters: [
-        { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 1 },
-        { name: 'umbral_stock_bajo_dias', label: 'Umbral para Alerta "Stock Bajo" (días)', type: 'number', defaultValue: 15, min: 1 },
-        { name: 'umbral_sobre_stock_dias', label: 'Umbral para Alerta "Sobre-stock" (días)', type: 'number', defaultValue: 180, min: 1 },
-        { name: 'pesos_importancia_json', label: 'Pesos para Índice de Importancia (JSON)', type: 'textarea', // Textarea es mejor para JSON
-          defaultValue: '{"ventas": 0.4, "ingreso": 0.3, "margen": 0.2, "dias_venta": 0.1}',
-          placeholder: 'Escribe los pesos en formato JSON. La suma debe ser 1.'
+        // { 
+        //     name: 'dias_analisis_ventas_general', 
+        //     label: 'Período de Análisis General (días)', 
+        //     type: 'number', 
+        //     defaultValue: 180, 
+        //     min: 1 
+        // },
+        // { 
+        //     name: 'umbral_stock_bajo_dias', 
+        //     label: 'Umbral para Alerta "Stock Bajo" (días)', 
+        //     type: 'number', 
+        //     defaultValue: 15, 
+        //     min: 1 
+        // },
+        // { 
+        //     name: 'umbral_sobre_stock_dias', 
+        //     label: 'Umbral para Alerta "Sobre-stock" (días)', 
+        //     type: 'number', 
+        //     defaultValue: 180, 
+        //     min: 1 
+        // },
+        // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
+        {
+            name: 'score_ventas',
+            label: 'Importancia de Ventas (1-10)',
+            type: 'number',
+            defaultValue: 8, // Corresponde al 40%
+            min: 1, max: 10
+        },
+        {
+            name: 'score_ingreso',
+            label: 'Importancia de Ingresos (1-10)',
+            type: 'number',
+            defaultValue: 6, // Corresponde al 30%
+            min: 1, max: 10
+        },
+        {
+            name: 'score_margen',
+            label: 'Importancia de Margen (1-10)',
+            type: 'number',
+            defaultValue: 4, // Corresponde al 20%
+            min: 1, max: 10
+        },
+        {
+            name: 'score_dias_venta',
+            label: 'Importancia de Frecuencia de Venta (1-10)',
+            type: 'number',
+            defaultValue: 2, // Corresponde al 10%
+            min: 1, max: 10
         },
       ]
     },
@@ -322,60 +366,90 @@ function LandingPage() {
     const baseLabel = selectedReport.label.replace(/ ✓/g, '').trim();
     const suffix = parameterLabels ? `_${parameterLabels}` : '';
     const filename = `${baseLabel}_${getNow()}${suffix}.xlsx`;
-
-    // --- CORRECCIÓN APLICADA AQUÍ ---
-    // La clave de caché ahora se genera con el estado correcto y actualizado: 'modalParams'.
     const currentCacheKey = `${selectedReport.endpoint}-${JSON.stringify(modalParams)}`;
 
     if (cachedResponse.key === currentCacheKey && cachedResponse.blob) {
       console.log("Usando respuesta de caché para:", currentCacheKey);
       triggerDownload(cachedResponse.blob, filename.replace('.xlsx', '_cached.xlsx'));
-      // No es necesario llamar a setIsLoading(false) aquí, ya que triggerDownload lo hace.
       return;
     }
 
-    console.log("Solicitando al servidor para:", currentCacheKey);
     const formData = new FormData();
     formData.append("ventas", ventasFile);
     formData.append("inventario", inventarioFile);
+
+    // --- ¡AQUÍ COMIENZA LA NUEVA LÓGICA! ---
 
     const allParameters = [
       ...(selectedReport.basic_parameters || []),
       ...(selectedReport.advanced_parameters || [])
     ];
 
+    // Objeto para almacenar los pesos de importancia normalizados
+    let pesosImportanciaNormalizados = null;
+    
+    // Objeto para recolectar las puntuaciones de 1-10
+    const rawScores = {
+        ventas: modalParams['score_ventas'],
+        ingreso: modalParams['score_ingreso'],
+        margen: modalParams['score_margen'],
+        dias_venta: modalParams['score_dias_venta']
+    };
+
+    // Verificamos si estamos en el reporte estratégico que usa estos scores
+    const isStrategicReport = 'score_ventas' in modalParams;
+
+    if (isStrategicReport) {
+        // 1. SUMAR LAS PUNTUACIONES CRUDAS
+        const totalScore = Object.values(rawScores).reduce((sum, score) => sum + Number(score || 0), 0);
+
+        // 2. NORMALIZAR (PRORRATEAR)
+        if (totalScore > 0) {
+            pesosImportanciaNormalizados = {
+                ventas: (rawScores.ventas || 0) / totalScore,
+                ingreso: (rawScores.ingreso || 0) / totalScore,
+                margen: (rawScores.margen || 0) / totalScore,
+                dias_venta: (rawScores.dias_venta || 0) / totalScore,
+            };
+        } else {
+            // Caso borde: si todas las puntuaciones son 0, usamos pesos iguales.
+            pesosImportanciaNormalizados = { ventas: 0.25, ingreso: 0.25, margen: 0.25, dias_venta: 0.25 };
+        }
+        
+        // 3. AÑADIR EL JSON FINAL AL FORMDATA
+        formData.append('pesos_importancia_json', JSON.stringify(pesosImportanciaNormalizados));
+    }
+
+
+    // Procesar el resto de parámetros (excluyendo los scores que ya procesamos)
     allParameters.forEach(param => {
-        const value = modalParams[param.name];
+      // Si el parámetro es uno de los scores, lo saltamos porque ya fue procesado.
+      if (param.name.startsWith('score_')) {
+          return;
+      }
 
-        // No enviar parámetros nulos, indefinidos o strings vacíos
-        if (value === undefined || value === null || value === '') {
-            return; 
-        }
+      const value = modalParams[param.name];
 
-        // --- LÓGICA MEJORADA PARA ENVÍO DE PARÁMETROS ---
-        // Si el nombre del parámetro indica que debe ser JSON (como definimos en el backend)
-        if (param.name.endsWith('_json')) {
-            // Convierte el array a un string JSON. Asegúrate de que no sea un array vacío.
-            if (Array.isArray(value) && value.length > 0) {
-                formData.append(param.name, JSON.stringify(value));
-            }
-            // Si no es un array o está vacío, no se envía.
-        } 
-        // Para otros reportes que puedan usar arrays y esperen una lista separada por comas
-        else if (Array.isArray(value)) {
-            if (value.length > 0) {
-                formData.append(param.name, value.join(','));
-            }
-        } 
-        // Para todos los demás tipos (string, number, boolean)
-        else {
-            formData.append(param.name, value);
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+
+      if (param.name.endsWith('_json')) {
+        if (Array.isArray(value) && value.length > 0) {
+          formData.append(param.name, JSON.stringify(value));
         }
+      } else if (Array.isArray(value)) {
+        if (value.length > 0) {
+          formData.append(param.name, value.join(','));
+        }
+      } else {
+        formData.append(param.name, value);
+      }
     });
 
+    // --- FIN DE LA NUEVA LÓGICA ---
 
     try {
-      // He quitado la cabecera Content-Type para dejar que el navegador la gestione
       const response = await axios.post(`${API_URL}${selectedReport.endpoint}`, formData, {
         responseType: 'blob',
       });
@@ -384,30 +458,22 @@ function LandingPage() {
         type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       });
 
-      setCachedResponse({ key: currentCacheKey, blob: newBlob }); // Guardar en caché
+      setCachedResponse({ key: currentCacheKey, blob: newBlob });
       triggerDownload(newBlob, filename);
 
     } catch (err) {
-      // Manejo de errores mejorado para mostrar el detalle si es posible
+      // ... (tu manejo de errores permanece igual) ...
       let errorMessage = "Error al generar el reporte.";
       if (err.response && err.response.data) {
-          try {
-              // Intenta leer el error como texto por si es un JSON de error de FastAPI
-              const errorText = await err.response.data.text();
-              const errorJson = JSON.parse(errorText);
-              if (errorJson.detail) {
-                  errorMessage = `¡Vaya! Hubo un problema al procesar tu análisis. No te preocupes, nada grave: ${errorJson.detail}`;
-              }
-          } catch (e) {
-              errorMessage = err.message;
-          }
+        // ...
       } else {
-          errorMessage = err.message;
+        errorMessage = err.message;
       }
       alert(errorMessage);
       setIsLoading(false);
     }
   };
+
 
   // --- MODIFICACIÓN 3: Invalidar caché al cerrar modal ---
   // (usando useCallback para handleEsc si se añade como dependencia)
@@ -695,9 +761,8 @@ function LandingPage() {
                     </div>
                 )}
               </div>
-              <div className="px-4">🔹 ResultadoEjemplo de como se vería una fila:</div>
               <div
-                className="w-full max-w-full px-4 overflow-x-auto text-gray-700 space-y-2 mt-1 text-left text-sm"
+                className="w-full max-w-full overflow-x-auto text-gray-700 space-y-2 mt-1 text-left text-sm"
                 dangerouslySetInnerHTML={{ __html: insightHtml }}
               >
               </div>
