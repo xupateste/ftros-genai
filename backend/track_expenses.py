@@ -1155,7 +1155,7 @@ def process_csv_lista_basica_reposicion_historico(
     dias_cobertura_ideal_base: int = 10,
     coef_importancia_para_cobertura_ideal: float = 0.05,
     coef_rotacion_para_stock_ideal: float = 0.1,
-    dias_cubrir_con_pedido_minimo: int = 5,
+    dias_cubrir_con_pedido_minimo: int = 3,
     coef_importancia_para_pedido_minimo: float = 0.1,
     coef_rotacion_para_stock_minimo: float = 0.15,
     importancia_minima_para_redondeo_a_1: float = 0.1,

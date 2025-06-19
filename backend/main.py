@@ -461,12 +461,18 @@ async def reporte_puntos_alerta_stock(
 async def lista_basica_reposicion_historico(
     ventas: UploadFile = File(..., description="Archivo CSV con datos de ventas."),
     inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario."),
-    # --- 2. RECIBIR LOS NUEVOS PARÁMETROS DEL FORMULARIO ---
-    # Se definen con un valor por defecto por si el frontend no los envía.
+
+    # --- Parámetros Básicos ---
     ordenar_por: str = Form("Importancia", description="Criterio para ordenar el reporte final."),
-    excluir_sin_ventas: str = Form("true", description="String 'true' o 'false' para excluir productos sin ventas."),
     incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
-    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas.")
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
+
+    # --- Parámetros Avanzados ---
+    excluir_sin_ventas: str = Form("true", description="String 'true' o 'false' para excluir productos sin ventas."),
+    # Usamos float e int para que FastAPI convierta los tipos automáticamente
+    lead_time_dias: float = Form(7.0),
+    dias_cobertura_ideal_base: int = Form(10),
+    peso_ventas_historicas: float = Form(0.6),
 ):
     """
     Sube archivos CSV de ventas e inventario y genera una lista de reposición.
@@ -505,10 +511,17 @@ async def lista_basica_reposicion_historico(
         processed_df = process_csv_lista_basica_reposicion_historico(
             df_ventas=df_ventas,
             df_stock=df_inventario,
+
+            # Pasando parámetros básicos
             ordenar_por=ordenar_por,
-            excluir_sin_ventas=excluir_bool,
             incluir_solo_categorias=categorias_list,
-            incluir_solo_marcas=marcas_list
+            incluir_solo_marcas=marcas_list,
+
+            # Pasando parámetros avanzados
+            excluir_sin_ventas=excluir_bool,
+            lead_time_dias=lead_time_dias,
+            dias_cobertura_ideal_base=dias_cobertura_ideal_base,
+            peso_ventas_historicas=peso_ventas_historicas
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=f"Error de validación: {str(ve)}")

@@ -16,6 +16,9 @@ export default {
       fontFamily: {
         default: ['Poppins', 'sans-serif'],
       },
+      animation: {
+        "loop-scroll": "120s linear 0s infinite normal none running loop-scroll"
+      }
     },
   },
   plugins: [],
