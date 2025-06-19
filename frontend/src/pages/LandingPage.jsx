@@ -34,7 +34,8 @@ const reportData = {
             { value: '6', label: 'Últimos 6 meses' },
             { value: '3', label: 'Últimos 3 meses' },
             { value: '0', label: 'Todo' }
-          ]
+          ],
+          defaultValue: '6'
         },
         { name: 'criterio_abc', label: 'Criterio Principal ABC', type: 'select',
           options: [
@@ -42,7 +43,8 @@ const reportData = {
             { value: 'ingresos', label: 'Por Ingresos' },
             { value: 'unidades', label: 'Por Cantidad Vendida' },
             { value: 'margen', label: 'Por Margen' }
-          ]
+          ],
+          defaultValue: 'combinado'
         }
       ]
     },
@@ -68,7 +70,8 @@ const reportData = {
             { value: '10', label: '10 días' },
             { value: '12', label: '12 días' },
             { value: '15', label: '15 días' }
-          ]
+          ],
+          defaultValue: '7'
         },
         { name: 'dias_seguridad_base', label: 'Días adicionales de cobertura para stock de seguridad', type: 'select',
           options: [
@@ -76,7 +79,8 @@ const reportData = {
             { value: '1', label: '1 día adicional' },
             { value: '2', label: '2 días adicionales' },
             { value: '3', label: '3 días adicionales' }
-          ]
+          ],
+          defaultValue: '0'
         }
       ]
     },
@@ -345,7 +349,7 @@ function LandingPage() {
               const errorText = await err.response.data.text();
               const errorJson = JSON.parse(errorText);
               if (errorJson.detail) {
-                  errorMessage = `Error del servidor: ${errorJson.detail}`;
+                  errorMessage = `¡Vaya! Hubo un problema al procesar tu análisis. No te preocupes, nada grave: ${errorJson.detail}`;
               }
           } catch (e) {
               errorMessage = err.message;

@@ -531,8 +531,12 @@ async def lista_basica_reposicion_historico(
 
     # --- Manejo de DataFrame vacío y exportación a Excel (sin cambios) ---
     if processed_df.empty:
-        # ... (código sin cambios)
-        pass # Reemplaza este pass con tu código de manejo de DF vacío
+        # Si está vacío, no creamos un Excel. En su lugar, levantamos una excepción
+        # con un código de estado 404 y un mensaje claro para el usuario.
+        raise HTTPException(
+            status_code=404,
+            detail="No se encontraron productos que coincidan con los filtros seleccionados. Pruebe con criterios más amplios."
+        )
 
     try:
         excel_output = to_excel_with_autofit(processed_df, sheet_name='Reposicion_Sugerida')
