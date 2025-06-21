@@ -53,11 +53,83 @@ const reportData = {
       basic_parameters: []
     },
     {
+      "label": "⭐ Reporte Maestro de Inventario (Recomendado)",
+      "endpoint": "/reporte-maestro-inventario",
+      "insights": [
+        "Este es el reporte más completo. Combina la importancia de tus productos (Análisis ABC) con su salud de rotación (Stock Muerto) para crear un plan de acción 100% priorizado.",
+        "Te dice exactamente en qué productos debes enfocar tu atención, dinero y esfuerzo AHORA MISMO."
+      ],
+      "basic_parameters": [
+        {
+          "name": "criterio_abc",
+          "label": "Criterio de Importancia (ABC)",
+          "type": "select",
+          "options": [
+            { "value": "margen", "label": "Por Margen de Ganancia (Recomendado)" },
+            { "value": "ingresos", "label": "Por Ingresos Totales" },
+            { "value": "unidades", "label": "Por Unidades Vendidas" },
+            { "value": "combinado", "label": "Ponderado Personalizado (Avanzado)" }
+          ],
+          "defaultValue": "margen"
+        },
+        {
+          "name": "periodo_abc",
+          "label": "Período de Análisis de Importancia",
+          "type": "select",
+          "options": [
+              { "value": "3", "label": "Últimos 3 meses" },
+              { "value": "6", "label": "Últimos 6 meses" },
+              { "value": "12", "label": "Últimos 12 meses" },
+              { "value": "0", "label": "Historial completo" }
+          ],
+          "defaultValue": "6"
+        }
+      ],
+      "advanced_parameters": [
+        {
+          "name": "dias_sin_venta_muerto",
+          "label": "Umbral de Días para 'Stock Muerto'",
+          "type": "number",
+          "placeholder": "Default: dinámico",
+          "defaultValue": "",
+          "min": 30
+        },
+        {
+          "name": "meses_analisis_salud",
+          "label": "Período para Cálculo de Salud (meses)",
+          "type": "number",
+          "placeholder": "Default: dinámico",
+          "defaultValue": "",
+          "min": 1
+        },
+        {
+          "name": "peso_margen",
+          "label": "Peso de Margen (0.0 a 1.0)",
+          "type": "number",
+          "defaultValue": 0.5,
+          "min": 0, "max": 1, "step": 0.1
+        },
+        {
+          "name": "peso_ingresos",
+          "label": "Peso de Ingresos (0.0 a 1.0)",
+          "type": "number",
+          "defaultValue": 0.3,
+          "min": 0, "max": 1, "step": 0.1
+        },
+        {
+          "name": "peso_unidades",
+          "label": "Peso de Unidades (0.0 a 1.0)",
+          "type": "number",
+          "defaultValue": 0.2,
+          "min": 0, "max": 1, "step": 0.1
+        }
+      ]
+    },
+    {
       label: 'Análisis Estratégico de Rotación ✓',
       endpoint: '/rotacion-general-estrategico',
       insights: diccionarioData['Análisis Estratégico de Rotación ✓'],
       basic_parameters: [
-        { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente', type: 'number', defaultValue: 30, min: 1 },
         { name: 'sort_by', label: 'Ordenar Reporte Por', type: 'select',
           options: [
             { value: 'Importancia_Dinamica', label: 'Índice de Importancia (Recomendado)' },
@@ -75,27 +147,8 @@ const reportData = {
         { name: 'min_dias_cobertura', label: 'Mostrar solo con Cobertura mayor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 180 (para ver sobre-stock)' },
       ],
       advanced_parameters: [
-        // { 
-        //     name: 'dias_analisis_ventas_general', 
-        //     label: 'Período de Análisis General (días)', 
-        //     type: 'number', 
-        //     defaultValue: 180, 
-        //     min: 1 
-        // },
-        // { 
-        //     name: 'umbral_stock_bajo_dias', 
-        //     label: 'Umbral para Alerta "Stock Bajo" (días)', 
-        //     type: 'number', 
-        //     defaultValue: 15, 
-        //     min: 1 
-        // },
-        // { 
-        //     name: 'umbral_sobre_stock_dias', 
-        //     label: 'Umbral para Alerta "Sobre-stock" (días)', 
-        //     type: 'number', 
-        //     defaultValue: 180, 
-        //     min: 1 
-        // },
+        { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
+        { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
         // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
         {
             name: 'score_ventas',
@@ -177,6 +230,8 @@ const reportData = {
         { name: 'incluir_solo_marcas', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] }
       ],
       advanced_parameters: [
+        { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
+        { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
         { name: 'excluir_sin_ventas', label: '¿Excluir productos con CERO ventas?', type: 'boolean_select', 
           options: [
             { value: 'true', label: 'Sí, excluir (Recomendado)' },
@@ -186,7 +241,36 @@ const reportData = {
         },
         { name: 'lead_time_dias', label: 'Tiempo de Entrega (Lead Time) en Días', type: 'number', defaultValue: 7, min: 0 },
         { name: 'dias_cobertura_ideal_base', label: 'Días de Cobertura Ideal Base', type: 'number', defaultValue: 10, min: 3 },
-        { name: 'peso_ventas_historicas', label: 'Peso Ventas Históricas (0.0-1.0)', type: 'number', defaultValue: 0.6, min: 0, max: 1, step: 0.1 }
+        { name: 'peso_ventas_historicas', label: 'Peso Ventas Históricas (0.0-1.0)', type: 'number', defaultValue: 0.6, min: 0, max: 1, step: 0.1 },
+        // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
+        {
+            name: 'score_ventas',
+            label: 'Importancia de Ventas (1-10)',
+            type: 'number',
+            defaultValue: 8, // Corresponde al 40%
+            min: 1, max: 10
+        },
+        {
+            name: 'score_ingreso',
+            label: 'Importancia de Ingresos (1-10)',
+            type: 'number',
+            defaultValue: 6, // Corresponde al 30%
+            min: 1, max: 10
+        },
+        {
+            name: 'score_margen',
+            label: 'Importancia de Margen (1-10)',
+            type: 'number',
+            defaultValue: 4, // Corresponde al 20%
+            min: 1, max: 10
+        },
+        {
+            name: 'score_dias_venta',
+            label: 'Importancia de Frecuencia de Venta (1-10)',
+            type: 'number',
+            defaultValue: 2, // Corresponde al 10%
+            min: 1, max: 10
+        }
       ]
     },
     { label: 'Lista sugerida para alcanzar monto mínimo', endpoint: '/rotacion', insights: [], basic_parameters: [] },
@@ -788,7 +872,7 @@ function LandingPage() {
                 ) : isCacheValid ? (
                   <div className="flex items-center justify-center gap-2">
                     <FiDownload className="font-bold text-xl"/>
-                    <span>Descargar Reporte (guardada)</span>
+                    <span>Descargar Reporte (en caché)</span>
                   </div>
                 ) : (
                   <div className="flex items-center justify-center gap-2">

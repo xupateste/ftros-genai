@@ -361,6 +361,137 @@ def process_csv_abc(
     return resultado
 
 
+def generar_reporte_maestro_inventario(
+    df_ventas: pd.DataFrame,
+    df_inventario: pd.DataFrame,
+    # Parámetros para el análisis ABC
+    criterio_abc: str = 'margen',
+    periodo_abc: int = 6,
+    pesos_combinado: Optional[Dict[str, float]] = None,
+    # Parámetros para el análisis de Stock Muerto
+    meses_analisis: Optional[int] = None,
+    dias_sin_venta_muerto: Optional[int] = None
+) -> pd.DataFrame:
+    """
+    Genera un reporte maestro robusto y accionable que combina el análisis ABC (Importancia)
+    y el de Salud del Stock (Urgencia), creando una matriz de decisión estratégica.
+
+    Args:
+        df_ventas: DataFrame de ventas.
+        df_inventario: DataFrame de inventario.
+        criterio_abc: Criterio para ABC ('ingresos', 'unidades', 'margen', 'combinado').
+        periodo_abc: Meses para el análisis ABC.
+        pesos_combinado: Pesos para el criterio ABC combinado.
+        meses_analisis: Meses para el análisis de ventas recientes en el reporte de salud.
+        dias_sin_venta_muerto: Umbral de días para considerar un stock como muerto.
+
+    Returns:
+        Un DataFrame único con la visión 360° del inventario, priorizado y listo para la acción.
+    """
+    print("Iniciando generación de Reporte Maestro de Inventario...")
+    
+    try:
+        # --- 1. Análisis de Salud del Stock (Urgencia) ---
+        print("Paso 1/4: Ejecutando análisis de salud del stock (Stock Muerto)...")
+        df_salud = procesar_stock_muerto(
+            df_ventas.copy(), 
+            df_inventario.copy(),
+            meses_analisis=meses_analisis,
+            dias_sin_venta_muerto=dias_sin_venta_muerto
+            # Puedes añadir el resto de parámetros si quieres configurarlos desde aquí
+        )
+        if df_salud.empty:
+            print("Advertencia: El reporte de salud del stock está vacío. No se puede continuar.")
+            return pd.DataFrame()
+            
+    except Exception as e:
+        print(f"Error crítico en `procesar_stock_muerto`: {e}")
+        return pd.DataFrame()
+
+    try:
+        # --- 2. Análisis de Importancia (ABC) ---
+        print("Paso 2/4: Ejecutando análisis de importancia (ABC)...")
+        # Asegurar que SKU sea string para el merge
+        df_ventas['SKU / Código de producto'] = df_ventas['SKU / Código de producto'].astype(str)
+        df_inventario['SKU / Código de producto'] = df_inventario['SKU / Código de producto'].astype(str)
+
+        df_importancia = process_csv_abc(
+            df_ventas.copy(), 
+            df_inventario.copy(), 
+            criterio_abc=criterio_abc, 
+            periodo_abc=periodo_abc, 
+            pesos_combinado=pesos_combinado
+        )
+        
+        # Seleccionar columnas clave del reporte ABC
+        # La primera columna es el SKU, la quinta es la métrica principal del criterio
+        columna_criterio_abc = df_importancia.columns[4]
+        columnas_abc_a_unir = [
+            'SKU / Código de producto', 
+            'Clasificación ABC',
+            columna_criterio_abc
+        ]
+        df_importancia_subset = df_importancia[columnas_abc_a_unir]
+
+    except Exception as e:
+        # Si el análisis ABC falla (ej. no hay ventas), continuamos con un df vacío
+        print(f"Advertencia en `process_csv_abc`: {e}. Se continuará sin datos de importancia.")
+        df_importancia_subset = pd.DataFrame(columns=['SKU / Código de producto', 'Clasificación ABC'])
+
+    # --- 3. Combinación Estratégica ---
+    print("Paso 3/4: Combinando y enriqueciendo los datos...")
+    # Asegurar que la clave de merge sea del mismo tipo (string)
+    df_salud['SKU / Código de producto'] = df_salud['SKU / Código de producto'].astype(str)
+    if not df_importancia_subset.empty:
+        df_importancia_subset['SKU / Código de producto'] = df_importancia_subset['SKU / Código de producto'].astype(str)
+
+    # Left merge para mantener TODOS los productos del inventario
+    df_maestro = pd.merge(
+        df_salud,
+        df_importancia_subset,
+        on='SKU / Código de producto',
+        how='left'
+    )
+    
+    # Rellenar NaNs para productos sin clasificación ABC (ej. sin ventas)
+    df_maestro['Clasificación ABC'] = df_maestro['Clasificación ABC'].fillna('Sin Ventas')
+
+    # --- 4. Creación de Prioridad y Formato Final ---
+    print("Paso 4/4: Definiendo prioridad estratégica y formateando reporte final...")
+    
+    # Aplicar la lógica de priorización estratégica
+    prioridades = df_maestro.apply(_definir_prioridad_estrategica, axis=1)
+    df_maestro['cod_prioridad'] = [p[0] for p in prioridades]
+    df_maestro['Prioridad Estratégica'] = [p[1] for p in prioridades]
+    
+    # Ordenar el DataFrame para mostrar los problemas más críticos primero
+    df_maestro.sort_values(
+        by=['cod_prioridad', 'Valor stock (S/.)'], 
+        ascending=[True, False], 
+        inplace=True
+    )
+    
+    # Selección y reordenamiento final de columnas para máxima claridad
+    columnas_finales_ordenadas = [
+        # Identificación y Prioridad
+        'SKU / Código de producto', 'Nombre del producto', 'Clasificación ABC', 'Prioridad Estratégica', 'Clasificación Diagnóstica',
+        # Métricas de Inventario y Salud
+        'Valor stock (S/.)', 'Stock Actual (Unds)', 'Días sin venta', df_maestro.columns[11], # Nombre dinámico de DPS
+        # Métricas de Venta e Importancia
+        columna_criterio_abc if columna_criterio_abc in df_maestro else None,
+        'Ventas últimos ' + str(meses_analisis if meses_analisis else 'X') + 'm (Unds)', 'Última venta',
+        # Contexto y Acción
+        'Categoría', 'Subcategoría', df_maestro.columns[13], # Nombre dinámico de Prioridad y Acción
+        'cod_prioridad' # Mantener para posible uso, pero se puede quitar
+    ]
+    # Filtrar Nones y columnas que no existan
+    columnas_finales_ordenadas = [col for col in columnas_finales_ordenadas if col and col in df_maestro.columns]
+    
+    print("¡Reporte Maestro generado exitosamente!")
+    
+    return df_maestro[columnas_finales_ordenadas]
+
+
 def process_csv_analisis_estrategico_rotacion(
     df_ventas: pd.DataFrame,
     df_stock: pd.DataFrame,
@@ -1401,6 +1532,7 @@ def process_csv_lista_basica_reposicion_historico(
     dias_seguridad_base: float = 0,
     factor_importancia_seguridad: float = 1.0,
     # --- NUEVOS PARÁMETROS ---
+    pesos_importancia: Optional[Dict[str, float]] = None,
     excluir_sin_ventas: bool = True,
     incluir_solo_categorias: Optional[List[str]] = None,
     incluir_solo_marcas: Optional[List[str]] = None,
@@ -1495,10 +1627,23 @@ def process_csv_lista_basica_reposicion_historico(
     for col_rank in cols_for_rank:
         df_analisis[col_rank] = pd.to_numeric(df_analisis[col_rank], errors='coerce').fillna(0)
 
-    df_analisis['Importancia_Dinamica'] = (df_analisis['Ventas_Ponderadas_para_Importancia'].rank(pct=True) * 0.4 + 
-                                           df_analisis['Ingreso_Total_Reciente'].rank(pct=True) * 0.3 + 
-                                           df_analisis['Margen_Bruto_con_PCA'].rank(pct=True) * 0.2 + 
-                                           df_analisis['Dias_Con_Venta_Reciente'].rank(pct=True) * 0.1).fillna(0).round(3)
+    pesos_default = {'ventas': 0.4, 'ingreso': 0.3, 'margen': 0.2, 'dias_venta': 0.1}
+    pesos_finales = pesos_default
+    if pesos_importancia:
+        pesos_finales = {**pesos_default, **pesos_importancia}
+
+    df_analisis['Importancia_Dinamica'] = (
+        df_analisis['Ventas_Ponderadas_para_Importancia'].rank(pct=True) * pesos_finales['ventas'] +
+        df_analisis['Ingreso_Total_Reciente'].rank(pct=True) * pesos_finales['ingreso'] +
+        df_analisis['Margen_Bruto_con_PCA'].rank(pct=True) * pesos_finales['margen'] +
+        df_analisis['Dias_Con_Venta_Reciente'].rank(pct=True) * pesos_finales['dias_venta']
+    ).fillna(0).round(3)
+
+
+    # df_analisis['Importancia_Dinamica'] = (df_analisis['Ventas_Ponderadas_para_Importancia'].rank(pct=True) * 0.4 + 
+    #                                        df_analisis['Ingreso_Total_Reciente'].rank(pct=True) * 0.3 + 
+    #                                        df_analisis['Margen_Bruto_con_PCA'].rank(pct=True) * 0.2 + 
+    #                                        df_analisis['Dias_Con_Venta_Reciente'].rank(pct=True) * 0.1).fillna(0).round(3)
 
     # --- SECCIÓN CRÍTICA #1 CORREGIDA ---
     pda_efectivo_reciente_array = np.where(df_analisis['Dias_Con_Venta_Reciente'] > 0, df_analisis['Ventas_Total_Reciente'] / df_analisis['Dias_Con_Venta_Reciente'], 0)
@@ -2037,6 +2182,47 @@ def _sugerir_periodos_analisis(
         sugerencia_general = 1
         
     return sugerencia_reciente, sugerencia_general
+
+
+
+def _definir_prioridad_estrategica(row) -> tuple[int, str]:
+    """
+    Define un nivel de prioridad y una descripción basados en la combinación
+    de la clasificación ABC y la de salud del stock.
+
+    Returns:
+        Una tupla (código_prioridad, descripcion_prioridad).
+    """
+    abc = row.get('Clasificación ABC', 'Sin Ventas')
+    diagnostico = row.get('Clasificación Diagnóstica', 'Desconocido')
+
+    # Diccionario de mapeo: (ABC, Diagnóstico) -> (Prioridad, Descripción)
+    # Prioridad 1 es la más alta.
+    mapa_prioridad = {
+        ('A', 'Stock Muerto'):           (1, '1 - CRÍTICO: Stock importante totalmente detenido'),
+        ('A', 'Nunca Vendido con Stock'):(1, '1 - CRÍTICO: Stock importante sin historia de ventas'),
+        ('A', 'Exceso de Stock'):        (2, '2 - ALERTA MÁXIMA: Sobre-stock en producto clave'),
+        ('B', 'Stock Muerto'):           (3, '3 - URGENTE: Stock relevante detenido'),
+        ('B', 'Nunca Vendido con Stock'):(3, '3 - URGENTE: Stock relevante sin historia de ventas'),
+        ('A', 'Baja Rotación'):          (4, '4 - ATENCIÓN: Producto clave desacelerando'),
+        ('B', 'Exceso de Stock'):        (5, '5 - ACCIÓN REQUERIDA: Sobre-stock en producto secundario'),
+        ('C', 'Stock Muerto'):           (6, '6 - LIMPIEZA: Eliminar stock sin importancia'),
+        ('C', 'Nunca Vendido con Stock'):(6, '6 - LIMPIEZA: Eliminar stock sin importancia'),
+        ('B', 'Baja Rotación'):          (7, '7 - REVISAR: Producto secundario desacelerando'),
+        ('A', 'Saludable'):             (8, '8 - ESTRELLA: Proteger y monitorear'),
+        ('C', 'Exceso de Stock'):        (9, '9 - OPTIMIZAR: Reducir stock de baja importancia'),
+        ('B', 'Saludable'):             (10, '10 - SÓLIDO: Mantener rendimiento'),
+        ('C', 'Baja Rotación'):         (11, '11 - BAJO RIESGO: Vigilar o descontinuar'),
+        ('C', 'Saludable'):             (12, '12 - RUTINARIO: Gestión mínima'),
+    }
+    
+    # Casos especiales (Sin Ventas o Sin Stock)
+    if diagnostico == "Sin Stock":
+        return (13, '13 - REPOSICIÓN: Evaluar compra')
+    if abc == 'Sin Ventas' and diagnostico == "Nunca Vendido con Stock":
+         return (3, '3 - URGENTE: Stock relevante sin historia de ventas') # Elevar prioridad si nunca se ha vendido
+
+    return mapa_prioridad.get((abc, diagnostico), (99, '99 - Revisar caso'))
 
 
 
