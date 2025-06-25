@@ -1,21 +1,28 @@
 import os
 import uvicorn
+import json
 
-
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI, UploadFile, File, Form, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi import HTTPException
 import pandas as pd
 import io
+import math
+
+# --- Importaciones de nuestros nuevos módulos ---
+import firebase_config # Importar para asegurar que se inicialice
+from firebase_helpers import upload_to_storage, log_analysis_in_firestore, extraer_metadatos_df
+
 from io import StringIO
 import openpyxl
 from typing import Optional, Dict, Any # Any para pd.ExcelWriter
-from datetime import datetime # Para pd.Timestamp.now()
+from datetime import datetime, timedelta # Para pd.Timestamp.now()
 from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
-from track_expenses import process_csv_abc, procesar_stock_muerto, process_csv_rotacion_general
+from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, generar_reporte_stock_minimo_sugerido, process_csv_reponer_stock
-from track_expenses import process_csv_lista_basica_reposicion_historico
+from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
+from track_expenses import generar_reporte_maestro_inventario
 
 app = FastAPI()
 
@@ -51,28 +58,32 @@ if __name__ == "__main__":
 
 @app.post("/extract-metadata", summary="Extrae metadatos (categorías, marcas) de un archivo de inventario", tags=["Utilidades"])
 async def extract_metadata(
-    inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario.")
+    inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario."),
+    X_Session_ID: str = Header(..., alias="X-Session-ID", description="ID de sesión anónima único del cliente.")
 ):
+    if not X_Session_ID:
+            raise HTTPException(status_code=400, detail="La cabecera X-Session-ID es requerida.")
     """
     Lee un archivo de inventario y devuelve una lista de todas las categorías y marcas únicas.
     Este endpoint es robusto e intenta leer el CSV con diferentes codificaciones y separadores.
     """
-    contents = await inventario.read()
-    
+
+    inventory_contents = await inventario.read()
+
     # --- LÓGICA DE LECTURA ROBUSTA ---
     try:
         # Intento 1: La configuración más común (UTF-8, separado por comas)
-        df_inventario = pd.read_csv(io.BytesIO(contents), sep=',')
+        df_inventario = pd.read_csv(io.BytesIO(inventory_contents), sep=',')
     except (UnicodeDecodeError, pd.errors.ParserError):
         try:
             # Intento 2: Codificación Latin-1 (muy común en Excel de Windows/Español)
             print("Intento 1 (UTF-8, coma) falló. Reintentando con latin-1 y coma.")
-            df_inventario = pd.read_csv(io.BytesIO(contents), sep=',', encoding='latin1')
+            df_inventario = pd.read_csv(io.BytesIO(inventory_contents), sep=',', encoding='latin1')
         except (UnicodeDecodeError, pd.errors.ParserError):
             try:
                 # Intento 3: Codificación UTF-8 con punto y coma como separador
                 print("Intento 2 (latin-1, coma) falló. Reintentando con UTF-8 y punto y coma.")
-                df_inventario = pd.read_csv(io.BytesIO(contents), sep=';', encoding='utf-8')
+                df_inventario = pd.read_csv(io.BytesIO(inventory_contents), sep=';', encoding='utf-8')
             except Exception as e:
                 # Si todos los intentos fallan, entonces sí lanzamos el error.
                 print(f"Todos los intentos de lectura de CSV fallaron. Error final: {e}")
@@ -81,24 +92,47 @@ async def extract_metadata(
                     detail=f"No se pudo leer el archivo CSV. Verifique que esté delimitado por comas o punto y coma y tenga una codificación estándar (UTF-8 o Latin-1). Error: {e}"
                 )
 
-    # --- El resto de la lógica es la misma ---
-    try:
-        categoria_col = 'Categoría'
-        marca_col = 'Marca'
-        categorias_disponibles = []
-        marcas_disponibles = []
+    # --- 2. Extracción de Metadatos del DataFrame ---
+    metadata_inventario = extraer_metadatos_df(df_inventario, 'inventario')
 
-        if categoria_col in df_inventario.columns:
-            categorias_disponibles = sorted(df_inventario[categoria_col].dropna().unique().tolist())
-        if marca_col in df_inventario.columns:
-            marcas_disponibles = sorted(df_inventario[marca_col].dropna().unique().tolist())
+
+    # --- 3. Guardado Asíncrono en Firebase ---
+    # Esto puede correr en segundo plano si se desea, pero por simplicidad lo hacemos secuencial.
+    try:
+        now = datetime.now() + timedelta(hours=5)
+
+        timestamp_str = now.strftime('%Y-%m-%d_%H%M%S')
         
-        return JSONResponse(content={
-            "categorias_disponibles": categorias_disponibles,
-            "marcas_disponibles": marcas_disponibles
-        })
+        inventory_file_path = upload_to_storage(
+            session_id=X_Session_ID,
+            file_contents=inventory_contents,
+            tipo_archivo='inventario', # <--- Le indicamos que es un archivo de inventario
+            original_filename=inventario.filename, # Pasamos el nombre para obtener la extensión
+            content_type=inventario.content_type,
+            timestamp_str=timestamp_str
+        )
+        
+        log_analysis_in_firestore(
+            session_id=X_Session_ID,
+            report_name="ExtractMetadata",
+            timestamp_obj=now,
+            inventory_path=inventory_file_path,
+            metadata_inventario=metadata_inventario
+        )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"El archivo se leyó, pero hubo un error al procesar las columnas: {e}")
+        # Advertencia: No detenemos el flujo si falla el guardado, el usuario aún
+        # necesita su respuesta. Podríamos loggear este error internamente.
+        print(f"ADVERTENCIA: Falló el guardado en Firebase para la sesión {X_Session_ID}: {e}")
+
+    # --- 4. Devolver la Respuesta al Cliente ---
+    # Devolvemos los metadatos que el frontend necesita para los filtros.
+    categorias = metadata_inventario.get("preview_categorias", [])
+    marcas = [m for m in df_inventario['Marca'].dropna().unique().tolist() if m] if 'Marca' in df_inventario.columns else []
+
+    return JSONResponse(content={
+        "categorias_disponibles": categorias,
+        "marcas_disponibles": sorted(marcas)
+    })
 
 
 
@@ -107,8 +141,14 @@ async def upload_csvs_abc_analysis(
     ventas: UploadFile = File(..., description="Archivo CSV con datos de ventas."),
     inventario: UploadFile = File(..., description="Archivo CSV con datos de inventario."),
     criterio_abc: str = Form(..., description="Criterio para el análisis ABC: 'ingresos', 'unidades', 'margen', 'combinado'.", examples=["ingresos"]),
-    periodo_abc: int = Form(..., description="Período de análisis en meses (0 para todo el historial, ej: 3, 6, 12).", examples=[6])
+    periodo_abc: int = Form(..., description="Período de análisis en meses (0 para todo el historial, ej: 3, 6, 12).", examples=[6]),
+    # --- Cabecera de Sesión Anónima ---
+    X_Session_ID: str = Header(..., alias="X-Session-ID", description="ID de sesión anónima único del cliente.")
+    
 ):
+    if not X_Session_ID:
+        raise HTTPException(status_code=400, detail="La cabecera X-Session-ID es requerida.")
+
     """
     Sube archivos CSV de ventas e inventario, y realiza un análisis ABC
     según los criterios y período especificados.
@@ -153,8 +193,29 @@ async def upload_csvs_abc_analysis(
     elif criterio_abc.lower() not in ["ingresos", "unidades", "margen"]:
         raise HTTPException(status_code=400, detail=f"Criterio ABC '{criterio_abc}' no es válido. Opciones: ingresos, unidades, margen, combinado.")
 
-
-    # --- Procesamiento de los datos ---
+    # --- 2. Guardado en Firebase y Registro ---
+    try:
+        # Generamos un timestamp único para esta ejecución
+        now = datetime.now()
+        timestamp_str = now.strftime('%Y-%m-%d_%H%M%S')
+        
+        # Subir archivos a Firebase Storage
+        sales_file_path = upload_to_storage(X_Session_ID, ventas, timestamp_str)
+        inventory_file_path = upload_to_storage(X_Session_ID, inventario, timestamp_str)
+        
+        # Registrar el análisis en Firestore
+        log_analysis_in_firestore(
+            session_id=X_Session_ID,
+            report_name="ReporteMaestro",
+            sales_path=sales_file_path,
+            inventory_path=inventory_file_path,
+            timestamp_obj=now
+        )
+    except Exception as e:
+        # Si algo falla con Firebase, informamos al usuario
+        raise HTTPException(status_code=500, detail=f"Error al guardar los archivos de análisis: {e}")
+        
+    # --- 3. Validación de Parámetros y Procesamiento ---
     try:
         processed_df = process_csv_abc(
             df_ventas,
@@ -206,56 +267,74 @@ async def upload_csvs_abc_analysis(
     #     "Content-Disposition": "attachment; filename=analisis_abc.csv"
     # })
 
-@app.post("/rotacion-general")
-async def upload_csv_rotacion_general(
+@app.post("/rotacion-general-estrategico") # Endpoint renombrado para mayor claridad
+async def run_analisis_estrategico_rotacion(
+    # --- Archivos Requeridos ---
     ventas: UploadFile = File(...),
-    inventario: UploadFile = File(...)
+    inventario: UploadFile = File(...),
+
+    # --- Parámetros Básicos (Controles Principales) ---
+    dias_analisis_ventas_recientes: Optional[int] = Form(30, description="Ventana principal de análisis en días. Ej: 30, 60, 90."),
+    sort_by: str = Form('Importancia_Dinamica', description="Columna para ordenar el resultado."),
+    sort_ascending: bool = Form(False, description="True para orden ascendente (ej: ver lo más bajo en cobertura)."),
+    filtro_categorias_json: Optional[str] = Form(None, description='Filtra por una o más categorías. Formato JSON: \'["Tornillería"]\''),
+    filtro_marcas_json: Optional[str] = Form(None, description='Filtra por una o más marcas. Formato JSON: \'["Marca A"]\''),
+    min_importancia: Optional[float] = Form(None, description="Filtro para ver productos con importancia >= a este valor (0 a 1)."),
+    max_dias_cobertura: Optional[float] = Form(None, description="Filtro para encontrar productos con bajo stock (cobertura <= X días)."),
+    min_dias_cobertura: Optional[float] = Form(None, description="Filtro para encontrar productos con sobre-stock (cobertura >= X días)."),
+
+    # --- Parámetros Avanzados (Ajustes del Modelo) ---
+    dias_analisis_ventas_general: Optional[int] = Form(None, description="Ventana secundaria de análisis para productos sin ventas recientes."),
+    umbral_sobre_stock_dias: int = Form(180, description="Días a partir de los cuales un producto se considera 'Sobre-stock'."),
+    umbral_stock_bajo_dias: int = Form(15, description="Días por debajo de los cuales un producto se considera con 'Stock Bajo'."),
+    pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
 ):
-    # Leer archivo de ventas
-    ventas_contents = await ventas.read()
-    df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+    # --- 1. Leer Archivos CSV ---
+    try:
+        ventas_contents = await ventas.read()
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+        inventario_contents = await inventario.read()
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+    except Exception as e:
+        return {"error": f"Error al leer los archivos CSV: {e}"}
 
-    # Leer archivo de inventario
-    inventario_contents = await inventario.read()
-    df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+    # --- 2. Procesar Parámetros Complejos desde JSON ---
+    pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+    filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
+    filtro_marcas = json.loads(filtro_marcas_json) if filtro_marcas_json else None
+    # (Se podría añadir un try-except más robusto aquí si se desea)
 
-    # Procesamiento conjunto
-    # processed_df = process_csv_reponer_stock(df_ventas, df_inventario)
-    processed_df = process_csv_rotacion_general(
-        df_ventas,
-        df_inventario,
-        # Parámetros de periodos para análisis de ventas
-        dias_analisis_ventas_recientes=30, #(P/FRONTEND) Anteriormente dias_importancia
-        dias_analisis_ventas_general=240,   #(P/FRONTEND) Anteriormente dias_promedio
-        # Parámetros para cálculo de Stock Ideal
-        dias_cobertura_ideal_base=10, #(P/FRONTEND) Días base para cobertura ideal
-        coef_importancia_para_cobertura_ideal=0.25, # e.g., 0.25 (0 a 1), aumenta días de cobertura ideal por importancia
-        coef_rotacion_para_stock_ideal=0.20,       # e.g., 0.2 (0 a 1), aumenta stock ideal por rotación
-        # Parámetros para Pedido Mínimo
-        dias_cubrir_con_pedido_minimo=3, #(P/FRONTEND) Días de venta que un pedido mínimo debería cubrir
-        coef_importancia_para_pedido_minimo=0.5, # e.g., 0.5 (0 a 1), escala el pedido mínimo por importancia
-        # Otros parámetros de comportamiento
-        importancia_minima_para_redondeo_a_1=0.1, # e.g. 0.1, umbral de importancia para redondear pedidos pequeños a 1
-        incluir_productos_pasivos=True,
-        cantidad_reposicion_para_pasivos=1, # e.g., 1 o 2, cantidad a reponer para productos pasivos
-        excluir_productos_sin_sugerencia_ideal=True # Filtro para el resultado final
+    # --- 3. Llamar a la Función de Procesamiento Estratégico ---
+    processed_df = process_csv_analisis_estrategico_rotacion(
+        df_ventas=df_ventas,
+        df_stock=df_inventario,
+        # Pasa todos los parámetros estratégicos recibidos
+        dias_analisis_ventas_recientes=dias_analisis_ventas_recientes,
+        dias_analisis_ventas_general=dias_analisis_ventas_general,
+        pesos_importancia=pesos_importancia,
+        umbral_sobre_stock_dias=umbral_sobre_stock_dias,
+        umbral_stock_bajo_dias=umbral_stock_bajo_dias,
+        filtro_categorias=filtro_categorias,
+        filtro_marcas=filtro_marcas,
+        min_importancia=min_importancia,
+        max_dias_cobertura=max_dias_cobertura,
+        min_dias_cobertura=min_dias_cobertura,
+        sort_by=sort_by,
+        sort_ascending=sort_ascending
     )
 
+    # --- 4. Generar y Devolver el Archivo Excel ---
+    if processed_df.empty:
+        empty_df = pd.DataFrame([{"NOTA": "No se encontraron resultados con los filtros y parámetros aplicados."}])
+        excel_bytes = to_excel_with_autofit(empty_df, sheet_name='Sin_Resultados')
+    else:
+        excel_bytes = to_excel_with_autofit(processed_df, sheet_name='Analisis_Estrategico')
 
-    # output = io.BytesIO()
-    # processed_df.to_excel(output, index=False, engine='openpyxl')
-    # output.seek(0)
-
-    # return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=analisis_abc.xls"})
     return StreamingResponse(
-        # output,
-        to_excel_with_autofit(processed_df, sheet_name='Analisis_Rotacion_General'),
+        excel_bytes,
         media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={
-            "Content-Disposition": "attachment; filename=reposicion-stock.xlsx"
-        }
+        headers={"Content-Disposition": "attachment; filename=analisis_estrategico_rotacion.xlsx"}
     )
-
 
 @app.post("/reposicion-stock")
 async def upload_csvs(
@@ -367,6 +446,84 @@ async def diagnostico_stock_muerto(
         headers={"Content-Disposition": "attachment; filename=diagnostico_baja_rotacion.xlsx"}
     )
 
+
+@app.post("/reporte-maestro-inventario")
+async def generar_reporte_maestro_endpoint(
+    # --- Archivos Requeridos ---
+    ventas: UploadFile = File(..., description="Archivo CSV o Excel de ventas."),
+    inventario: UploadFile = File(..., description="Archivo CSV o Excel de inventario actual."),
+    
+    # --- Parámetros para el Análisis ABC (con valores por defecto) ---
+    criterio_abc: str = Form("margen", description="Criterio para el análisis ABC: 'ingresos', 'unidades', 'margen', o 'combinado'."),
+    periodo_abc: int = Form(6, description="Número de meses hacia atrás para el análisis ABC."),
+    
+    # --- Parámetros Opcionales para el Criterio 'Combinado' ---
+    peso_ingresos: Optional[float] = Form(None, description="Peso para ingresos (ej: 0.5) si el criterio es 'combinado'."),
+    peso_margen: Optional[float] = Form(None, description="Peso para margen (ej: 0.3) si el criterio es 'combinado'."),
+    peso_unidades: Optional[float] = Form(None, description="Peso para unidades (ej: 0.2) si el criterio es 'combinado'."),
+
+    # --- Parámetros Opcionales para el Análisis de Salud ---
+    meses_analisis_salud: Optional[int] = Form(None, description="Meses para analizar ventas recientes en el diagnóstico de salud."),
+    dias_sin_venta_muerto: Optional[int] = Form(None, description="Umbral de días para clasificar un producto como 'Stock Muerto'.")
+):
+    """
+    Endpoint para generar el Reporte Maestro de Inventario, combinando el análisis
+    de importancia (ABC) y el de salud (Stock Muerto).
+    """
+    # --- 1. Lectura de Archivos (reutilizando tu lógica robusta) ---
+    try:
+        ventas_contents = await ventas.read()
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=None, engine='python', encoding='utf-8')
+    except Exception:
+        ventas_contents.seek(0)
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=None, engine='python', encoding='latin1')
+        
+    try:
+        inventario_contents = await inventario.read()
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=None, engine='python', encoding='utf-8')
+    except Exception:
+        inventario_contents.seek(0)
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=None, engine='python', encoding='latin1')
+
+    # --- 2. Validación de Parámetros ---
+    pesos_combinado = None
+    if criterio_abc == 'combinado':
+        if not all([peso_ingresos, peso_margen, peso_unidades]):
+            raise HTTPException(status_code=400, detail="Para el criterio 'combinado', se deben proveer los tres pesos: peso_ingresos, peso_margen y peso_unidades.")
+        
+        total_pesos = peso_ingresos + peso_margen + peso_unidades
+        if not math.isclose(total_pesos, 1.0):
+            raise HTTPException(status_code=400, detail=f"La suma de los pesos debe ser 1.0, pero es {total_pesos}.")
+            
+        pesos_combinado = {
+            "ingresos": peso_ingresos,
+            "margen": peso_margen,
+            "unidades": peso_unidades
+        }
+
+    # --- 3. Procesamiento ---
+    try:
+        resultado_df = generar_reporte_maestro_inventario(
+            df_ventas=df_ventas,
+            df_inventario=df_inventario,
+            criterio_abc=criterio_abc,
+            periodo_abc=periodo_abc,
+            pesos_combinado=pesos_combinado,
+            meses_analisis=meses_analisis_salud,
+            dias_sin_venta_muerto=dias_sin_venta_muerto
+        )
+    except (ValueError, KeyError, Exception) as e:
+        # Captura errores de procesamiento (ej: columna no encontrada) y los muestra de forma amigable
+        raise HTTPException(status_code=400, detail=f"Error al procesar los datos: {e}")
+
+    # --- 4. Exportación a Excel ---
+    return StreamingResponse(
+        to_excel_with_autofit(resultado_df, sheet_name='Reporte_Maestro_Inventario'),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={"Content-Disposition": "attachment; filename=reporte_maestro_inventario.xlsx"}
+    )
+
+
 @app.post("/reporte-puntos-alerta-stock", summary="Recomendación Puntos de Alerta de Stock", tags=["Análisis"])
 async def reporte_puntos_alerta_stock(
     ventas: UploadFile = File(..., description="Archivo CSV con datos de ventas."),
@@ -468,11 +625,17 @@ async def lista_basica_reposicion_historico(
     incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
 
     # --- Parámetros Avanzados ---
+    # dias_analisis_ventas_recientes=30,
+    # dias_analisis_ventas_general=180,
+    dias_analisis_ventas_recientes: Optional[int] = Form(None, description="Ventana principal de análisis en días. Ej: 30, 60, 90."),
+    dias_analisis_ventas_general: Optional[int] = Form(None, description="Ventana secundaria de análisis para productos sin ventas recientes."),
+
     excluir_sin_ventas: str = Form("true", description="String 'true' o 'false' para excluir productos sin ventas."),
     # Usamos float e int para que FastAPI convierta los tipos automáticamente
     lead_time_dias: float = Form(7.0),
     dias_cobertura_ideal_base: int = Form(10),
     peso_ventas_historicas: float = Form(0.6),
+    pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
 ):
     """
     Sube archivos CSV de ventas e inventario y genera una lista de reposición.
@@ -504,6 +667,8 @@ async def lista_basica_reposicion_historico(
     # Convertir el string de marcas separado por comas a una lista
     marcas_list = [marca.strip() for marca in incluir_solo_marcas.split(',') if marca.strip()] if incluir_solo_marcas else None
 
+    pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+
 
     # --- Procesamiento de los datos ---
     try:
@@ -511,6 +676,9 @@ async def lista_basica_reposicion_historico(
         processed_df = process_csv_lista_basica_reposicion_historico(
             df_ventas=df_ventas,
             df_stock=df_inventario,
+
+            dias_analisis_ventas_recientes=30,
+            dias_analisis_ventas_general=180,
 
             # Pasando parámetros básicos
             ordenar_por=ordenar_por,
@@ -521,7 +689,8 @@ async def lista_basica_reposicion_historico(
             excluir_sin_ventas=excluir_bool,
             lead_time_dias=lead_time_dias,
             dias_cobertura_ideal_base=dias_cobertura_ideal_base,
-            peso_ventas_historicas=peso_ventas_historicas
+            peso_ventas_historicas=peso_ventas_historicas,
+            pesos_importancia=pesos_importancia
         )
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=f"Error de validación: {str(ve)}")
@@ -735,6 +904,7 @@ def to_excel_with_autofit(df, sheet_name='Sheet1'):
     writer.close()
     output.seek(0)
     return output
+
 
 # ===================================================
 # ============== FINAL: FULL REPORTES ===============

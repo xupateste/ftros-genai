@@ -431,7 +431,7 @@ def generar_reporte_maestro_inventario(
             'Clasificación ABC',
             columna_criterio_abc
         ]
-        df_importancia_subset = df_importancia[columnas_abc_a_unir]
+        df_importancia_subset = df_importancia[columnas_abc_a_unir].copy()
 
     except Exception as e:
         # Si el análisis ABC falla (ej. no hay ventas), continuamos con un df vacío
@@ -494,7 +494,7 @@ def generar_reporte_maestro_inventario(
 
 def process_csv_analisis_estrategico_rotacion(
     df_ventas: pd.DataFrame,
-    df_stock: pd.DataFrame,
+    df_inventario: pd.DataFrame,
     # Parámetros de periodos
     dias_analisis_ventas_recientes: Optional[int] = 30,
     dias_analisis_ventas_general: Optional[int] = 180,
@@ -531,13 +531,13 @@ def process_csv_analisis_estrategico_rotacion(
     precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
 
     df_ventas_proc = df_ventas.copy()
-    df_stock_proc = df_stock.copy()
+    df_inventario_proc = df_inventario.copy()
 
     # Normalización de datos (igual que antes)
     df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
-    df_stock_proc[sku_col] = df_stock_proc[sku_col].astype(str).str.strip()
-    df_stock_proc[stock_actual_col_stock] = pd.to_numeric(df_stock_proc[stock_actual_col_stock], errors='coerce').fillna(0)
-    df_stock_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_stock_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
+    df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
+    df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
     df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
     df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
     df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
@@ -589,7 +589,7 @@ def process_csv_analisis_estrategico_rotacion(
     df_ventas_rec_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_recientes, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_Reciente')
     
     # --- 3. Merge y Enriquecimiento de Datos ---
-    df_analisis = pd.merge(df_stock_proc, df_ventas_rec_agg, on=sku_col, how='left')
+    df_analisis = pd.merge(df_inventario_proc, df_ventas_rec_agg, on=sku_col, how='left')
     cols_a_rellenar = ['Ventas_Total_Reciente', 'Dias_Con_Venta_Reciente', 'Precio_Venta_Prom_Reciente']
     for col in cols_a_rellenar:
         if col not in df_analisis.columns: df_analisis[col] = 0.0
@@ -679,7 +679,8 @@ def process_csv_analisis_estrategico_rotacion(
     df_final = df_resultado[[col for col in columnas_salida_optimas if col in df_resultado.columns]].copy()
     
     # REEMPLAZO DE 'inf' POR UN NÚMERO ALTO Y ENTENDIBLE
-    df_final['Dias_Cobertura_Stock_Actual'].replace(np.inf, 9999, inplace=True)
+    # df_final['Dias_Cobertura_Stock_Actual'].replace(np.inf, 9999, inplace=True)
+    df_final['Dias_Cobertura_Stock_Actual'] = df_final['Dias_Cobertura_Stock_Actual'].replace(np.inf, 9999)
 
 
     column_rename_map = {
@@ -1279,7 +1280,7 @@ def process_csv_reponer_stock(
 
 def process_csv_puntos_alerta_stock(
     df_ventas: pd.DataFrame,
-    df_stock: pd.DataFrame,
+    df_inventario: pd.DataFrame,
     dias_analisis_ventas_recientes: Optional[int] = None,
     dias_analisis_ventas_general: Optional[int] = None,
     peso_ventas_historicas: float = 0.6,
@@ -1310,11 +1311,11 @@ def process_csv_puntos_alerta_stock(
     subcategoria_col_stock = 'Subcategoría'
     precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
     df_ventas_proc = df_ventas.copy()
-    df_stock_proc = df_stock.copy()
+    df_inventario_proc = df_inventario.copy()
     df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
-    df_stock_proc[sku_col] = df_stock_proc[sku_col].astype(str).str.strip()
-    df_stock_proc[stock_actual_col_stock] = pd.to_numeric(df_stock_proc[stock_actual_col_stock], errors='coerce').fillna(0)
-    df_stock_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_stock_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
+    df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
+    df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
     df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
     df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
     df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
@@ -1347,7 +1348,7 @@ def process_csv_puntos_alerta_stock(
         return agg_ventas
     df_ventas_rec_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_recientes, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_Reciente')
     df_ventas_gen_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_general, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_General')
-    df_analisis = pd.merge(df_stock_proc, df_ventas_rec_agg, on=sku_col, how='left')
+    df_analisis = pd.merge(df_inventario_proc, df_ventas_rec_agg, on=sku_col, how='left')
     if not df_ventas_gen_agg.empty: df_analisis = pd.merge(df_analisis, df_ventas_gen_agg, on=sku_col, how='left')
     cols_a_rellenar_de_ventas_agg = ['Ventas_Total_Reciente', 'Dias_Con_Venta_Reciente', 'Precio_Venta_Prom_Reciente', 'Ventas_Total_General', 'Dias_Con_Venta_General', 'Precio_Venta_Prom_General']
     for col_fill in cols_a_rellenar_de_ventas_agg:
@@ -1514,9 +1515,9 @@ def process_csv_puntos_alerta_stock(
 
 def process_csv_lista_basica_reposicion_historico(
     df_ventas: pd.DataFrame,
-    df_stock: pd.DataFrame,
-    dias_analisis_ventas_recientes: Optional[int] = None,
-    dias_analisis_ventas_general: Optional[int] = None,
+    df_inventario: pd.DataFrame,
+    dias_analisis_ventas_recientes: Optional[int] = 30,
+    dias_analisis_ventas_general: Optional[int] = 180,
     peso_ventas_historicas: float = 0.6,
     dias_cobertura_ideal_base: int = 10,
     coef_importancia_para_cobertura_ideal: float = 0.05,
@@ -1551,11 +1552,11 @@ def process_csv_lista_basica_reposicion_historico(
     precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
     
     df_ventas_proc = df_ventas.copy()
-    df_stock_proc = df_stock.copy()
+    df_inventario_proc = df_inventario.copy()
     df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
-    df_stock_proc[sku_col] = df_stock_proc[sku_col].astype(str).str.strip()
-    df_stock_proc[stock_actual_col_stock] = pd.to_numeric(df_stock_proc[stock_actual_col_stock], errors='coerce').fillna(0)
-    df_stock_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_stock_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
+    df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
+    df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
     df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
     df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
     df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
@@ -1586,8 +1587,9 @@ def process_csv_lista_basica_reposicion_historico(
     df_ventas_rec_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_recientes, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_Reciente')
     df_ventas_gen_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_general, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_General')
 
-    df_analisis = pd.merge(df_stock_proc, df_ventas_rec_agg, on=sku_col, how='left')
+    df_analisis = pd.merge(df_inventario_proc, df_ventas_rec_agg, on=sku_col, how='left')
     if not df_ventas_gen_agg.empty: df_analisis = pd.merge(df_analisis, df_ventas_gen_agg, on=sku_col, how='left')
+    # print(f"DEBUG: 1. Después del merge inicial, el DataFrame tiene {len(df_analisis)} filas.")
 
     cols_a_rellenar = ['Ventas_Total_Reciente', 'Dias_Con_Venta_Reciente', 'Precio_Venta_Prom_Reciente', 'Ventas_Total_General', 'Dias_Con_Venta_General', 'Precio_Venta_Prom_General']
     for col in cols_a_rellenar:
@@ -1596,6 +1598,9 @@ def process_csv_lista_basica_reposicion_historico(
     
     if excluir_sin_ventas:
         df_analisis = df_analisis[df_analisis['Ventas_Total_General'] > 0].copy()
+    # print(f"DEBUG: 2. Después de filtrar por 'sin ventas', quedan {len(df_analisis)} filas.")
+    
+
     if incluir_solo_categorias and categoria_col_stock in df_analisis.columns:
         # Normalizamos la lista de categorías a minúsculas y sin espacios
         categorias_normalizadas = [cat.strip().lower() for cat in incluir_solo_categorias]
@@ -1605,6 +1610,8 @@ def process_csv_lista_basica_reposicion_historico(
         df_analisis = df_analisis[
             df_analisis[categoria_col_stock].str.strip().str.lower().isin(categorias_normalizadas)
         ].copy()
+    # print(f"DEBUG: 3. Después de filtrar por categorías, quedan {len(df_analisis)} filas.")
+
     if incluir_solo_marcas and marca_col_stock in df_analisis.columns:
         # Normalizamos la lista de marcas
         marcas_normalizadas = [marca.strip().lower() for marca in incluir_solo_marcas]
@@ -1613,8 +1620,11 @@ def process_csv_lista_basica_reposicion_historico(
         df_analisis = df_analisis[
             df_analisis[marca_col_stock].str.strip().str.lower().isin(marcas_normalizadas)
         ].copy()
-
-    if df_analisis.empty: return pd.DataFrame()
+    # print(f"DEBUG: 4. Después de filtrar por marcas, quedan {len(df_analisis)} filas.")
+    
+    if df_analisis.empty:
+        # print("❌ DEBUG: El DataFrame está vacío ANTES del último filtro. La función terminará aquí.")
+        return pd.DataFrame()
     
     df_analisis['Margen_Bruto_con_PCA'] = df_analisis['Precio_Venta_Prom_Reciente'] - df_analisis[precio_compra_actual_col_stock]
     df_analisis['Ingreso_Total_Reciente'] = df_analisis['Ventas_Total_Reciente'] * df_analisis['Precio_Venta_Prom_Reciente']
@@ -1697,6 +1707,7 @@ def process_csv_lista_basica_reposicion_historico(
     df_analisis['Dias_Cobertura_Stock_Actual'] = pd.Series(cobertura_array, index=df_analisis.index).fillna(np.inf)
     df_analisis.loc[df_analisis[stock_actual_col_stock] == 0, 'Dias_Cobertura_Stock_Actual'] = 0
     df_analisis['Dias_Cobertura_Stock_Actual'] = df_analisis['Dias_Cobertura_Stock_Actual'].round(1)
+    df_analisis['Dias_Cobertura_Stock_Actual'] = df_analisis['Dias_Cobertura_Stock_Actual'].replace(np.inf, 9999)
 
     df_resultado = df_analisis.copy()
 
@@ -1965,145 +1976,6 @@ def procesar_stock_muerto(
     df_final = df_final.sort_values(by='Valor stock (S/.)', ascending=False, na_position='last')
 
     return df_final
-
-
-def generar_reporte_stock_minimo_sugerido(
-    df_ventas: pd.DataFrame,
-    df_stock: pd.DataFrame,
-    dias_cobertura_deseados: int,
-    meses_analisis_historicos: int
-) -> pd.DataFrame:
-    """
-    Genera un reporte de stock mínimo sugerido para cada producto.
-
-    Args:
-        df_ventas (pd.DataFrame): DataFrame con datos de ventas.
-            Columnas esperadas: 'Nombre del producto', 'SKU / Código de producto', 
-                               'N° de comprobante / boleta', 'Fecha de venta', 
-                               'Cantidad vendida', 'Precio de venta unitario (S/.)'.
-        df_stock (pd.DataFrame): DataFrame con datos de stock actual.
-            Columnas esperadas: 'Nombre del producto', 'Rol de categoría', 
-                               'Precio de compra actual (S/.)', 'Precio de venta actual (S/.)',
-                               'Cantidad en stock actual', 'Rol del producto', 'Categoría',
-                               'Subcategoría', 'Marca', 'SKU / Código de producto'.
-        dias_cobertura_deseados (int): Número de días de ventas que el stock mínimo debe cubrir.
-        meses_analisis_historicos (int): Número de meses hacia atrás para analizar el historial de ventas.
-
-    Returns:
-        pd.DataFrame: Reporte con SKU, Producto, Categoría, Stock actual, 
-                      Stock mínimo sugerido, ¿Reponer?, Precio de compra (S/.), 
-                      Margen (%), y VPD (Ventas Promedio Diarias).
-    """
-
-    # 1. Preprocesar df_ventas
-    df_ventas_proc = df_ventas.copy()
-    # Asegurar que 'Fecha de venta' es datetime
-    df_ventas_proc['Fecha de venta'] = pd.to_datetime(df_ventas_proc['Fecha de venta'], errors='coerce')
-    # Asegurar que 'Cantidad vendida' es numérica
-    df_ventas_proc['Cantidad vendida'] = pd.to_numeric(df_ventas_proc['Cantidad vendida'], errors='coerce').fillna(0)
-    
-    # Eliminar filas donde la fecha no pudo ser parseada
-    df_ventas_proc.dropna(subset=['Fecha de venta'], inplace=True)
-
-
-    # 2. Filtrar ventas por el periodo de análisis
-    # Usamos pd.Timestamp.now() para obtener la fecha y hora actual con zona horaria si está configurada,
-    # o pd.to_datetime(datetime.now()) para fecha y hora naive.
-    # Normalizar a medianoche para consistencia si se compara con fechas sin hora.
-    fecha_actual = pd.Timestamp.now() 
-    fecha_inicio_analisis = fecha_actual - pd.DateOffset(months=meses_analisis_historicos)
-    
-    ventas_periodo = df_ventas_proc[
-        (df_ventas_proc['Fecha de venta'] >= fecha_inicio_analisis) &
-        (df_ventas_proc['Fecha de venta'] <= fecha_actual)
-    ].copy()
-
-    # 3. Calcular ventas totales por SKU en el periodo
-    if not ventas_periodo.empty:
-        ventas_agrupadas = ventas_periodo.groupby('SKU / Código de producto')['Cantidad vendida'].sum().reset_index()
-        ventas_agrupadas.rename(columns={'Cantidad vendida': 'Total Vendido Periodo'}, inplace=True)
-
-        # Calcular el número de días en el periodo de análisis.
-        # Se considera la duración real del intervalo.
-        dias_en_periodo_analisis = (fecha_actual - fecha_inicio_analisis).days
-        if dias_en_periodo_analisis <= 0: 
-            dias_en_periodo_analisis = 1 # Evitar división por cero o negativa si el periodo es instantáneo o inválido.
-
-        # Calcular Promedio Diario de Ventas (VPD)
-        ventas_agrupadas['Promedio diario de ventas'] = ventas_agrupadas['Total Vendido Periodo'] / dias_en_periodo_analisis
-    else:
-        # Si no hay ventas en el periodo, crear un DataFrame vacío con las columnas esperadas
-        ventas_agrupadas = pd.DataFrame(columns=['SKU / Código de producto', 'Total Vendido Periodo', 'Promedio diario de ventas'])
-
-    # 4. Unir con df_stock
-    df_reporte = pd.merge(df_stock, ventas_agrupadas, on='SKU / Código de producto', how='left')
-
-    # Llenar NaN para productos sin ventas en el periodo
-    df_reporte['Total Vendido Periodo'].fillna(0, inplace=True)
-    df_reporte['Promedio diario de ventas'].fillna(0, inplace=True)
-    df_reporte['Cantidad en stock actual'] = pd.to_numeric(df_reporte['Cantidad en stock actual'], errors='coerce').fillna(0)
-
-
-    # 5. Calcular Stock Mínimo Sugerido
-    df_reporte['Stock mínimo sugerido'] = np.ceil(df_reporte['Promedio diario de ventas'] * dias_cobertura_deseados)
-    df_reporte['Stock mínimo sugerido'] = df_reporte['Stock mínimo sugerido'].astype(int)
-
-    # 6. Determinar si se necesita reponer
-    df_reporte['¿Reponer?'] = df_reporte['Cantidad en stock actual'] < df_reporte['Stock mínimo sugerido']
-
-    # 7. Calcular Margen
-    df_reporte['Precio de venta actual (S/.)'] = pd.to_numeric(df_reporte['Precio de venta actual (S/.)'], errors='coerce')
-    df_reporte['Precio de compra actual (S/.)'] = pd.to_numeric(df_reporte['Precio de compra actual (S/.)'], errors='coerce')
-    
-    # Evitar división por cero o NaN si el precio de venta es 0, nulo o no numérico
-    df_reporte['Margen (%)'] = np.where(
-        (df_reporte['Precio de venta actual (S/.)'].notna()) & 
-        (df_reporte['Precio de venta actual (S/.)'] != 0) & 
-        (df_reporte['Precio de compra actual (S/.)'].notna()),
-        ((df_reporte['Precio de venta actual (S/.)'] - df_reporte['Precio de compra actual (S/.)']) / df_reporte['Precio de venta actual (S/.)']) * 100,
-        0  # Margen 0 si no se puede calcular
-    )
-    df_reporte['Margen (%)'] = df_reporte['Margen (%)'].round(2)
-
-    # 8. Seleccionar y renombrar columnas para el reporte final
-    columnas_finales_map = {
-        'SKU / Código de producto': 'SKU',
-        'Nombre del producto': 'Producto',
-        'Categoría': 'Categoría',
-        'Cantidad en stock actual': 'Stock actual',
-        'Stock mínimo sugerido': 'Stock mínimo sugerido',
-        '¿Reponer?': '¿Reponer?',
-        'Precio de compra actual (S/.)': 'Precio de compra (S/.)',
-        'Margen (%)': 'Margen (%)',
-        'Promedio diario de ventas': f'VPD (últ. {meses_analisis_historicos}m)'
-    }
-    
-    # Asegurarse que todas las columnas fuente existen antes de intentar acceder a ellas
-    columnas_a_seleccionar = [col for col in columnas_finales_map.keys() if col in df_reporte.columns]
-    df_resultado = df_reporte[columnas_a_seleccionar].rename(columns=columnas_finales_map)
-    
-    # Añadir columnas faltantes si no se generaron (ej. si df_stock no las tenía)
-    for target_col in columnas_finales_map.values():
-        if target_col not in df_resultado.columns:
-            df_resultado[target_col] = np.nan # o 0 según el caso
-
-    # Ordenar para mejor visualización (opcional)
-    # Asegurarse que las columnas de ordenamiento existen
-    sort_cols = []
-    if '¿Reponer?' in df_resultado.columns:
-        sort_cols.append('¿Reponer?')
-    if 'SKU' in df_resultado.columns:
-        sort_cols.append('SKU')
-    
-    if sort_cols:
-        ascending_order = [False] * len(sort_cols) # ¿Reponer? False (True primero)
-        if 'SKU' in sort_cols:
-            idx_sku = sort_cols.index('SKU')
-            ascending_order[idx_sku] = True # SKU True (A-Z)
-        df_resultado = df_resultado.sort_values(by=sort_cols, ascending=ascending_order)
-
-
-    return df_resultado
 
 
 # ----------------------------------------------------------

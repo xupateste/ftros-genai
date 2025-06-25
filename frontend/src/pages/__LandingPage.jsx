@@ -1,12 +1,10 @@
 import { useState, useEffect, useCallback } from 'react'; // useCallback añadido
 import { useNavigate, Link } from 'react-router-dom';
 import '../index.css';
-import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, FiX, FiLoader} from 'react-icons/fi'
+import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, FiX} from 'react-icons/fi'
 
 import axios from 'axios';
 import Select from 'react-select';
-import CsvImporterComponent from '../assets/CsvImporterComponent';
-
 import CsvDropZone from '../assets/CsvDropZone';
 import CsvDropZone2 from '../assets/CsvDropZone2';
 import { v4 as uuidv4 } from 'uuid';
@@ -18,117 +16,6 @@ const API_URL = import.meta.env.VITE_API_URL;
 
 const ADVANCED_PARAMS_STORAGE_KEY = 'ferreteroApp_advancedParams';
 
-const templateVentas = {
-        columns: [
-          {
-            name: "Fecha de venta",
-            key: "Fecha de venta",
-            required: true,
-            description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
-            suggested_mappings: ["Fecha de venta"]
-          },
-          {
-            name: "N° de comprobante / boleta",
-            key: "N° de comprobante / boleta",
-            required: true,
-            // description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
-            suggested_mappings: ["N° de comprobante / boleta"]
-          },
-          {
-            name: "SKU / Código de producto",
-            key: "SKU / Código de producto",
-            required: true,
-            suggested_mappings: ["SKU / Código de producto"]
-          },
-          {
-            name: "Nombre del producto",
-            key: "Nombre del producto",
-            required: true,
-            suggested_mappings: ["Nombre del producto"]
-          },
-          {
-            name: "Cantidad vendida",
-            key: "Cantidad vendida",
-            required: true,
-            description: "Sólo valor numérico entero ej:10",
-            suggested_mappings: ["Cantidad vendida"]
-          },
-          {
-            name: "Precio de venta unitario (S/.)",
-            key: "Precio de venta unitario (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de venta unitario (S/.)"]
-          }
-        ]
-      };
-const templateStock = {
-        columns: [
-          {
-            name: "SKU / Código de producto",
-            key: "SKU / Código de producto",
-            required: true,
-            suggested_mappings: ["SKU / Código de producto"]
-          },
-          {
-            name: "Nombre del producto",
-            key: "Nombre del producto",
-            required: true,
-            suggested_mappings: ["Nombre del producto"]
-          },
-          {
-            name: "Cantidad en stock actual",
-            key: "Cantidad en stock actual",
-            required: true,
-            description: "Sólo valor numérico entero ej:10",
-            suggested_mappings: ["Cantidad en stock actual"]
-          },
-          {
-            name: "Precio de compra actual (S/.)",
-            key: "Precio de compra actual (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de compra actual (S/.)"]
-          },
-          {
-            name: "Precio de venta actual (S/.)",
-            key: "Precio de venta actual (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de venta actual (S/.)"]
-          },
-          {
-            name: "Marca",
-            key: "Marca",
-            required: true,
-            suggested_mappings: ["Marca"]
-          },
-          {
-            name: "Categoría",
-            key: "Categoría",
-            required: true,
-            suggested_mappings: ["Categoría"]
-          },
-          {
-            name: "Subcategoría",
-            key: "Subcategoría",
-            required: true,
-            suggested_mappings: ["Subcategoría"]
-          },
-          {
-            name: "Rol de categoría",
-            key: "Rol de categoría",
-            required: true,
-            suggested_mappings: ["Rol de categoría"]
-          },
-          {
-            name: "Rol del producto",
-            key: "Rol del producto",
-            required: true,
-            suggested_mappings: ["Rol del producto"]
-          }
-        ]
-      };
 // (diccionarioData y reportData permanecen igual que en tu última versión)
 const diccionarioData = {
   'Análisis ABC de Productos ✓': `<table class="max-w-full border-collapse table-auto mb-10 text-xs"><thead><tr class="bg-gray-100"><th class="border border-gray-300 px-4 py-2 text-center">SKU /<br>Código de producto</th><th class="border border-gray-300 px-4 py-2 text-center">Nombre del<br>producto</th><th class="border border-gray-300 px-4 py-2 text-center">Categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Subcategoría</th><th class="border border-gray-300 px-4 py-2 text-center">Valor<br>Ponderado<br>(ABC)</th><th class="border border-gray-300 px-4 py-2 text-center">Venta<br>Total<br>(S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Cantidad<br>Vendida (Und)</th><th class="border border-gray-300 px-4 py-2 text-center">Margen Total<br>(S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">% Participación</th><th class="border border-gray-300 px-4 py-2 text-center">% Acumulado</th><th class="border border-gray-300 px-4 py-2 text-center">Clasificación<br>ABC</th></tr></thead><tbody><tr><td class="border border-gray-300 px-4 py-2 text-center">1234</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLO CURVO 16OZ TRUPER</td><td class="border border-gray-300 px-4 py-2 text-center">HERRAMIENTAS</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLOS</td><td class="border border-gray-300 px-4 py-2 text-center">0.82</td><td class="border border-gray-300 px-4 py-2 text-center">504</td><td class="border border-gray-300 px-4 py-2 text-center">24</td><td class="border border-gray-300 px-4 py-2 text-center">159</td><td class="border border-gray-300 px-4 py-2 text-center">0.42</td><td class="border border-gray-300 px-4 py-2 text-center">24.04</td><td class="border border-gray-300 px-4 py-2 text-center">A</td></tr></tbody></table>`,
@@ -169,75 +56,75 @@ const reportData = {
       basic_parameters: []
     },
     {
-      label: "⭐ Reporte Maestro de Inventario (Recomendado)",
-      endpoint: "/reporte-maestro-inventario",
-      insights: [
+      "label": "⭐ Reporte Maestro de Inventario (Recomendado)",
+      "endpoint": "/reporte-maestro-inventario",
+      "insights": [
         "Este es el reporte más completo. Combina la importancia de tus productos (Análisis ABC) con su salud de rotación (Stock Muerto) para crear un plan de acción 100% priorizado.",
         "Te dice exactamente en qué productos debes enfocar tu atención, dinero y esfuerzo AHORA MISMO."
       ],
-      basic_parameters: [
+      "basic_parameters": [
         {
-          name: "criterio_abc",
-          label: "Criterio de Importancia (ABC)",
-          type: "select",
-          options: [
-            { value: "margen", label: "Por Margen de Ganancia (Recomendado)" },
-            { value: "ingresos", label: "Por Ingresos Totales" },
-            { value: "unidades", label: "Por Unidades Vendidas" },
-            { value: "combinado", label: "Ponderado Personalizado (Avanzado)" }
+          "name": "criterio_abc",
+          "label": "Criterio de Importancia (ABC)",
+          "type": "select",
+          "options": [
+            { "value": "margen", "label": "Por Margen de Ganancia (Recomendado)" },
+            { "value": "ingresos", "label": "Por Ingresos Totales" },
+            { "value": "unidades", "label": "Por Unidades Vendidas" },
+            { "value": "combinado", "label": "Ponderado Personalizado (Avanzado)" }
           ],
-          defaultValue: "margen"
+          "defaultValue": "margen"
         },
         {
-          name: "periodo_abc",
-          label: "Período de Análisis de Importancia",
-          type: "select",
-          options: [
-              { value: "3", label: "Últimos 3 meses" },
-              { value: "6", label: "Últimos 6 meses" },
-              { value: "12", label: "Últimos 12 meses" },
-              { value: "0", label: "Historial completo" }
+          "name": "periodo_abc",
+          "label": "Período de Análisis de Importancia",
+          "type": "select",
+          "options": [
+              { "value": "3", "label": "Últimos 3 meses" },
+              { "value": "6", "label": "Últimos 6 meses" },
+              { "value": "12", "label": "Últimos 12 meses" },
+              { "value": "0", "label": "Historial completo" }
           ],
-          defaultValue: "6"
+          "defaultValue": "6"
         }
       ],
-      advanced_parameters: [
+      "advanced_parameters": [
         {
-          name: "dias_sin_venta_muerto",
-          label: "Umbral de Días para 'Stock Muerto'",
-          type: "number",
-          placeholder: "Default: dinámico",
-          defaultValue: 30,
-          min: 30
+          "name": "dias_sin_venta_muerto",
+          "label": "Umbral de Días para 'Stock Muerto'",
+          "type": "number",
+          "placeholder": "Default: dinámico",
+          "defaultValue": "",
+          "min": 30
         },
         {
-          name: "meses_analisis_salud",
-          label: "Período para Cálculo de Salud (meses)",
-          type: "number",
-          placeholder: "Default: dinámico",
-          defaultValue: 1,
-          min: 1
+          "name": "meses_analisis_salud",
+          "label": "Período para Cálculo de Salud (meses)",
+          "type": "number",
+          "placeholder": "Default: dinámico",
+          "defaultValue": "",
+          "min": 1
         },
         {
-          name: "peso_margen",
-          label: "Peso de Margen (0.0 a 1.0)",
-          type: "number",
-          defaultValue: 0.5,
-          min: 0, max: 1, step: 0.1
+          "name": "peso_margen",
+          "label": "Peso de Margen (0.0 a 1.0)",
+          "type": "number",
+          "defaultValue": 0.5,
+          "min": 0, "max": 1, "step": 0.1
         },
         {
-          name: "peso_ingresos",
-          label: "Peso de Ingresos (0.0 a 1.0)",
-          type: "number",
-          defaultValue: 0.3,
-          min: 0, max: 1, step: 0.1
+          "name": "peso_ingresos",
+          "label": "Peso de Ingresos (0.0 a 1.0)",
+          "type": "number",
+          "defaultValue": 0.3,
+          "min": 0, "max": 1, "step": 0.1
         },
         {
-          name: "peso_unidades",
-          label: "Peso de Unidades (0.0 a 1.0)",
-          type: "number",
-          defaultValue: 0.2,
-          min: 0, max: 1, step: 0.1
+          "name": "peso_unidades",
+          "label": "Peso de Unidades (0.0 a 1.0)",
+          "type": "number",
+          "defaultValue": 0.2,
+          "min": 0, "max": 1, "step": 0.1
         }
       ]
     },
@@ -508,17 +395,11 @@ const OnboardingModal = ({ onSubmit, onCancel, isLoading }) => {
 function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar el import en App.jsx, etc.
   const [appState, setAppState] = useState('landing');
   const [sessionId, setSessionId] = useState(null);
-
-  // --- NUEVOS ESTADOS PARA GESTIONAR LA CARGA DE ARCHIVOS ---
-  const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
-  const [uploadStatus, setUploadStatus] = useState({ ventas: 'idle', inventario: 'idle' });
-  
   const [ventasFile, setVentasFile] = useState(null);
   const [inventarioFile, setInventarioFile] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
-  // const [filesReady, setFilesReady] = useState(false);
-  const filesReady = uploadedFileIds.ventas && uploadedFileIds.inventario;
+  const [filesReady, setFilesReady] = useState(false);
   const [insightHtml, setInsightHtml] = useState('');
   const [parameterValues, setParameterValues] = useState({});
   
@@ -557,48 +438,6 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       setAppState('landing'); // Volver al landing si hay error
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // --- NUEVA FUNCIÓN PARA MANEJAR LA CARGA Y LLAMADA A LA API ---
-  const handleFileProcessed = async (file, fileType) => {
-    if (!sessionId) {
-      alert("Error: No se ha iniciado una sesión de análisis.");
-      return;
-    }
-
-    setUploadStatus(prev => ({ ...prev, [fileType]: 'uploading' }));
-
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("tipo_archivo", fileType);
-
-    try {
-      const response = await axios.post(`${API_URL}/upload-file`, formData, {
-        headers: { 'X-Session-ID': sessionId }
-      });
-
-      console.log('Respuesta del servidor:', response.data);
-
-      setUploadedFileIds(prev => ({ ...prev, [fileType]: response.data.file_id }));
-      setUploadStatus(prev => ({ ...prev, [fileType]: 'success' }));
-
-      // --- CAMBIO CLAVE: Actualizamos los filtros si es un archivo de inventario ---
-      if (fileType === 'inventario' && response.data.available_filters) {
-        console.log("Filtros recibidos del backend:", response.data.available_filters);
-        setAvailableFilters({
-          categorias: response.data.available_filters.categorias || [],
-          marcas: response.data.available_filters.marcas || []
-        });
-      }
-
-      // Si la subida es exitosa, limpiamos el caché porque los datos de entrada han cambiado
-      setCachedResponse({ key: null, blob: null });
-
-    } catch (error) {
-      console.error(`Error al subir el archivo de ${fileType}:`, error);
-      alert(error.response?.data?.detail || `Error al subir el archivo de ${fileType}.`);
-      setUploadStatus(prev => ({ ...prev, [fileType]: 'error' }));
     }
   };
 
@@ -730,100 +569,125 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
 
   // --- MODIFICACIÓN 2: buttonDownloadHandleMulti para usar y actualizar caché ---
   const buttonDownloadHandleMulti = async () => {
-    // 1. Verificación inicial (ahora comprueba los IDs de archivo)
-    if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario) {
-      alert("Asegúrate de haber subido exitosamente ambos archivos y seleccionado un reporte.");
-      return;
-    }
-    
-    // El sessionId ahora viene del estado del componente
-    if (!sessionId) {
-      alert("Error: No se ha iniciado una sesión de análisis.");
-      return;
-    }
+    const sessionId = getSessionId();
 
+    if (!selectedReport || !ventasFile || !inventarioFile) {
+      alert("Asegúrate de seleccionar un reporte y cargar ambos archivos CSV.");
+      return;
+    }
     setIsLoading(true);
 
-    // --- LÓGICA DE CACHÉ ---
-    // 1. Crear una clave única para la solicitud actual
-    const currentCacheKey = `${selectedReport.endpoint}-${uploadedFileIds.ventas}-${uploadedFileIds.inventario}-${JSON.stringify(modalParams)}`;
+    const parameterLabels = getParameterLabelsForFilename();
+    const baseLabel = selectedReport.label.replace(/ ✓/g, '').trim();
+    const suffix = parameterLabels ? `_${parameterLabels}` : '';
+    const filename = `${baseLabel}_${getNow()}${suffix}.xlsx`;
+    const currentCacheKey = `${selectedReport.endpoint}-${JSON.stringify(modalParams)}`;
 
-    // 2. Verificar si hay una respuesta en caché que coincida con la clave actual
     if (cachedResponse.key === currentCacheKey && cachedResponse.blob) {
       console.log("Usando respuesta de caché para:", currentCacheKey);
-      
-      const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}_cached.xlsx`;
-      
-      // Reutilizamos el blob guardado para la descarga
-      const url = window.URL.createObjectURL(cachedResponse.blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-
-      setIsLoading(false); // Detenemos la carga
-      return; // Salimos de la función para evitar la llamada a la API
+      triggerDownload(cachedResponse.blob, filename.replace('.xlsx', '_cached.xlsx'));
+      return;
     }
-    
-    // --- SI NO HAY CACHÉ, CONTINUAMOS CON LA LLAMADA A LA API ---
-    console.log("No hay caché válido. Realizando nueva petición al servidor.");
 
-    // 2. Crear el FormData (ahora con IDs en lugar de archivos)
     const formData = new FormData();
-    
-    // --- CAMBIO CLAVE ---
-    // Enviamos los IDs de los archivos, no los archivos completos.
-    formData.append("ventas_file_id", uploadedFileIds.ventas);
-    formData.append("inventario_file_id", uploadedFileIds.inventario);
+    formData.append("ventas", ventasFile);
+    formData.append("inventario", inventarioFile);
 
-    // Adjuntamos el resto de los parámetros del modal como antes
+    // --- ¡AQUÍ COMIENZA LA NUEVA LÓGICA! ---
+
     const allParameters = [
       ...(selectedReport.basic_parameters || []),
       ...(selectedReport.advanced_parameters || [])
     ];
-    allParameters.forEach(param => {
-        const value = modalParams[param.name];
-        if (value !== undefined && value !== null && value !== '') {
-            if (Array.isArray(value)) {
-                formData.append(param.name, JSON.stringify(value));
-            } else {
-                formData.append(param.name, value);
-            }
+
+    // Objeto para almacenar los pesos de importancia normalizados
+    let pesosImportanciaNormalizados = null;
+    
+    // Objeto para recolectar las puntuaciones de 1-10
+    const rawScores = {
+        ventas: modalParams['score_ventas'],
+        ingreso: modalParams['score_ingreso'],
+        margen: modalParams['score_margen'],
+        dias_venta: modalParams['score_dias_venta']
+    };
+
+    // Verificamos si estamos en el reporte estratégico que usa estos scores
+    const isStrategicReport = 'score_ventas' in modalParams;
+
+    if (isStrategicReport) {
+        // 1. SUMAR LAS PUNTUACIONES CRUDAS
+        const totalScore = Object.values(rawScores).reduce((sum, score) => sum + Number(score || 0), 0);
+
+        // 2. NORMALIZAR (PRORRATEAR)
+        if (totalScore > 0) {
+            pesosImportanciaNormalizados = {
+                ventas: (rawScores.ventas || 0) / totalScore,
+                ingreso: (rawScores.ingreso || 0) / totalScore,
+                margen: (rawScores.margen || 0) / totalScore,
+                dias_venta: (rawScores.dias_venta || 0) / totalScore,
+            };
+        } else {
+            // Caso borde: si todas las puntuaciones son 0, usamos pesos iguales.
+            pesosImportanciaNormalizados = { ventas: 0.25, ingreso: 0.25, margen: 0.25, dias_venta: 0.25 };
         }
+        
+        // 3. AÑADIR EL JSON FINAL AL FORMDATA
+        formData.append('pesos_importancia_json', JSON.stringify(pesosImportanciaNormalizados));
+    }
+
+
+    // Procesar el resto de parámetros (excluyendo los scores que ya procesamos)
+    allParameters.forEach(param => {
+      // Si el parámetro es uno de los scores, lo saltamos porque ya fue procesado.
+      if (param.name.startsWith('score_')) {
+          return;
+      }
+
+      const value = modalParams[param.name];
+
+      if (value === undefined || value === null || value === '') {
+        return;
+      }
+
+      if (param.name.endsWith('_json')) {
+        if (Array.isArray(value) && value.length > 0) {
+          formData.append(param.name, JSON.stringify(value));
+        }
+      } else if (Array.isArray(value)) {
+        if (value.length > 0) {
+          formData.append(param.name, value.join(','));
+        }
+      } else {
+        formData.append(param.name, value);
+      }
     });
 
-    // --- FIN DEL CAMBIO ---
+    // --- FIN DE LA NUEVA LÓGICA ---
 
     try {
       const response = await axios.post(`${API_URL}${selectedReport.endpoint}`, formData, {
         responseType: 'blob',
-        headers: { 'X-Session-ID': sessionId }
+        headers: {
+          'X-Session-ID': sessionId,
+        }
       });
-      
-      const newBlob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      // 3. Guardar la nueva respuesta en el caché
+      const newBlob = new Blob([response.data], {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+
       setCachedResponse({ key: currentCacheKey, blob: newBlob });
-
-      const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}.xlsx`;
-      const url = window.URL.createObjectURL(newBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      triggerDownload(newBlob, filename);
 
     } catch (err) {
-      // Tu manejo de errores no cambia
-      console.error("Error al generar el reporte:", err);
-      const errorDetail = err.response?.data ? new TextDecoder().decode(await err.response.data.text()) : err.message;
-      alert(`Error al generar el reporte: ${errorDetail}`);
-    } finally {
+      // ... (tu manejo de errores permanece igual) ...
+      let errorMessage = "Error al generar el reporte.";
+      if (err.response && err.response.data) {
+        // ...
+      } else {
+        errorMessage = err.message;
+      }
+      alert(errorMessage);
       setIsLoading(false);
     }
   };
@@ -852,7 +716,35 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     }
   }, [persistedAdvancedParams])
 
-  
+  useEffect(() => {
+    if (inventarioFile instanceof File) {
+      const sessionId = getSessionId();      
+      const fetchFilters = async () => {
+        setIsLoadingFilters(true);
+        const formData = new FormData();
+        formData.append("inventario", inventarioFile);
+        try {
+          const response = await axios.post(`${API_URL}/extract-metadata`, formData, {
+            // headers: { "Content-Type": "multipart/form-data" },
+            responseType: 'json',
+            headers: {
+              'X-Session-ID': sessionId 
+            },
+          });
+          setAvailableFilters({
+            categorias: response.data.categorias_disponibles || [],
+            marcas: response.data.marcas_disponibles || []
+          });
+        } catch (error) {
+          console.error("Error al extraer los filtros:", error);
+          alert("No se pudieron cargar los filtros desde el archivo de inventario.");
+        } finally {
+          setIsLoadingFilters(false);
+        }
+      };
+      fetchFilters();
+    }
+  }, [inventarioFile]);
 
   useEffect(() => {
     if (showModal) {
@@ -870,33 +762,38 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     };
   }, [showModal, handleEsc]); // handleEsc es ahora una dependencia estable
 
-  // --- EFECTO ÚNICO Y CENTRALIZADO PARA GESTIONAR EL CACHÉ ---
-  // 1. Efecto para validar el caché cada vez que algo relevante cambia
   useEffect(() => {
-      // Si no hay reporte seleccionado o faltan archivos, no puede haber caché válido.
-      if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario) {
-        setIsCacheValid(false);
-        return;
-      }
+    setFilesReady(ventasFile instanceof File && inventarioFile instanceof File);
+  }, [ventasFile, inventarioFile]);
 
-      // Generamos la clave "definitiva" para el estado actual de la solicitud
-      const currentKey = `${selectedReport.endpoint}-${uploadedFileIds.ventas}-${uploadedFileIds.inventario}-${JSON.stringify(modalParams)}`;
-      
-      // Comparamos y actualizamos el estado de validez
-      setIsCacheValid(cachedResponse.key === currentKey);
-
-  }, [modalParams, cachedResponse.key, selectedReport, uploadedFileIds]);
-
-  // --- USE EFFECT PARA LIMPIAR EL CACHÉ ---
-  // Limpiamos el caché cuando el modal se cierra para asegurar una nueva petición la próxima vez
+  // Efecto para limpiar caché si los parámetros cambian MIENTRAS el modal está abierto
   useEffect(() => {
-      if (!showModal) {
-          console.log("Modal cerrado, limpiando caché.");
-          setCachedResponse({ key: null, blob: null });
+    if (showModal && selectedReport) { // Solo si el modal está visible y hay un reporte
+      const currentCacheKey = `${selectedReport.endpoint}-${JSON.stringify(modalParams)}`;
+      if (cachedResponse.key && cachedResponse.key !== currentCacheKey) {
+        console.log("Parámetros cambiados, limpiando caché anterior:", cachedResponse.key);
+        setCachedResponse({ key: null, blob: null });
       }
-  }, [showModal]);
+    }
+  }, [parameterValues, showModal, selectedReport, cachedResponse.key]);
 
-  
+  useEffect(() => {
+    if (!selectedReport) {
+      setIsCacheValid(false);
+      return;
+    }
+
+    // Genera la clave correspondiente a los parámetros actuales del modal
+    const currentKey = `${selectedReport.endpoint}-${JSON.stringify(modalParams)}`;
+    
+    // Compara con la clave de la respuesta en caché y actualiza el estado
+    if (cachedResponse.key === currentKey) {
+      setIsCacheValid(true);
+    } else {
+      setIsCacheValid(false);
+    }
+  }, [modalParams, cachedResponse, selectedReport]); // Se re-ejecuta si cambian los parámetros, la caché o el reporte
+
   return (
     <>
     {appState === 'landing' && <LandingView onStartSession={handleStartSession} />}
@@ -908,28 +805,44 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
         <div className={`min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
           flex flex-col items-center justify-center text-center px-4 sm:px-8 md:px-12 lg:px-20
           ${showModal ? 'overflow-hidden h-screen' : ''}`}>
-          <div className='w-full max-w-4xl mx-auto'>
+          <div className='w-full max-w-4xl'>
             <h1 className="text-4xl font-semibold text-white mt-6">
-              Sesión de Análisis de <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
+              Bienvenido a <span
+                className="bg-clip-text text-transparent"
+                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+              >
+                Ferretero.IA
+              </span>
             </h1>
-             <p className="mt-2 text-sm text-gray-400">ID de Sesión (temporal): {sessionId}</p>
+            <p className="mt-4 text-lg text-gray-100">
+              Tus números tienen algo que decirte.
+            </p>
           </div>
-          {/* --- USO DEL NUEVO COMPONENTE REUTILIZABLE --- */}
-          <div className='mt-10 w-full max-w-5xl grid text-white md:grid-cols-2 gap-8 px-2 mx-auto'>
-            <CsvImporterComponent 
-              fileType="ventas"
-              title="Historial de Ventas"
-              template={templateVentas}
-              onFileProcessed={handleFileProcessed}
-              uploadStatus={uploadStatus.ventas}
-            />
-            <CsvImporterComponent 
-              fileType="inventario"
-              title="Stock Actual"
-              template={templateStock}
-              onFileProcessed={handleFileProcessed}
-              uploadStatus={uploadStatus.inventario}
-            />
+          <div className='mt-10 w-full max-w-2xl grid text-white md:grid-cols-2 gap-6 px-2'>
+            <div>
+              <div className="max-h-[300px] overflow-auto bg-gray-800 p-1 rounded-lg">
+                <CsvDropZone onFile={handleVentasInput} />
+              </div>
+              {ventasFile && (
+                <div className="text-xs cursor-pointer text-gray-600 hover:text-white" onClick={() => triggerDownload(ventasFile, "historial de ventas.csv")} >
+                  <div className="flex items-center text-center justify-center gap-1">
+                    <FiDownload className="" /> Descargar CSV procesado
+                  </div>
+                </div>
+              )}
+            </div>
+            <div>
+              <div className="max-h-[300px] overflow-auto bg-gray-800 p-1 rounded-lg">
+                <CsvDropZone2 onFile={handleInventarioInput} />
+              </div>
+              {inventarioFile && (
+                <div className="text-xs cursor-pointer text-gray-600 hover:text-white" onClick={() => triggerDownload(inventarioFile, "stock actual.csv")} >
+                  <div className="flex items-center text-center justify-center gap-1">
+                    <FiDownload className="" /> Descargar CSV procesado
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           {filesReady ? (
             <div className="w-full max-w-4xl space-y-8 px-4 mb-4 mt-10">
@@ -1086,54 +999,48 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                 >
                 </div>
               </div>
-              <div className="p-4 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
+              <div className="p-4 w-full border-t relative bottom-0 bg-white z-10 shadow text-center sticky bottom-0">
                 <button
-                    onClick={buttonDownloadHandleMulti}
-                    // La condición disabled ahora solo depende de si los archivos están listos o si está cargando
-                    disabled={!filesReady || isLoading}
-                    className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-                        ${
-                            // Lógica de estilos condicional
-                            isLoading ? 'bg-gray-200 text-gray-500 cursor-wait' :
-                            !filesReady ? 'bg-gray-200 text-gray-400 cursor-not-allowed' :
-                            isCacheValid ? 'bg-green-100 border-green-600 text-green-800 hover:bg-green-200' : 'text-transparent border-purple-700'
-                        }`
-                    }
-                    style={!isLoading && !isCacheValid ? {
-                      backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
-                      backgroundClip: 'text',
-                    } : {}}
+                  onClick={buttonDownloadHandleMulti}
+                  className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out ${
+                    isLoading ? 'opacity-50 cursor-not-allowed bg-gray-200' : 
+                    (isCacheValid ? 'bg-green-100 border-green-600 text-green-800 hover:bg-green-200' : 'text-transparent border-purple-700')
+                  }`}
+                  style={!isLoading && !isCacheValid ? {
+                    backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
+                    backgroundClip: 'text',
+                  } : {}}
+                  disabled={!ventasFile || !inventarioFile || isLoading}
                 >
-                    {/* Lógica para renderizar el contenido del botón */}
-                    {isLoading ? (
-                        <>
-                            <FiLoader className="animate-spin h-5 w-5" />
-                            <span>Generando...</span>
-                        </>
-                    ) : isCacheValid ? (
-                        <>
-                            <FiDownload className="font-bold text-xl"/>
-                            <span>Descargar Reporte (en caché)</span>
-                        </>
-                    ) : (
-                        <>
-                            <span className="text-black font-bold text-lg">🚀</span>
-                            {/* El texto cambia si ya existe una caché pero es obsoleta */}
-                            <span>{cachedResponse.key ? 'Volver a Ejecutar con Nuevos Parámetros' : 'Ejecutar Análisis'}</span>
-                        </>
-                    )}
+                  {isLoading ? (
+                    <div className="flex items-center justify-center gap-2 text-gray-600">
+                      <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                      <span>Generando...</span>
+                    </div>
+                  ) : isCacheValid ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <FiDownload className="font-bold text-xl"/>
+                      <span>Descargar Reporte (en caché)</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-black font-bold text-lg">🚀</span>
+                      {/* El texto cambia si ya existe una caché pero es obsoleta */}
+                      <span>{cachedResponse.key ? 'Volver a Ejecutar Análisis' : 'Ejecutar Análisis'}</span>
+                    </div>
+                  )}
                 </button>
                 <button
-                    onClick={() => setShowModal(false)}
-                    className="mt-2 w-full text-white text-xl px-4 py-2 font-bold rounded-lg hover:text-gray-100"
-                    disabled={isLoading}
-                    style={{
-                      backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
-                    }}
+                  onClick={() => setShowModal(false)} // La limpieza de caché se maneja en useEffect[showModal]
+                  className="mt-4 w-full text-white text-xl px-4 py-2 font-bold rounded-lg hover:text-gray-100"
+                  style={{
+                    backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
+                  }}
+                  disabled={isLoading}
                 >
-                    Cerrar
+                  Cerrar
                 </button>
-            </div>
+              </div>
             </div>
           </div>
         )}
