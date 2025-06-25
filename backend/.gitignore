@@ -7,8 +7,8 @@ __pycache__/
 env/
 venv/
 
-/config/
-/etc/secrets/
+config/
+etc/secrets/
 serviceAccountKey.json
 
 # Editor/OS
