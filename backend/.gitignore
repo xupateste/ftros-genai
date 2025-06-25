@@ -7,6 +7,10 @@ __pycache__/
 env/
 venv/
 
+/config/
+/etc/secrets/
+serviceAccountKey.json
+
 # Editor/OS
 .DS_Store
 .vscode/
