@@ -7,8 +7,10 @@ __pycache__/
 env/
 venv/
 
-config/
-etc/secrets/
+
+# Ignore service account key files
+config/*
+etc/secrets/*
 serviceAccountKey.json
 
 # Editor/OS
