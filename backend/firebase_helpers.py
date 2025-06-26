@@ -1,8 +1,9 @@
 # firebase_helpers.py
 import pandas as pd
+from firebase_admin import firestore
 
 from fastapi import UploadFile
-from datetime import datetime, timedelta
+from datetime import datetime, timezone
 from typing import Optional, Dict, Any, Literal
 from firebase_config import db, bucket
 import os
@@ -211,13 +212,15 @@ def log_report_generation(
     report_name: str,
     params: dict,
     ventas_file_id: str,
-    inventario_file_id: str
+    inventario_file_id: str,
+    creditos_consumidos: int, # Nuevo parámetro
+    estado: str = "exitoso" # Nuevo parámetro con valor por defecto
 ):
     """
-    Registra la ejecución de un reporte en la sub-colección 'reportes_generados'.
+    Registra la ejecución de un reporte, incluyendo su costo en créditos y su estado.
     """
     try:
-        now = datetime.now() + timedelta(hours=5)
+        now = datetime.now(timezone.utc)
         doc_id = f"{now.strftime('%Y-%m-%d_%H%M%S')}_{report_name}"
         
         reports_ref = db.collection('sesiones_anonimas').document(session_id).collection('reportes_generados')
@@ -227,13 +230,13 @@ def log_report_generation(
             "nombreReporte": report_name,
             "parametrosUsados": params,
             "id_archivo_ventas": ventas_file_id,
-            "id_archivo_inventario": inventario_file_id
+            "id_archivo_inventario": inventario_file_id,
+            "creditosConsumidos": creditos_consumidos, # Registramos el costo
+            "estado": estado # Registramos si fue exitoso o fallido
         }
         
         reports_ref.document(doc_id).set(log_data)
-        print(f"✅ Log de reporte '{report_name}' guardado para la sesión '{session_id}'")
+        print(f"✅ Log de reporte '{report_name}' guardado. Estado: {estado}, Costo: {creditos_consumidos}")
 
     except Exception as e:
-        print(f"🔥 Error al registrar la generación del reporte: {e}")
-        # Decidimos no relanzar el error para no impedir la descarga del usuario
-        # si solo falla el logging.
+        print(f"🔥 Advertencia: No se pudo registrar la generación del reporte. Error: {e}")

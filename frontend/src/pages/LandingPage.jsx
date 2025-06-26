@@ -13,10 +13,25 @@ import { v4 as uuidv4 } from 'uuid';
 
 import { getSessionId } from '../utils/sessionManager'; // Ajusta la ruta
 
+import { StrategyProvider, useStrategy } from '../context/StrategyProvider';
+import { StrategyPanelModal } from '../components/StrategyPanelModal';
+import { FiSettings } from 'react-icons/fi';
+import { ProOfferModal } from '../components/ProOfferModal'; // Ajusta la ruta
+
+import { CreditsPanel } from '../components/CreditsPanel';
+import { CreditHistoryModal } from '../components/CreditHistoryModal';
+import { ConversionModal } from '../components/ConversionModal'; // Ajusta la ruta si es necesario
+
 
 const API_URL = import.meta.env.VITE_API_URL;
 
-const ADVANCED_PARAMS_STORAGE_KEY = 'ferreteroApp_advancedParams';
+export default function App() {
+  return (
+    <StrategyProvider>
+      <LandingPage />
+    </StrategyProvider>
+  );
+}
 
 const templateVentas = {
         columns: [
@@ -143,6 +158,8 @@ const reportData = {
     {
       label: 'Análisis ABC de Productos ✓',
       endpoint: '/abc',
+      key: 'ReporteABC',
+      isPro: false,
       insights: [],
       basic_parameters: [
         { name: 'periodo_abc', label: 'Período de Análisis ABC', type: 'select',
@@ -166,11 +183,15 @@ const reportData = {
       ]
     },
     { label: 'Diagnóstico de Stock Muerto ✓', endpoint: '/diagnostico-stock-muerto', insights: [],
+      key: 'ReporteStockMuerto',
+      isPro: false,
       basic_parameters: []
     },
     {
       label: "⭐ Reporte Maestro de Inventario (Recomendado)",
       endpoint: "/reporte-maestro-inventario",
+      key: 'ReporteMaestro',
+      isPro: false,
       insights: [
         "Este es el reporte más completo. Combina la importancia de tus productos (Análisis ABC) con su salud de rotación (Stock Muerto) para crear un plan de acción 100% priorizado.",
         "Te dice exactamente en qué productos debes enfocar tu atención, dinero y esfuerzo AHORA MISMO."
@@ -244,6 +265,8 @@ const reportData = {
     {
       label: 'Análisis Estratégico de Rotación ✓',
       endpoint: '/rotacion-general-estrategico',
+      key: 'ReporteAnalisisEstrategicoRotacion',
+      isPro: false,
       insights: diccionarioData['Análisis Estratégico de Rotación ✓'],
       basic_parameters: [
         { name: 'sort_by', label: 'Ordenar Reporte Por', type: 'select',
@@ -301,6 +324,8 @@ const reportData = {
   "📦 Reposición Inteligente y Sugerencias de Pedido": [
     { label: 'Puntos de Alerta de Stock ✓',
       endpoint: '/reporte-puntos-alerta-stock',
+      key: 'ReportePuntosAlertaStock',
+      isPro: false,
       insights: [],
       basic_parameters: [
         { name: 'lead_time_dias', label: 'El tiempo promedio de entrega del proveedor en días', type: 'select',
@@ -327,6 +352,8 @@ const reportData = {
     {
       label: 'Lista básica de reposición según histórico ✓',
       endpoint: '/lista-basica-reposicion-historico',
+      key: 'ReporteListaBasicaReposicionHistorica',
+      isPro: false,
       insights: [],
       basic_parameters: [
         { name: 'ordenar_por', label: 'Ordenar reporte por', type: 'select', 
@@ -389,21 +416,21 @@ const reportData = {
         }
       ]
     },
-    { label: 'Lista sugerida para alcanzar monto mínimo', endpoint: '/rotacion', insights: [], basic_parameters: [] },
-    { label: 'Pedido optimizado por marcas o líneas específicas', endpoint: '/rotacion', insights: [], basic_parameters: [] },
-    { label: 'Reposición inteligente por categoría', endpoint: '/rotacion', insights: [], basic_parameters: [] },
-    { label: 'Sugerencia combinada por zona', endpoint: '/rotacion', insights: [], basic_parameters: [] },
+    { label: 'Lista sugerida para alcanzar monto mínimo', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
+    { label: 'Pedido optimizado por marcas o líneas específicas', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
+    { label: 'Reposición inteligente por categoría', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
+    { label: 'Sugerencia combinada por zona', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
   ],
   "📊 Simulación y ROI de Compra": [
-    { label: 'Simulación de ahorro en compra grupal', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-    { label: 'Comparativa de precios actuales vs históricos', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-    { label: 'Estimación de margen bruto por sugerencia', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-    { label: 'Rentabilidad mensual por línea o proveedor', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
+    { label: 'Simulación de ahorro en compra grupal', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+    { label: 'Comparativa de precios actuales vs históricos', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+    { label: 'Estimación de margen bruto por sugerencia', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+    { label: 'Rentabilidad mensual por línea o proveedor', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
   ],
   "🔄 Gestión de Inventario y Mermas": [
-    { label: 'Revisión de productos a punto de vencer o sin rotar', endpoint: '/stock-critico', insights: [], basic_parameters: [] },
-    { label: 'Listado de productos con alta rotación que necesitan reposición', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-    { label: 'Sugerencia de promociones para liquidar productos lentos', endpoint: '/rotacion', insights: [], basic_parameters: [] },
+    { label: 'Revisión de productos a punto de vencer o sin rotar', endpoint: '/stock-critico', insights: [], isPro: true, basic_parameters: [] },
+    { label: 'Listado de productos con alta rotación que necesitan reposición', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+    { label: 'Sugerencia de promociones para liquidar productos lentos', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
   ]
 };
 
@@ -509,6 +536,17 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   const [appState, setAppState] = useState('landing');
   const [sessionId, setSessionId] = useState(null);
 
+  const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false); // Estado para el modal
+  const { strategy } = useStrategy();
+
+  const [credits, setCredits] = useState({ used: 0, remaining: 0 });
+  const [creditHistory, setCreditHistory] = useState([]);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [showConversionModal, setShowConversionModal] = useState(false);
+
+  const [showProModal, setShowProModal] = useState(false);
+  const [proReportClicked, setProReportClicked] = useState(null);
+
   // --- NUEVOS ESTADOS PARA GESTIONAR LA CARGA DE ARCHIVOS ---
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
   const [uploadStatus, setUploadStatus] = useState({ ventas: 'idle', inventario: 'idle' });
@@ -523,18 +561,6 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   const [parameterValues, setParameterValues] = useState({});
   
   const [modalParams, setModalParams] = useState({});
-
-  // Estado para la persistencia: lee de localStorage al iniciar
-  const [persistedAdvancedParams, setPersistedAdvancedParams] = useState(() => {
-    try {
-      const saved = localStorage.getItem(ADVANCED_PARAMS_STORAGE_KEY);
-      return saved ? JSON.parse(saved) : {};
-    } catch (error) {
-      console.error("Error al leer de localStorage", error);
-      return {};
-    }
-  });
-
 
    // --- Lógica del Flujo ---
   const handleStartSession = () => setAppState('onboarding');
@@ -558,6 +584,17 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRegisterClick = () => {
+    // Por ahora, solo muestra una alerta. En el futuro, redirigiría a /register.
+    alert("¡Función de registro próximamente! Aquí es donde el usuario crearía su cuenta.");
+    setShowConversionModal(false);
+  };
+
+  const handleNewSessionClick = () => {
+    // Simplemente recarga la página para empezar una nueva sesión anónima
+    window.location.reload();
   };
 
   // --- NUEVA FUNCIÓN PARA MANEJAR LA CARGA Y LLAMADA A LA API ---
@@ -621,93 +658,97 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   const handleInventarioInput = (file) => setInventarioFile(file);
 
   const getParameterLabelsForFilename = () => {
-  // Ahora, la lista de parámetros a incluir en el nombre se basa SOLO en los básicos.
-  const basicParameters = selectedReport?.basic_parameters || [];
+    // Ahora, la lista de parámetros a incluir en el nombre se basa SOLO en los básicos.
+    const basicParameters = selectedReport?.basic_parameters || [];
 
-  if (basicParameters.length === 0) return "";
+    if (basicParameters.length === 0) return "";
 
-  // La lógica de iteración ahora solo recorre los parámetros básicos.
-  return basicParameters.map(param => {
-    const selectedValue = modalParams[param.name];
+    // La lógica de iteración ahora solo recorre los parámetros básicos.
+    return basicParameters.map(param => {
+      const selectedValue = modalParams[param.name];
 
-    // Si el valor no existe, es el default, o es un array vacío, no lo incluye.
-    // (Esta es una mejora opcional para no incluir parámetros con su valor por defecto)
-    if (!selectedValue || selectedValue === param.defaultValue || (Array.isArray(selectedValue) && selectedValue.length === 0)) {
-      return null;
-    }
-    
-    // Si es un array, lo une con guiones para el nombre del archivo.
-    const valueString = Array.isArray(selectedValue) ? selectedValue.join('-') : selectedValue;
+      // Si el valor no existe, es el default, o es un array vacío, no lo incluye.
+      // (Esta es una mejora opcional para no incluir parámetros con su valor por defecto)
+      if (!selectedValue || selectedValue === param.defaultValue || (Array.isArray(selectedValue) && selectedValue.length === 0)) {
+        return null;
+      }
+      
+      // Si es un array, lo une con guiones para el nombre del archivo.
+      const valueString = Array.isArray(selectedValue) ? selectedValue.join('-') : selectedValue;
 
-    // Usamos una etiqueta más corta para el nombre del archivo, si está disponible
-    const paramLabel = param.shortLabel || param.name;
+      // Usamos una etiqueta más corta para el nombre del archivo, si está disponible
+      const paramLabel = param.shortLabel || param.name;
 
-    return `${paramLabel}-${valueString}`;
-  }).filter(Boolean).join('_');
-};
-
-  const handleReportView = (reportItem) => {
-    setSelectedReport(reportItem);
-    setInsightHtml(diccionarioData[reportItem.label] || "<p>No hay información disponible.</p>");
-    const initialParams = {};
-
-    // 1. Cargar defaults para parámetros BÁSICOS
-    reportItem.basic_parameters?.forEach(param => {
-      initialParams[param.name] = param.defaultValue;
-    });
-
-    // 2. Cargar defaults para parámetros AVANZADOS
-    reportItem.advanced_parameters?.forEach(param => {
-      initialParams[param.name] = param.defaultValue;
-    });
-
-    // 3. Sobrescribir con valores AVANZADOS guardados, si existen
-    const savedReportParams = persistedAdvancedParams[reportItem.endpoint] || {};
-    Object.assign(initialParams, savedReportParams);
-
-    setModalParams(initialParams);
-    setSelectedReport(reportItem);
-    setShowAdvanced(false); // Siempre empieza con avanzados ocultos
-    setShowModal(true);
+      return `${paramLabel}-${valueString}`;
+    }).filter(Boolean).join('_');
   };
+
+  const handleReportView = useCallback((reportItem) => {
+    // --- NUEVA LÓGICA DE DECISIÓN ---
+    // Primero, verificamos si el reporte es una función "Pro"
+    if (reportItem.isPro) {
+        // Si es Pro, establecemos el reporte seleccionado y mostramos el modal de oferta
+        setProReportClicked(reportItem);
+        setShowProModal(true);
+    } else {
+        // Si NO es Pro, ejecutamos toda tu lógica original para el modal de parámetros
+
+        setSelectedReport(reportItem);
+        setInsightHtml(diccionarioData[reportItem.label] || "<p>No hay información disponible.</p>");
+
+        const initialParams = {};
+        const allParamsConfig = [
+            ...(reportItem.basic_parameters || []),
+            ...(reportItem.advanced_parameters || [])
+        ];
+
+        allParamsConfig.forEach(param => {
+            const paramName = param.name;
+            
+            // Tu lógica de jerarquía de 3 niveles se mantiene intacta aquí
+            if (strategy[paramName] !== undefined) {
+                initialParams[paramName] = strategy[paramName];
+            } else {
+                initialParams[paramName] = param.defaultValue;
+            }
+        });
+
+        setModalParams(initialParams);
+        setShowAdvanced(false);
+        setShowModal(true);
+    }
+  }, [
+      strategy, 
+      diccionarioData, 
+      // Añadimos las nuevas funciones de estado al array de dependencias
+      setProReportClicked, 
+      setShowProModal, 
+      setSelectedReport, 
+      setInsightHtml, 
+      setModalParams, 
+      setShowAdvanced, 
+      setShowModal
+  ]);; // Dependencia simplificada
+
 
   // --- MANEJO DE CAMBIOS EN PARÁMETROS DEL MODAL ---
   const handleParamChange = (paramName, value) => {
-    const newParams = { ...modalParams, [paramName]: value };
-    setModalParams(newParams);
-
-    // Si el parámetro es avanzado, actualiza también el estado de persistencia
-    const isAdvanced = selectedReport.advanced_parameters.some(p => p.name === paramName);
-    if (isAdvanced) {
-      setPersistedAdvancedParams(prev => ({
-        ...prev,
-        [selectedReport.endpoint]: {
-          ...(prev[selectedReport.endpoint] || {}),
-          [paramName]: value
-        }
-      }));
-    }
+    // Ahora solo modifica los parámetros del modal, nada más.
+    setModalParams(prev => ({ ...prev, [paramName]: value }));
   };
 
-  // --- LÓGICA PARA RESETEAR PARÁMETROS AVANZADOS ---
   const handleResetAdvanced = () => {
     const advancedDefaults = {};
     selectedReport.advanced_parameters?.forEach(param => {
-      advancedDefaults[param.name] = param.defaultValue;
+        // Al resetear, volvemos a aplicar la jerarquía para obtener los defaults correctos
+        if (strategy[param.name] !== undefined) {
+            advancedDefaults[param.name] = strategy[param.name];
+        } else {
+            advancedDefaults[param.name] = param.defaultValue;
+        }
     });
     
-    // Actualiza el estado del modal
-    const newModalParams = { ...modalParams, ...advancedDefaults };
-    setModalParams(newModalParams);
-
-    // Actualiza el estado de persistencia
-    setPersistedAdvancedParams(prev => ({
-      ...prev,
-      [selectedReport.endpoint]: {
-        ...prev[selectedReport.endpoint],
-        ...advancedDefaults
-      }
-    }));
+    setModalParams(prev => ({ ...prev, ...advancedDefaults }));
   };
 
   const getNow = useCallback(() => { // useCallback si no depende de props/estado o si sus deps son estables
@@ -818,15 +859,59 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       link.remove();
       window.URL.revokeObjectURL(url);
 
-    } catch (err) {
+      // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
+      const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': sessionId } });
+      setCredits(updatedState.data.credits);
+      setCreditHistory(updatedState.data.history);
+    } catch (error) {
       // Tu manejo de errores no cambia
-      console.error("Error al generar el reporte:", err);
-      const errorDetail = err.response?.data ? new TextDecoder().decode(await err.response.data.text()) : err.message;
-      alert(`Error al generar el reporte: ${errorDetail}`);
+      console.error("Error al generar el reporte:", error);
+      if (error.response?.status === 402) {
+          // Si es un error 402, mostramos el modal de conversión
+          setShowConversionModal(true);
+      } else {
+          // Para cualquier otro error, mostramos una alerta genérica
+          let errorMessage = "Ocurrió un error al generar el reporte.";
+          if (error.response?.data && error.response.data instanceof Blob) {
+              try {
+                  const errorText = await error.response.data.text();
+                  const errorJson = JSON.parse(errorText);
+                  errorMessage = errorJson.detail || errorMessage;
+              } catch (e) { /* Mantener mensaje genérico */ }
+          }
+          alert(errorMessage);
+      }
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Esta función se llamará solo cuando entremos a la vista de análisis
+    const fetchSessionState = async () => {
+        if (appState === 'analysis' && sessionId) {
+            try {
+                console.log("Obteniendo estado de la sesión...");
+                const response = await axios.get(`${API_URL}/session-state`, {
+                    headers: { 'X-Session-ID': sessionId }
+                });
+                
+                const { credits, history } = response.data;
+                setCredits(credits || { used: 0, remaining: 20 });
+                setCreditHistory(history || []);
+                console.log("Estado de la sesión cargado:", response.data);
+
+            } catch (error) {
+                console.error("Error al recuperar el estado de la sesión:", error);
+                alert("No se pudo recuperar tu sesión. Es posible que haya expirado. Refresca la página para iniciar una nueva.");
+                // Podrías redirigir al landing page si la sesión no se encuentra
+                // setAppState('landing'); 
+            }
+        }
+    };
+
+    fetchSessionState();
+  }, [appState, sessionId]);
 
 
   // --- MODIFICACIÓN 3: Invalidar caché al cerrar modal ---
@@ -842,17 +927,6 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     // Al cargar la aplicación, nos aseguramos de que el ID de sesión exista o se cree.
     getSessionId();
   }, []);
-
-  useEffect(() => {
-    // Guarda en localStorage solo cuando el objeto de persistencia cambia
-    try {
-      localStorage.setItem(ADVANCED_PARAMS_STORAGE_KEY, JSON.stringify(persistedAdvancedParams));
-    } catch (error) {
-      console.error("Error al guardar en localStorage", error);
-    }
-  }, [persistedAdvancedParams])
-
-  
 
   useEffect(() => {
     if (showModal) {
@@ -908,12 +982,46 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
         <div className={`min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
           flex flex-col items-center justify-center text-center px-4 sm:px-8 md:px-12 lg:px-20
           ${showModal ? 'overflow-hidden h-screen' : ''}`}>
-          <div className='w-full max-w-4xl mx-auto'>
-            <h1 className="text-4xl font-semibold text-white mt-6">
-              Sesión de Análisis de <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
-            </h1>
-             <p className="mt-2 text-sm text-gray-400">ID de Sesión (temporal): {sessionId}</p>
-          </div>
+          {/* --- ENCABEZADO AÑADIDO --- */}
+          <header className="flex flex-col items-center justify-between gap-4 py-4 px-4 sm:px-6 lg:px-8 text-white w-full max-w-7xl mx-auto border-b border-gray-700">
+            <div className='text-center'>
+              <h1 className="text-3xl md:text-5xl font-bold text-white">
+                  Sesión de <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
+              </h1>
+              {sessionId && (
+                   <p className="mt-1 text-xs md:text-md text-gray-400 font-mono">
+                      ID de Sesión Anónima: <br/>{sessionId}
+                   </p>
+              )}
+            </div>
+
+            {/* Contenedor de Botones de Acción */}
+            <div className="flex max-w-sm items-stretch justify-center gap-3 w-full sm:w-auto">
+                <button 
+                    onClick={() => setStrategyPanelOpen(true)} 
+                    // 2. Se añade flex-1 y justify-center a ambos botones
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 hover:bg-purple-700 rounded-lg transition-colors"
+                >
+                    <FiSettings />
+                    {/* Mantenemos la lógica responsiva para el texto */}
+                    <span className="inline">Mi Estrategia</span>
+                </button>
+                
+                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-500 rounded-lg transition-colors">
+                    <FiLock /> 
+                    <span className="inline">Registrarse</span>
+                </button>
+            </div>
+
+            {/* Panel de Créditos y Botón de Estrategia */}
+            <div className="flex items-center gap-6">
+              <CreditsPanel 
+                used={credits.used} 
+                remaining={credits.remaining}
+                onHistoryClick={() => setIsHistoryModalOpen(true)}
+              />
+            </div>
+          </header>
           {/* --- USO DEL NUEVO COMPONENTE REUTILIZABLE --- */}
           <div className='mt-10 w-full max-w-5xl grid text-white md:grid-cols-2 gap-8 px-2 mx-auto'>
             <CsvImporterComponent 
@@ -943,9 +1051,20 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                       <button
                         key={reportItem.label}
                         onClick={() => handleReportView(reportItem)}
-                        className="hover:ring-2 focus:ring-purple-800 bg-white bg-opacity-80 shadow-xl text-black text-sm font-medium rounded-lg px-4 py-3 hover:bg-purple-200 hover:text-purple-800 transition duration-200 ease-in-out transform hover:scale-105"
+                        className={`relative w-full text-left p-4 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group
+                          ${reportItem.isPro 
+                            ? 'bg-gray-700 text-gray-400 hover:bg-gray-600 border border-purple-800' // Estilo Pro
+                            : 'bg-white bg-opacity-90 text-black hover:bg-purple-100' // Estilo Básico
+                          }`
+                        }
                       >
-                        {reportItem.label}
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">{reportItem.label}</span>
+                          {reportItem.isPro && <FiLock className="text-yellow-500" />}
+                        </div>
+                        {reportItem.isPro && (
+                          <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -959,6 +1078,13 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
           )}
           <a href="https://web.ferreteros.app" target="_blank" className="max-w-sm max-w-[200px] mt-4 mb-10 opacity-15 hover:opacity-25 text-white text-sm">Ferretero.IA<br/><img src="ferreteros-app-white.png"/></a>
         </div>
+        
+        {/* Renderiza el modal de estrategia si el estado es true */}
+        {isStrategyPanelOpen && <StrategyPanelModal onClose={() => setStrategyPanelOpen(false)} />}
+        
+        {/* Renderiza el modal del historial si está abierto */}
+        {isHistoryModalOpen && <CreditHistoryModal history={creditHistory} reportData={reportData} onClose={() => setIsHistoryModalOpen(false)} />}
+         
         {showModal && selectedReport && (
           <div className="w-full h-full fixed z-50 inset-0 flex items-end justify-center mb-10 overflow-y-auto">
             <div className="w-full h-full bg-white absolute top-0 flex flex-col">
@@ -1137,10 +1263,29 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
             </div>
           </div>
         )}
+
+ 
+        {/* Renderiza el modal de conversión si el estado es true */}
+        {showConversionModal && (
+          <ConversionModal
+            onClose={() => setShowConversionModal(false)}
+            onRegister={handleRegisterClick}
+            onNewSession={handleNewSessionClick}
+          />
+        )}
+
+        {showProModal && proReportClicked && (
+          <ProOfferModal
+            reportName={proReportClicked.label}
+            onClose={() => setShowProModal(false)}
+            onRegister={() => alert("Redirigiendo a la página de registro...")}
+          />
+        )}
+
       </>
     )}
     </>
   );
 }
 
-export default LandingPage;
+// export default LandingPage;

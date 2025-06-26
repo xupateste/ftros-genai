@@ -11,6 +11,7 @@ import io
 import math
 import uuid
 # --- Importaciones de nuestros nuevos módulos ---
+from firebase_admin import firestore
 import firebase_config # Importar para asegurar que se inicialice
 from firebase_helpers import db, upload_to_storage, log_analysis_in_firestore, extraer_metadatos_df, log_file_upload_in_firestore, descargar_contenido_de_storage, log_report_generation
 from pydantic import BaseModel, Field
@@ -18,12 +19,63 @@ import firebase_config
 from io import StringIO
 import openpyxl
 from typing import Optional, Dict, Any, Literal # Any para pd.ExcelWriter
-from datetime import datetime, timedelta # Para pd.Timestamp.now()
+from datetime import datetime, timezone # Para pd.Timestamp.now()
 from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
 from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario
+
+
+# ===================================================================================
+# --- CONFIGURACIÓN CENTRAL DEL NEGOCIO (FUENTE ÚNICA DE VERDAD) ---
+# ===================================================================================
+REPORTS_CONFIG = {
+    # La 'key' debe coincidir con la que pusiste en tu `reportData` del frontend
+    "ReporteABC": {
+        "nombre_visible": "Análisis ABC de Productos",
+        "isPro": False, 
+        "costo": 5
+    },
+    "DiagnosticoStockMuerto": {
+        "nombre_visible": "Diagnóstico de Stock Muerto",
+        "isPro": False,
+        "costo": 3
+    },
+    "ListaBasicaReposicionHistorico": {
+        "nombre_visible": "Lista Básica de Reposición",
+        "isPro": False,
+        "costo": 8
+    },
+    "ReporteMaestro": {
+        "nombre_visible": "Reporte Maestro de Inventario",
+        "isPro": False,   # ¡Este es un reporte PRO!
+        "costo": 15
+    },
+    "RotacionGeneralEstrategico": {
+        "nombre_visible": "Análisis Estratégico de Rotación",
+        "isPro": False,
+        "costo": 10
+    },
+    "PuntosAlertaStock": {
+        "nombre_visible": "Puntos de Alerta de Stock",
+        "isPro": False,
+        "costo": 10
+    },
+    "InteligenciaColectiva": {
+        "nombre_visible": "Análisis de Inteligencia Colectiva",
+        "isPro": True,
+        "costo": 25
+    },
+    "PronosticoDemanda": {
+        "nombre_visible": "Pronóstico de Demanda",
+        "isPro": True,
+        "costo": 20
+    }
+    # Puedes añadir más reportes y sus configuraciones aquí
+}
+
+INITIAL_CREDITS = 35
 
 app = FastAPI(
     title="Ferretero.IA API",
@@ -67,36 +119,38 @@ class OnboardingData(BaseModel):
 # ===================================================================================
 # --- NUEVO ENDPOINT PARA CREAR SESIONES ---
 # ===================================================================================
-@app.post("/sessions", summary="Crea una nueva sesión de análisis anónima", tags=["Sesión"])
+@app.post("/sessions", summary="Crea una nueva sesión de análisis anónima con créditos", tags=["Sesión"])
 async def create_analysis_session(onboarding_data: OnboardingData):
     """
     Inicia una nueva sesión de análisis.
     1. Genera un ID de sesión único (UUID).
-    2. Crea un documento en Firestore para registrar la sesión y los datos del onboarding.
-    3. Devuelve el ID de la sesión al cliente.
+    2. Crea un documento en Firestore para registrar la sesión.
+    3. INICIALIZA EL MONEDERO con los créditos por defecto.
+    4. Devuelve el ID de la sesión al cliente.
     """
     try:
         session_id = str(uuid.uuid4())
-        now = datetime.now() + timedelta(hours=5) # Ajuste de zona horaria
+        now = datetime.now(timezone.utc) # Usamos UTC para consistencia
 
-        # Referencia al documento de la nueva sesión
         session_ref = db.collection('sesiones_anonimas').document(session_id)
         
-        # Datos a guardar sobre la sesión
+        # --- Datos a guardar (ahora incluye los créditos) ---
         session_log = {
             "fechaCreacion": now,
             "onboardingData": {
                 "rol": onboarding_data.rol
             },
-            "ultimoAcceso": now
+            "ultimoAcceso": now,
+            
+            # --- NUEVOS CAMPOS PARA EL MONEDERO DE CRÉDITOS ---
+            "creditos_iniciales": INITIAL_CREDITS,
+            "creditos_restantes": INITIAL_CREDITS
         }
         
-        # Creamos el documento en Firestore
         session_ref.set(session_log)
         
-        print(f"✅ Nueva sesión creada exitosamente. ID: {session_id}")
+        print(f"✅ Nueva sesión creada con {INITIAL_CREDITS} créditos. ID: {session_id}")
         
-        # Devolvemos el ID al frontend para que lo use en las siguientes peticiones
         return JSONResponse(content={"sessionId": session_id})
 
     except Exception as e:
@@ -105,6 +159,69 @@ async def create_analysis_session(onboarding_data: OnboardingData):
             status_code=500,
             detail=f"No se pudo crear la sesión en el servidor. Error: {e}"
         )
+
+
+# ===================================================================================
+# --- NUEVO ENDPOINT PARA RECUPERAR EL ESTADO DE LA SESIÓN ---
+# ===================================================================================
+@app.get("/session-state", summary="Recupera los créditos y el historial para una sesión", tags=["Sesión"])
+async def get_session_state(
+    X_Session_ID: str = Header(..., alias="X-Session-ID")
+):
+    """
+    Busca en Firestore el estado actual de una sesión, incluyendo el saldo de
+    créditos y el historial de reportes generados, para restaurar el estado en el frontend.
+    """
+    if not X_Session_ID:
+        raise HTTPException(status_code=400, detail="La cabecera X-Session-ID es requerida.")
+
+    try:
+        # --- 1. Obtener el estado del "monedero" ---
+        session_ref = db.collection('sesiones_anonimas').document(X_Session_ID)
+        session_doc = session_ref.get()
+
+        if not session_doc.exists:
+            # Es importante manejar el caso en que el frontend envíe un ID de sesión antiguo o inválido
+            raise HTTPException(status_code=404, detail="La sesión no existe o ha expirado.")
+
+        session_data = session_doc.to_dict()
+        creditos_restantes = session_data.get("creditos_restantes", 0)
+        creditos_usados = session_data.get("creditos_iniciales", 20) - creditos_restantes
+
+        # --- 2. Obtener el historial de reportes ---
+        historial_ref = session_ref.collection('reportes_generados')
+        # Pedimos los reportes ordenados por fecha, del más reciente al más antiguo
+        query = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(5)
+        
+        docs_historial = query.stream()
+        
+        historial_list = []
+        for doc in docs_historial:
+            doc_data = doc.to_dict()
+
+            if 'fechaGeneracion' in doc_data and isinstance(doc_data['fechaGeneracion'], datetime):
+                # Convertimos la fecha a un string en formato ISO 8601, que es compatible con JSON
+                doc_data['fechaGeneracion'] = doc_data['fechaGeneracion'].isoformat()
+        
+            historial_list.append(doc_data)
+
+        # --- 3. Construir y devolver la respuesta ---
+        return JSONResponse(content={
+            "credits": {
+                "used": creditos_usados,
+                "remaining": creditos_restantes
+            },
+            "history": historial_list
+        })
+
+    except HTTPException as http_exc:
+        # Relanzamos los errores HTTP que nosotros mismos generamos (ej: 404)
+        raise http_exc
+    except Exception as e:
+        # Capturamos cualquier otro error inesperado con Firebase
+        print(f"🔥 Error al recuperar estado de sesión para {X_Session_ID}: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo recuperar el estado de la sesión desde el servidor.")
+
 
 # ===================================================================================
 # --- NUEVO ENDPOINT PARA LA CARGA DE ARCHIVOS DEDICADA ---
@@ -162,7 +279,7 @@ async def upload_file(
         raise HTTPException(status_code=400, detail=f"Error al procesar el contenido del archivo: {e}")
 
     try:
-        now = datetime.now() + timedelta(hours=5)
+        now = datetime.now(timezone.utc)
         timestamp_str = now.strftime('%Y-%m-%d_%H%M%S')
         
         ruta_storage = upload_to_storage(
@@ -204,6 +321,8 @@ async def upload_file(
     except Exception as e:
         print(f"🔥 Error en la fase de guardado para la sesión {X_Session_ID}: {e}")
         raise HTTPException(status_code=500, detail="Ocurrió un error al guardar el archivo en el servidor.")
+
+
 # ===================================================================================
 # --- TUS ENDPOINTS EXISTENTES (EJEMPLO) ---
 # ===================================================================================
@@ -253,7 +372,7 @@ async def extract_metadata(
     # --- 3. Guardado Asíncrono en Firebase ---
     # Esto puede correr en segundo plano si se desea, pero por simplicidad lo hacemos secuencial.
     try:
-        now = datetime.now() + timedelta(hours=5)
+        now = datetime.now(timezone.utc)
 
         timestamp_str = now.strftime('%Y-%m-%d_%H%M%S')
         
@@ -323,9 +442,10 @@ async def upload_csvs_abc_analysis(
     return await _handle_report_generation(
         request=request,
         session_id=X_Session_ID,
+        user_id=None, # Para sesiones anónimas, siempre es None
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_name="ReporteABC",
+        report_key="ReporteABC",
         processing_function=process_csv_abc, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
         output_filename="reporte_abc.xlsx"
@@ -385,63 +505,12 @@ async def run_analisis_estrategico_rotacion(
         session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_name="RotacionGeneralEstrategico",
+        report_key="RotacionGeneralEstrategico",
         processing_function=process_csv_analisis_estrategico_rotacion, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
         output_filename="RotacionGeneralEstrategico.xlsx"
     )
 
-
-
-@app.post("/reposicion-stock")
-async def upload_csvs(
-    ventas: UploadFile = File(...),
-    inventario: UploadFile = File(...)
-):
-    # Leer archivo de ventas
-    ventas_contents = await ventas.read()
-    df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
-
-    # Leer archivo de inventario
-    inventario_contents = await inventario.read()
-    df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
-
-    # Procesamiento conjunto
-    # processed_df = process_csv_reponer_stock(df_ventas, df_inventario)
-    processed_df = process_csv_reponer_stock(
-        df_ventas,
-        df_inventario,
-        # Parámetros de periodos para análisis de ventas
-        dias_analisis_ventas_recientes=30, #(P/FRONTEND) Anteriormente dias_importancia
-        dias_analisis_ventas_general=240,   #(P/FRONTEND) Anteriormente dias_promedio
-        # Parámetros para cálculo de Stock Ideal
-        dias_cobertura_ideal_base=10, #(P/FRONTEND) Días base para cobertura ideal
-        coef_importancia_para_cobertura_ideal=0.25, # e.g., 0.25 (0 a 1), aumenta días de cobertura ideal por importancia
-        coef_rotacion_para_stock_ideal=0.20,       # e.g., 0.2 (0 a 1), aumenta stock ideal por rotación
-        # Parámetros para Pedido Mínimo
-        dias_cubrir_con_pedido_minimo=3, #(P/FRONTEND) Días de venta que un pedido mínimo debería cubrir
-        coef_importancia_para_pedido_minimo=0.5, # e.g., 0.5 (0 a 1), escala el pedido mínimo por importancia
-        # Otros parámetros de comportamiento
-        importancia_minima_para_redondeo_a_1=0.1, # e.g. 0.1, umbral de importancia para redondear pedidos pequeños a 1
-        incluir_productos_pasivos=True,
-        cantidad_reposicion_para_pasivos=1, # e.g., 1 o 2, cantidad a reponer para productos pasivos
-        excluir_productos_sin_sugerencia_ideal=True # Filtro para el resultado final
-    )
-
-
-    # output = io.BytesIO()
-    # processed_df.to_excel(output, index=False, engine='openpyxl')
-    # output.seek(0)
-
-    # return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=analisis_abc.xls"})
-    return StreamingResponse(
-        # output,
-        to_excel_with_autofit(processed_df, sheet_name='Hoja 1'),
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={
-            "Content-Disposition": "attachment; filename=reposicion-stock.xlsx"
-        }
-    )
 
 @app.post("/diagnostico-stock-muerto")
 async def diagnostico_stock_muerto(
@@ -491,91 +560,45 @@ async def generar_reporte_maestro_endpoint(
     meses_analisis_salud: Optional[int] = Form(None, description="Meses para analizar ventas recientes en el diagnóstico de salud."),
     dias_sin_venta_muerto: Optional[int] = Form(None, description="Umbral de días para clasificar un producto como 'Stock Muerto'.")
 ):
-    """
-    Genera el Reporte Maestro combinando la salud del stock y el análisis ABC.
-    Utiliza los IDs de los archivos previamente subidos en la sesión.
-    """
-    if not X_Session_ID:
-        raise HTTPException(status_code=400, detail="La cabecera X-Session-ID es requerida.")
-
-    try:
-        # Obtenemos TODOS los parámetros para el log
-        form_data = await request.form()
-        full_params_for_logging = dict(form_data)
-
-        # --- 1. Descargar archivos desde Storage ---
-        print(f"Descargando archivos para la sesión {X_Session_ID}...")
-        ventas_contents = descargar_contenido_de_storage(X_Session_ID, ventas_file_id)
-        inventario_contents = descargar_contenido_de_storage(X_Session_ID, inventario_file_id)
-
-        # --- 2. Convertir contenido a DataFrames ---
-        print("Convirtiendo archivos a DataFrames...")
-        df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
-        df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+    # --- Validación de Parámetros ---
+    pesos_combinado = None
+    if criterio_abc == 'combinado':
+        if not all([peso_ingresos, peso_margen, peso_unidades]):
+            raise HTTPException(status_code=400, detail="Para el criterio 'combinado', se deben proveer los tres pesos: peso_ingresos, peso_margen y peso_unidades.")
         
-        # Limpiamos los nombres de columnas para evitar errores
-        df_ventas.columns = df_ventas.columns.str.strip()
-        df_inventario.columns = df_inventario.columns.str.strip()
-
-        # --- Validación de Parámetros ---
-        pesos_combinado = None
-        if criterio_abc == 'combinado':
-            if not all([peso_ingresos, peso_margen, peso_unidades]):
-                raise HTTPException(status_code=400, detail="Para el criterio 'combinado', se deben proveer los tres pesos: peso_ingresos, peso_margen y peso_unidades.")
+        total_pesos = peso_ingresos + peso_margen + peso_unidades
+        if not math.isclose(total_pesos, 1.0):
+            raise HTTPException(status_code=400, detail=f"La suma de los pesos debe ser 1.0, pero es {total_pesos}.")
             
-            total_pesos = peso_ingresos + peso_margen + peso_unidades
-            if not math.isclose(total_pesos, 1.0):
-                raise HTTPException(status_code=400, detail=f"La suma de los pesos debe ser 1.0, pero es {total_pesos}.")
-                
-            pesos_combinado = {
-                "ingresos": peso_ingresos,
-                "margen": peso_margen,
-                "unidades": peso_unidades
-            }
-
-        # --- 3. Ejecutar el Procesamiento del Reporte ---
-        print("Generando Reporte Maestro con la lógica de negocio...")
-        try:
-            resultado_df = generar_reporte_maestro_inventario(
-                df_ventas=df_ventas,
-                df_inventario=df_inventario,
-                criterio_abc=criterio_abc,
-                periodo_abc=periodo_abc,
-                pesos_combinado=pesos_combinado,
-                meses_analisis=meses_analisis_salud,
-                dias_sin_venta_muerto=dias_sin_venta_muerto
-            )
-        except (ValueError, KeyError, Exception) as e:
-            # Captura errores de procesamiento (ej: columna no encontrada) y los muestra de forma amigable
-            raise HTTPException(status_code=400, detail=f"Error al procesar los datos: {e}")
+        pesos_combinado = {
+            "ingresos": peso_ingresos,
+            "margen": peso_margen,
+            "unidades": peso_unidades
+        }
 
 
-        # --- 4. Registrar la ejecución de este reporte ---
-        log_report_generation(
-            session_id=X_Session_ID,
-            report_name="ReporteMaestro",
-            params=full_params_for_logging,
-            ventas_file_id=ventas_file_id,
-            inventario_file_id=inventario_file_id
-        )
+    # 1. Preparamos el diccionario de parámetros para la función de lógica
+    processing_params = {
+        "criterio_abc": criterio_abc,
+        "periodo_abc": periodo_abc,
+        "pesos_combinado": pesos_combinado,
+        "meses_analisis": meses_analisis_salud,
+        "dias_sin_venta_muerto": dias_sin_venta_muerto
+    }
 
-        # # --- 5. Devolver el archivo Excel ---
-        # output = io.BytesIO()
-        # resultado_df.to_excel(output, index=False, sheet_name='Reporte_Maestro')
-        # output.seek(0)
-        
-        # --- 4. Exportación a Excel ---
-        return StreamingResponse(
-            to_excel_with_autofit(resultado_df, sheet_name='Reporte_Maestro_Inventario'),
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={"Content-Disposition": "attachment; filename=reporte_maestro_inventario.xlsx"}
-        )
-
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-    except Exception as e:
-        print(f"🔥 Error fatal al generar el reporte maestro: {e}")
-        raise HTTPException(status_code=500, detail=f"Ocurrió un error inesperado en el servidor: {e}")
+    # 2. Llamamos a la función manejadora central con toda la información
+    return await _handle_report_generation(
+        request=request,
+        session_id=X_Session_ID,
+        user_id=None, # Para sesiones anónimas, siempre es None
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id,
+        report_key="ReporteMaestro", # La clave única que definimos en la configuración
+        processing_function=generar_reporte_maestro_inventario, # Tu función de lógica real
+        # processing_function=lambda df_v, df_i, **kwargs: df_i.head(10), # Simulación
+        processing_params=processing_params,
+        output_filename="FerreteroIA_Reporte_Maestro.xlsx"
+    )
 
 
 @app.post("/reporte-puntos-alerta-stock", summary="Recomendación Puntos de Alerta de Stock", tags=["Análisis"])
@@ -620,7 +643,7 @@ async def reporte_puntos_alerta_stock(
         session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_name="PuntosAlertaStock",
+        report_key="PuntosAlertaStock",
         processing_function=process_csv_puntos_alerta_stock, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
         output_filename="PuntosAlertaStock.xlsx"
@@ -690,12 +713,19 @@ async def lista_basica_reposicion_historico(
         session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_name="ListaBasicaReposicionHistorico",
+        report_key="ListaBasicaReposicionHistorico",
         processing_function=process_csv_lista_basica_reposicion_historico, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
         output_filename="ListaBasicaReposicionHistorico.xlsx"
     )
 
+
+
+# ===================================================================================
+# --- OTROS ENDPOINTS DE PRUEBA (EJEMPLO) ---
+# ===================================================================================
+# Por ahora, mantenemos estos endpoints
+# ya que lo refactorizaremos en el siguiente paso para usar el nuevo flujo.
 
 @app.post("/reporte-stock-minimo-sugerido", summary="Recomendación Stock de Alerta ó Mínimo Sugerido", tags=["Análisis"])
 async def reporte_stock_minimo_sugerido(
@@ -785,6 +815,63 @@ async def reporte_stock_minimo_sugerido(
         headers={"Content-Disposition": f"attachment; filename={final_filename}"}
     )
 
+
+
+
+
+
+
+@app.post("/reposicion-stock")
+async def upload_csvs(
+    ventas: UploadFile = File(...),
+    inventario: UploadFile = File(...)
+):
+    # Leer archivo de ventas
+    ventas_contents = await ventas.read()
+    df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+
+    # Leer archivo de inventario
+    inventario_contents = await inventario.read()
+    df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+
+    # Procesamiento conjunto
+    # processed_df = process_csv_reponer_stock(df_ventas, df_inventario)
+    processed_df = process_csv_reponer_stock(
+        df_ventas,
+        df_inventario,
+        # Parámetros de periodos para análisis de ventas
+        dias_analisis_ventas_recientes=30, #(P/FRONTEND) Anteriormente dias_importancia
+        dias_analisis_ventas_general=240,   #(P/FRONTEND) Anteriormente dias_promedio
+        # Parámetros para cálculo de Stock Ideal
+        dias_cobertura_ideal_base=10, #(P/FRONTEND) Días base para cobertura ideal
+        coef_importancia_para_cobertura_ideal=0.25, # e.g., 0.25 (0 a 1), aumenta días de cobertura ideal por importancia
+        coef_rotacion_para_stock_ideal=0.20,       # e.g., 0.2 (0 a 1), aumenta stock ideal por rotación
+        # Parámetros para Pedido Mínimo
+        dias_cubrir_con_pedido_minimo=3, #(P/FRONTEND) Días de venta que un pedido mínimo debería cubrir
+        coef_importancia_para_pedido_minimo=0.5, # e.g., 0.5 (0 a 1), escala el pedido mínimo por importancia
+        # Otros parámetros de comportamiento
+        importancia_minima_para_redondeo_a_1=0.1, # e.g. 0.1, umbral de importancia para redondear pedidos pequeños a 1
+        incluir_productos_pasivos=True,
+        cantidad_reposicion_para_pasivos=1, # e.g., 1 o 2, cantidad a reponer para productos pasivos
+        excluir_productos_sin_sugerencia_ideal=True # Filtro para el resultado final
+    )
+
+
+    # output = io.BytesIO()
+    # processed_df.to_excel(output, index=False, engine='openpyxl')
+    # output.seek(0)
+
+    # return StreamingResponse(output, media_type="text/csv", headers={"Content-Disposition": "attachment; filename=analisis_abc.xls"})
+    return StreamingResponse(
+        # output,
+        to_excel_with_autofit(processed_df, sheet_name='Hoja 1'),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={
+            "Content-Disposition": "attachment; filename=reposicion-stock.xlsx"
+        }
+    )
+
+
 # ----------------------------------------------------------
 # ------------------ FUNCIONES AUXILIARES ------------------
 # ----------------------------------------------------------
@@ -817,51 +904,67 @@ async def _handle_report_generation(
     session_id: str,
     ventas_file_id: str,
     inventario_file_id: str,
-    report_name: str,
+    report_key: str, # <-- Ahora usamos una clave única para identificar el reporte
     processing_function: callable,
     processing_params: dict,
-    output_filename: str
+    output_filename: str,
+    user_id: Optional[str] = None # <-- Parámetro para el futuro (usuarios registrados)
 ):
     """
-    Función central reutilizable para manejar la generación de cualquier reporte.
+    Función central reutilizable que maneja la generación de CUALQUIER reporte.
     """
-    try:
-        # 1. Obtener todos los parámetros para el logging
-        form_data = await request.form()
-        full_params_for_logging = dict(form_data)
+    # 1. Obtener la configuración y costo del reporte desde nuestra fuente de verdad
+    report_config = REPORTS_CONFIG.get(report_key)
+    if not report_config:
+        raise HTTPException(status_code=404, detail=f"La configuración para el reporte '{report_key}' no fue encontrada.")
+    
+    report_cost = report_config['costo']
+    is_pro_report = report_config['isPro']
 
-        # 2. Descargar archivos desde Storage
-        print(f"Descargando archivos para la sesión {session_id}...")
-        ventas_contents = descargar_contenido_de_storage(session_id, ventas_file_id)
-        inventario_contents = descargar_contenido_de_storage(session_id, inventario_file_id)
+    # --- INICIO DE LA LÓGICA DE NEGOCIO Y SEGURIDAD ---
 
-        # 3. Convertir contenido a DataFrames
-        print("Convirtiendo archivos a DataFrames...")
-        df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
-        df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
-        
-        df_ventas.columns = df_ventas.columns.str.strip()
-        df_inventario.columns = df_inventario.columns.str.strip()
-
-        # 4. Ejecutar la función de procesamiento específica del reporte
-        print(f"Generando {report_name} con la lógica de negocio...")
-        # Pasamos los dataframes y los parámetros específicos desempaquetados
-        resultado_df = processing_function(df_ventas=df_ventas, df_inventario=df_inventario, **processing_params)
-
-        # 5. Registrar la ejecución del reporte
-        log_report_generation(
-            session_id=session_id,
-            report_name=report_name,
-            params=dict(await request.form()), # Pasamos los params aquí
-            ventas_file_id=ventas_file_id,
-            inventario_file_id=inventario_file_id
+    # 2. **GUARDIÁN DE ACCESO PRO:**
+    # Si el reporte es 'Pro' y no hay un 'user_id' (es decir, es un usuario anónimo), denegamos el acceso.
+    if is_pro_report and user_id is None:
+        print(f"🚫 Acceso denegado: Sesión anónima ({session_id}) intentó acceder al reporte PRO '{report_key}'.")
+        raise HTTPException(
+            status_code=403, # 403 Forbidden es el código correcto para "no tienes permiso"
+            detail="Este es un reporte 'Pro'. Debes registrarte y tener un plan activo para acceder."
         )
 
-        # --- 6. DEVOLVER EL ARCHIVO EXCEL (CORREGIDO) ---
-        print(f"Generando archivo Excel con formato avanzado para '{report_name}'...")
+    # 3. **CAJERO:** Verificar créditos (esta lógica se mantiene, pero ahora es el segundo paso)
+    session_ref = db.collection('sesiones_anonimas').document(session_id)
+    session_doc = session_ref.get()
+    if not session_doc.exists:
+        raise HTTPException(status_code=404, detail="La sesión no existe.")
+    
+    creditos_restantes = session_doc.to_dict().get("creditos_restantes", 0)
+    if creditos_restantes < report_cost:
+        raise HTTPException(status_code=402, detail=f"Créditos insuficientes. Este reporte requiere {report_cost} créditos y solo tienes {creditos_restantes}.")
+
+    # --- FIN DE LA LÓGICA DE NEGOCIO. PROCEDEMOS CON EL PROCESAMIENTO. ---
+    
+    full_params_for_logging = dict(await request.form())
+    try:
+        # Descarga, lectura de archivos, y ejecución de la lógica de pandas
+        ventas_contents = descargar_contenido_de_storage(session_id, ventas_file_id)
+        inventario_contents = descargar_contenido_de_storage(session_id, inventario_file_id)
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+
+        # Ejecutamos la función de procesamiento específica que nos pasaron
+        resultado_df = processing_function(df_ventas, df_inventario, **processing_params)
         
+        # Transacción Exitosa: Descontar créditos y registrar
+        session_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
+        log_report_generation(
+            session_id=session_id, report_name=report_key, params=full_params_for_logging,
+            ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+            creditos_consumidos=report_cost, estado="exitoso"
+        )
+
         # Llamamos a tu función personalizada, que ya devuelve un objeto BytesIO
-        output = to_excel_with_autofit(resultado_df, sheet_name=report_name)
+        output = to_excel_with_autofit(resultado_df, sheet_name=report_key)
         
         return StreamingResponse(
             output,
@@ -869,11 +972,78 @@ async def _handle_report_generation(
             headers={"Content-Disposition": f"attachment; filename={output_filename}"}
         )
 
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        print(f"🔥 Error fatal al generar el reporte '{report_name}': {e}")
-        raise HTTPException(status_code=500, detail="Ocurrió un error inesperado en el servidor.")
+        # Transacción Fallida: Registrar sin descontar créditos
+        log_report_generation(
+            session_id=session_id, report_name=report_key, params=full_params_for_logging,
+            ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+            creditos_consumidos=0, estado="fallido"
+        )
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error al procesar el reporte: {e}")
+
+
+# async def _handle_report_generation(
+#     request: Request,
+#     session_id: str,
+#     ventas_file_id: str,
+#     inventario_file_id: str,
+#     report_name: str,
+#     processing_function: callable,
+#     processing_params: dict,
+#     output_filename: str
+# ):
+#     """
+#     Función central reutilizable para manejar la generación de cualquier reporte.
+#     """
+#     try:
+#         # 1. Obtener todos los parámetros para el logging
+#         form_data = await request.form()
+#         full_params_for_logging = dict(form_data)
+
+#         # 2. Descargar archivos desde Storage
+#         print(f"Descargando archivos para la sesión {session_id}...")
+#         ventas_contents = descargar_contenido_de_storage(session_id, ventas_file_id)
+#         inventario_contents = descargar_contenido_de_storage(session_id, inventario_file_id)
+
+#         # 3. Convertir contenido a DataFrames
+#         print("Convirtiendo archivos a DataFrames...")
+#         df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
+#         df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+        
+#         df_ventas.columns = df_ventas.columns.str.strip()
+#         df_inventario.columns = df_inventario.columns.str.strip()
+
+#         # 4. Ejecutar la función de procesamiento específica del reporte
+#         print(f"Generando {report_name} con la lógica de negocio...")
+#         # Pasamos los dataframes y los parámetros específicos desempaquetados
+#         resultado_df = processing_function(df_ventas=df_ventas, df_inventario=df_inventario, **processing_params)
+
+#         # 5. Registrar la ejecución del reporte
+#         log_report_generation(
+#             session_id=session_id,
+#             report_name=report_name,
+#             params=dict(await request.form()), # Pasamos los params aquí
+#             ventas_file_id=ventas_file_id,
+#             inventario_file_id=inventario_file_id
+#         )
+
+#         # --- 6. DEVOLVER EL ARCHIVO EXCEL (CORREGIDO) ---
+#         print(f"Generando archivo Excel con formato avanzado para '{report_name}'...")
+        
+#         # Llamamos a tu función personalizada, que ya devuelve un objeto BytesIO
+#         output = to_excel_with_autofit(resultado_df, sheet_name=report_name)
+        
+#         return StreamingResponse(
+#             output,
+#             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+#             headers={"Content-Disposition": f"attachment; filename={output_filename}"}
+#         )
+
+#     except ValueError as e:
+#         raise HTTPException(status_code=400, detail=str(e))
+#     except Exception as e:
+#         print(f"🔥 Error fatal al generar el reporte '{report_name}': {e}")
+#         raise HTTPException(status_code=500, detail="Ocurrió un error inesperado en el servidor.")
 
 
 
