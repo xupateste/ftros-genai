@@ -25,57 +25,57 @@ from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario
+from report_config import REPORTS_CONFIG
 
+# # ===================================================================================
+# # --- CONFIGURACIÓN CENTRAL DEL NEGOCIO (FUENTE ÚNICA DE VERDAD) ---
+# # ===================================================================================
+# REPORTS_CONFIG = {
+#     # La 'key' debe coincidir con la que pusiste en tu `reportData` del frontend
+#     "ReporteABC": {
+#         "nombre_visible": "Análisis ABC de Productos",
+#         "isPro": False, 
+#         "costo": 5
+#     },
+#     "DiagnosticoStockMuerto": {
+#         "nombre_visible": "Diagnóstico de Stock Muerto",
+#         "isPro": False,
+#         "costo": 3
+#     },
+#     "ListaBasicaReposicionHistorico": {
+#         "nombre_visible": "Lista Básica de Reposición",
+#         "isPro": False,
+#         "costo": 8
+#     },
+#     "ReporteMaestro": {
+#         "nombre_visible": "Reporte Maestro de Inventario",
+#         "isPro": False,   # ¡Este es un reporte PRO!
+#         "costo": 15
+#     },
+#     "RotacionGeneralEstrategico": {
+#         "nombre_visible": "Análisis Estratégico de Rotación",
+#         "isPro": False,
+#         "costo": 10
+#     },
+#     "PuntosAlertaStock": {
+#         "nombre_visible": "Puntos de Alerta de Stock",
+#         "isPro": False,
+#         "costo": 10
+#     },
+#     "InteligenciaColectiva": {
+#         "nombre_visible": "Análisis de Inteligencia Colectiva",
+#         "isPro": True,
+#         "costo": 25
+#     },
+#     "PronosticoDemanda": {
+#         "nombre_visible": "Pronóstico de Demanda",
+#         "isPro": True,
+#         "costo": 20
+#     }
+#     # Puedes añadir más reportes y sus configuraciones aquí
+# }
 
-# ===================================================================================
-# --- CONFIGURACIÓN CENTRAL DEL NEGOCIO (FUENTE ÚNICA DE VERDAD) ---
-# ===================================================================================
-REPORTS_CONFIG = {
-    # La 'key' debe coincidir con la que pusiste en tu `reportData` del frontend
-    "ReporteABC": {
-        "nombre_visible": "Análisis ABC de Productos",
-        "isPro": False, 
-        "costo": 5
-    },
-    "DiagnosticoStockMuerto": {
-        "nombre_visible": "Diagnóstico de Stock Muerto",
-        "isPro": False,
-        "costo": 3
-    },
-    "ListaBasicaReposicionHistorico": {
-        "nombre_visible": "Lista Básica de Reposición",
-        "isPro": False,
-        "costo": 8
-    },
-    "ReporteMaestro": {
-        "nombre_visible": "Reporte Maestro de Inventario",
-        "isPro": False,   # ¡Este es un reporte PRO!
-        "costo": 15
-    },
-    "RotacionGeneralEstrategico": {
-        "nombre_visible": "Análisis Estratégico de Rotación",
-        "isPro": False,
-        "costo": 10
-    },
-    "PuntosAlertaStock": {
-        "nombre_visible": "Puntos de Alerta de Stock",
-        "isPro": False,
-        "costo": 10
-    },
-    "InteligenciaColectiva": {
-        "nombre_visible": "Análisis de Inteligencia Colectiva",
-        "isPro": True,
-        "costo": 25
-    },
-    "PronosticoDemanda": {
-        "nombre_visible": "Pronóstico de Demanda",
-        "isPro": True,
-        "costo": 20
-    }
-    # Puedes añadir más reportes y sus configuraciones aquí
-}
-
-INITIAL_CREDITS = 35
+INITIAL_CREDITS = 350
 
 app = FastAPI(
     title="Ferretero.IA API",
@@ -106,7 +106,13 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000)) # Default to 8000 if not set
     uvicorn.run(app, host="0.0.0.0", port=port)
 
-
+@app.get("/reports-config", summary="Obtiene la configuración de los reportes disponibles", tags=["Configuración"])
+async def get_reports_configuration():
+    """
+    Devuelve la lista de reportes disponibles con sus propiedades (costo, si es Pro, etc.).
+    El frontend usará esto para construir dinámicamente la interfaz.
+    """
+    return JSONResponse(content=REPORTS_CONFIG)
 
 # ===================================================================================
 # --- NUEVO MODELO DE DATOS PARA ONBOARDING ---
@@ -438,9 +444,11 @@ async def upload_csvs_abc_analysis(
         "pesos_combinado": pesos_combinado_dict
     }
 
+    full_params_for_logging = dict(await request.form())
+
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
-        request=request,
+        full_params_for_logging=full_params_for_logging,
         session_id=X_Session_ID,
         user_id=None, # Para sesiones anónimas, siempre es None
         ventas_file_id=ventas_file_id,
@@ -499,16 +507,18 @@ async def run_analisis_estrategico_rotacion(
         "sort_ascending": sort_ascending
     }
 
+    full_params_for_logging = dict(await request.form())
+
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
-        request=request,
+        full_params_for_logging=full_params_for_logging,
         session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_key="RotacionGeneralEstrategico",
+        report_key="ReporteAnalisisEstrategicoRotacion",
         processing_function=process_csv_analisis_estrategico_rotacion, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="RotacionGeneralEstrategico.xlsx"
+        output_filename="ReporteAnalisisEstrategicoRotacion.xlsx"
     )
 
 
@@ -524,17 +534,18 @@ async def diagnostico_stock_muerto(
     # meses: int = Query(6, description="Cantidad de meses hacia atrás para analizar")
 ):
     processing_params = {}
+    full_params_for_logging = dict(await request.form())
 
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
-        request=request,
+        full_params_for_logging=full_params_for_logging,
         session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_name="DiagnosticoStockMuerto",
+        report_key="ReporteDiagnosticoStockMuerto",
         processing_function=procesar_stock_muerto, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="DiagnosticoStockMuerto.xlsx"
+        output_filename="ReporteDiagnosticoStockMuerto.xlsx"
     )
 
 
@@ -586,9 +597,11 @@ async def generar_reporte_maestro_endpoint(
         "dias_sin_venta_muerto": dias_sin_venta_muerto
     }
 
+    full_params_for_logging = dict(await request.form())
+
     # 2. Llamamos a la función manejadora central con toda la información
     return await _handle_report_generation(
-        request=request,
+        full_params_for_logging=full_params_for_logging,
         session_id=X_Session_ID,
         user_id=None, # Para sesiones anónimas, siempre es None
         ventas_file_id=ventas_file_id,
@@ -597,7 +610,7 @@ async def generar_reporte_maestro_endpoint(
         processing_function=generar_reporte_maestro_inventario, # Tu función de lógica real
         # processing_function=lambda df_v, df_i, **kwargs: df_i.head(10), # Simulación
         processing_params=processing_params,
-        output_filename="FerreteroIA_Reporte_Maestro.xlsx"
+        output_filename="ReporteMaestro.xlsx"
     )
 
 
@@ -637,16 +650,18 @@ async def reporte_puntos_alerta_stock(
         "factor_importancia_seguridad": 1.0
     }
     
+    full_params_for_logging = dict(await request.form())
+
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
-        request=request,
+        full_params_for_logging=full_params_for_logging,
         session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_key="PuntosAlertaStock",
+        report_key="ReportePuntosAlertaStock",
         processing_function=process_csv_puntos_alerta_stock, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="PuntosAlertaStock.xlsx"
+        output_filename="ReportePuntosAlertaStock.xlsx"
     )
 
 
@@ -701,22 +716,18 @@ async def lista_basica_reposicion_historico(
         "pesos_importancia": pesos_importancia
     }
 
-    # --- LÍNEA DE DEPURACIÓN AÑADIDA ---
-    print("\n--- DEBUG: Parámetros Recibidos en el Endpoint ---")
-    print(processing_params)
-    print("------------------------------------------------\n")
-    # --- FIN DE LA DEPURACIÓN --
+    full_params_for_logging = dict(await request.form())
 
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
-        request=request,
+        full_params_for_logging=full_params_for_logging,
         session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_key="ListaBasicaReposicionHistorico",
+        report_key="ReporteListaBasicaReposicionHistorica",
         processing_function=process_csv_lista_basica_reposicion_historico, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="ListaBasicaReposicionHistorico.xlsx"
+        output_filename="ReporteListaBasicaReposicionHistorica.xlsx"
     )
 
 
@@ -900,7 +911,7 @@ async def upload_csvs(
 #     return output
 
 async def _handle_report_generation(
-    request: Request,
+    full_params_for_logging: Dict[str, Any], 
     session_id: str,
     ventas_file_id: str,
     inventario_file_id: str,
@@ -911,29 +922,28 @@ async def _handle_report_generation(
     user_id: Optional[str] = None # <-- Parámetro para el futuro (usuarios registrados)
 ):
     """
-    Función central reutilizable que maneja la generación de CUALQUIER reporte.
+    Función central final que primero valida permisos y créditos, y luego procesa,
+    asegurando que el cobro solo se realice si la generación del archivo es exitosa.
     """
-    # 1. Obtener la configuración y costo del reporte desde nuestra fuente de verdad
+    # --- PASO 1: CONFIGURACIÓN Y PARÁMETROS ---
     report_config = REPORTS_CONFIG.get(report_key)
     if not report_config:
         raise HTTPException(status_code=404, detail=f"La configuración para el reporte '{report_key}' no fue encontrada.")
     
     report_cost = report_config['costo']
     is_pro_report = report_config['isPro']
+    session_ref = db.collection('sesiones_anonimas').document(session_id)
 
-    # --- INICIO DE LA LÓGICA DE NEGOCIO Y SEGURIDAD ---
+    # --- PASO 2: VALIDACIONES DE NEGOCIO (FUERA DEL TRY/EXCEPT PRINCIPAL) ---
+    # Si estas validaciones fallan, se lanza una excepción HTTP específica (403, 402, 404)
+    # que el frontend puede interpretar para mostrar el modal correcto.
 
-    # 2. **GUARDIÁN DE ACCESO PRO:**
-    # Si el reporte es 'Pro' y no hay un 'user_id' (es decir, es un usuario anónimo), denegamos el acceso.
+    # Guardián de Acceso Pro
     if is_pro_report and user_id is None:
         print(f"🚫 Acceso denegado: Sesión anónima ({session_id}) intentó acceder al reporte PRO '{report_key}'.")
-        raise HTTPException(
-            status_code=403, # 403 Forbidden es el código correcto para "no tienes permiso"
-            detail="Este es un reporte 'Pro'. Debes registrarte y tener un plan activo para acceder."
-        )
+        raise HTTPException(status_code=403, detail="Este es un reporte 'Pro'. Debes registrarte para acceder.")
 
-    # 3. **CAJERO:** Verificar créditos (esta lógica se mantiene, pero ahora es el segundo paso)
-    session_ref = db.collection('sesiones_anonimas').document(session_id)
+    # Cajero (Verificación de Créditos)
     session_doc = session_ref.get()
     if not session_doc.exists:
         raise HTTPException(status_code=404, detail="La sesión no existe.")
@@ -942,30 +952,36 @@ async def _handle_report_generation(
     if creditos_restantes < report_cost:
         raise HTTPException(status_code=402, detail=f"Créditos insuficientes. Este reporte requiere {report_cost} créditos y solo tienes {creditos_restantes}.")
 
-    # --- FIN DE LA LÓGICA DE NEGOCIO. PROCEDEMOS CON EL PROCESAMIENTO. ---
-    
-    full_params_for_logging = dict(await request.form())
+    # --- PASO 3: PROCESAMIENTO Y GENERACIÓN (DENTRO DE UN TRY/EXCEPT) ---
+    # Si algo falla aquí, es un error de ejecución. Lo registraremos como "fallido" sin cobrar.
     try:
-        # Descarga, lectura de archivos, y ejecución de la lógica de pandas
+        # Descarga y lectura de archivos
         ventas_contents = descargar_contenido_de_storage(session_id, ventas_file_id)
         inventario_contents = descargar_contenido_de_storage(session_id, inventario_file_id)
         df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
         df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
-
-        # Ejecutamos la función de procesamiento específica que nos pasaron
+        
+        # Ejecución de la lógica de negocio
         resultado_df = processing_function(df_ventas, df_inventario, **processing_params)
         
-        # Transacción Exitosa: Descontar créditos y registrar
-        session_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
-        log_report_generation(
-            session_id=session_id, report_name=report_key, params=full_params_for_logging,
-            ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
-            creditos_consumidos=report_cost, estado="exitoso"
-        )
-
-        # Llamamos a tu función personalizada, que ya devuelve un objeto BytesIO
-        output = to_excel_with_autofit(resultado_df, sheet_name=report_key)
+        output = to_excel_with_autofit(resultado_df, sheet_name=report_key[:31])
         
+        # --- Transacción Final ---
+        if resultado_df.empty:
+            log_report_generation(
+                session_id=session_id, report_name=report_key, params=full_params_for_logging,
+                ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+                creditos_consumidos=0, estado="exitoso_vacio"
+            )
+        else:
+            session_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
+            log_report_generation(
+                session_id=session_id, report_name=report_key, params=full_params_for_logging,
+                ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+                creditos_consumidos=report_cost, estado="exitoso"
+            )
+
+        # Devolvemos el archivo que ya creamos en memoria
         return StreamingResponse(
             output,
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -973,65 +989,109 @@ async def _handle_report_generation(
         )
 
     except Exception as e:
-        # Transacción Fallida: Registrar sin descontar créditos
+        # Si CUALQUIER COSA falla durante el procesamiento...
+        # ... registramos el intento fallido SIN descontar créditos.
+        user_message, error_type, tech_details = "Error inesperado al procesar", type(e).__name__, str(e)
+        if isinstance(e, KeyError): user_message = f"Columna requerida no encontrada: {e}"
+        
         log_report_generation(
             session_id=session_id, report_name=report_key, params=full_params_for_logging,
             ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
-            creditos_consumidos=0, estado="fallido"
+            creditos_consumidos=0, estado="fallido",
+            error_details={"user_message": user_message, "error_type": error_type, "technical_details": tech_details}
         )
-        raise HTTPException(status_code=500, detail=f"Ocurrió un error al procesar el reporte: {e}")
-
+        raise HTTPException(status_code=500, detail=user_message)
 
 # async def _handle_report_generation(
 #     request: Request,
 #     session_id: str,
 #     ventas_file_id: str,
 #     inventario_file_id: str,
-#     report_name: str,
+#     report_key: str, # <-- Ahora usamos una clave única para identificar el reporte
 #     processing_function: callable,
 #     processing_params: dict,
-#     output_filename: str
+#     output_filename: str,
+#     user_id: Optional[str] = None # <-- Parámetro para el futuro (usuarios registrados)
 # ):
 #     """
-#     Función central reutilizable para manejar la generación de cualquier reporte.
+#     Función central reutilizable que maneja la generación de CUALQUIER reporte.
 #     """
-#     try:
-#         # 1. Obtener todos los parámetros para el logging
-#         form_data = await request.form()
-#         full_params_for_logging = dict(form_data)
+#     # 1. Obtener la configuración y costo del reporte desde nuestra fuente de verdad
+#     report_config = REPORTS_CONFIG.get(report_key)
+#     if not report_config:
+#         raise HTTPException(status_code=404, detail=f"La configuración para el reporte '{report_key}' no fue encontrada.")
+    
+#     report_cost = report_config['costo']
+#     is_pro_report = report_config['isPro']
 
-#         # 2. Descargar archivos desde Storage
-#         print(f"Descargando archivos para la sesión {session_id}...")
-#         ventas_contents = descargar_contenido_de_storage(session_id, ventas_file_id)
-#         inventario_contents = descargar_contenido_de_storage(session_id, inventario_file_id)
+#     # --- INICIO DE LA LÓGICA DE NEGOCIO Y SEGURIDAD ---
 
-#         # 3. Convertir contenido a DataFrames
-#         print("Convirtiendo archivos a DataFrames...")
-#         df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
-#         df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
-        
-#         df_ventas.columns = df_ventas.columns.str.strip()
-#         df_inventario.columns = df_inventario.columns.str.strip()
-
-#         # 4. Ejecutar la función de procesamiento específica del reporte
-#         print(f"Generando {report_name} con la lógica de negocio...")
-#         # Pasamos los dataframes y los parámetros específicos desempaquetados
-#         resultado_df = processing_function(df_ventas=df_ventas, df_inventario=df_inventario, **processing_params)
-
-#         # 5. Registrar la ejecución del reporte
-#         log_report_generation(
-#             session_id=session_id,
-#             report_name=report_name,
-#             params=dict(await request.form()), # Pasamos los params aquí
-#             ventas_file_id=ventas_file_id,
-#             inventario_file_id=inventario_file_id
+#     # 2. **GUARDIÁN DE ACCESO PRO:**
+#     # Si el reporte es 'Pro' y no hay un 'user_id' (es decir, es un usuario anónimo), denegamos el acceso.
+#     if is_pro_report and user_id is None:
+#         print(f"🚫 Acceso denegado: Sesión anónima ({session_id}) intentó acceder al reporte PRO '{report_key}'.")
+#         raise HTTPException(
+#             status_code=403, # 403 Forbidden es el código correcto para "no tienes permiso"
+#             detail="Este es un reporte 'Pro'. Debes registrarte y tener un plan activo para acceder."
 #         )
 
-#         # --- 6. DEVOLVER EL ARCHIVO EXCEL (CORREGIDO) ---
-#         print(f"Generando archivo Excel con formato avanzado para '{report_name}'...")
+#     # 3. **CAJERO:** Verificar créditos (esta lógica se mantiene, pero ahora es el segundo paso)
+#     session_ref = db.collection('sesiones_anonimas').document(session_id)
+#     session_doc = session_ref.get()
+#     if not session_doc.exists:
+#         raise HTTPException(status_code=404, detail="La sesión no existe.")
+    
+#     creditos_restantes = session_doc.to_dict().get("creditos_restantes", 0)
+#     if creditos_restantes < report_cost:
+#         raise HTTPException(status_code=402, detail=f"Créditos insuficientes. Este reporte requiere {report_cost} créditos y solo tienes {creditos_restantes}.")
+
+#     # --- FIN DE LA LÓGICA DE NEGOCIO. PROCEDEMOS CON EL PROCESAMIENTO. ---
+    
+#     full_params_for_logging = dict(await request.form())
+#     try:
+#         # Descarga, lectura de archivos, y ejecución de la lógica de pandas
+#         ventas_contents = descargar_contenido_de_storage(session_id, ventas_file_id)
+#         inventario_contents = descargar_contenido_de_storage(session_id, inventario_file_id)
+#         df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
+#         df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+
+#         # Ejecutamos la función de procesamiento específica que nos pasaron
+#         resultado_df = processing_function(df_ventas, df_inventario, **processing_params)
         
+#         # # Transacción Exitosa: Descontar créditos y registrar
+#         # session_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
+#         # log_report_generation(
+#         #     session_id=session_id, report_name=report_key, params=full_params_for_logging,
+#         #     ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+#         #     creditos_consumidos=report_cost, estado="exitoso"
+#         # )
+
+#         if resultado_df.empty:
+#             # Si el DataFrame está vacío, el reporte no tiene resultados.
+#             print(f"⚠️ Reporte '{report_key}' generado pero sin resultados. No se cobrarán créditos.")
+            
+#             # Registramos el evento con costo 0.
+#             log_report_generation(
+#                 session_id=session_id, report_name=report_key, params=full_params_for_logging,
+#                 ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+#                 creditos_consumidos=0, estado="exitoso_vacio"
+#             )
+#         else:
+#             # Si el DataFrame SÍ tiene datos, procedemos con el cobro.
+#             print(f"✅ Reporte '{report_key}' generado con {len(resultado_df)} filas. Cobrando {report_cost} créditos.")
+            
+#             # Descontamos créditos de forma atómica.
+#             session_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
+            
+#             # Registramos la ejecución exitosa con su costo.
+#             log_report_generation(
+#                 session_id=session_id, report_name=report_key, params=full_params_for_logging,
+#                 ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+#                 creditos_consumidos=report_cost, estado="exitoso"
+#             )
+
 #         # Llamamos a tu función personalizada, que ya devuelve un objeto BytesIO
-#         output = to_excel_with_autofit(resultado_df, sheet_name=report_name)
+#         output = to_excel_with_autofit(resultado_df, sheet_name=report_key)
         
 #         return StreamingResponse(
 #             output,
@@ -1039,11 +1099,36 @@ async def _handle_report_generation(
 #             headers={"Content-Disposition": f"attachment; filename={output_filename}"}
 #         )
 
-#     except ValueError as e:
-#         raise HTTPException(status_code=400, detail=str(e))
 #     except Exception as e:
-#         print(f"🔥 Error fatal al generar el reporte '{report_name}': {e}")
-#         raise HTTPException(status_code=500, detail="Ocurrió un error inesperado en el servidor.")
+#         print(f"🔥 Error durante la generación del reporte para la sesión {session_id}: {e}")
+
+#         user_message = "Ocurrió un error inesperado al procesar el reporte." # Mensaje por defecto
+#         error_type = type(e).__name__
+#         technical_details = str(e)
+
+#         # "Traductor" de errores técnicos a mensajes amigables
+#         if isinstance(e, KeyError):
+#             user_message = f"La columna {technical_details} es necesaria pero no se encontró en uno de tus archivos. Por favor, revisa que el nombre de la columna sea exacto."
+#         elif isinstance(e, ValueError):
+#             user_message = "El formato de los datos en una de las columnas no es correcto. Revisa que las fechas (dd/mm/aaaa) y los valores numéricos sean válidos."
+#         elif isinstance(e, FileNotFoundError): # Este podría venir de descargar_contenido_de_storage
+#             user_message = "No se pudo encontrar uno de los archivos de datos en el servidor. Intenta volver a subirlo."
+        
+#         error_details = {
+#             "user_message": user_message,
+#             "error_type": error_type,
+#             "technical_details": technical_details
+#         }
+        
+#         # Registramos el intento fallido con los detalles del error
+#         log_report_generation(
+#             session_id=session_id, report_name=report_key, params=full_params_for_logging,
+#             ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+#             creditos_consumidos=0, estado="fallido", error_details=error_details
+#         )
+        
+#         # Devolvemos SOLO el mensaje amigable al usuario
+#         raise HTTPException(status_code=500, detail=user_message)
 
 
 

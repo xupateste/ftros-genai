@@ -213,11 +213,13 @@ def log_report_generation(
     params: dict,
     ventas_file_id: str,
     inventario_file_id: str,
-    creditos_consumidos: int, # Nuevo parámetro
-    estado: str = "exitoso" # Nuevo parámetro con valor por defecto
+    creditos_consumidos: int,
+    estado: str,
+    # --- NUEVO PARÁMETRO OPCIONAL ---
+    error_details: Optional[Dict[str, str]] = None 
 ):
     """
-    Registra la ejecución de un reporte, incluyendo su costo en créditos y su estado.
+    Registra la ejecución de un reporte, incluyendo detalles del error si ocurrió.
     """
     try:
         now = datetime.now(timezone.utc)
@@ -231,12 +233,16 @@ def log_report_generation(
             "parametrosUsados": params,
             "id_archivo_ventas": ventas_file_id,
             "id_archivo_inventario": inventario_file_id,
-            "creditosConsumidos": creditos_consumidos, # Registramos el costo
-            "estado": estado # Registramos si fue exitoso o fallido
+            "creditosConsumidos": creditos_consumidos,
+            "estado": estado
         }
         
+        # Si se proporcionaron detalles del error, los añadimos al log
+        if error_details:
+            log_data["error_details"] = error_details
+        
         reports_ref.document(doc_id).set(log_data)
-        print(f"✅ Log de reporte '{report_name}' guardado. Estado: {estado}, Costo: {creditos_consumidos}")
+        print(f"✅ Log de reporte '{report_name}' guardado. Estado: {estado}")
 
     except Exception as e:
         print(f"🔥 Advertencia: No se pudo registrar la generación del reporte. Error: {e}")

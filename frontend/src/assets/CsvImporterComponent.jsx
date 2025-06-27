@@ -69,7 +69,7 @@ function CsvImporterComponent({
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center">
+    <div className="w-full h-full p-4 flex items-center justify-center">
       <div
         onClick={() => uploadStatus !== 'uploading' && setIsOpen(true)}
         className={`cursor-pointer flex flex-col items-center justify-center p-8 w-full max-w-md mx-auto rounded-lg transition-all duration-300 border-2 bg-transparent text-white ${

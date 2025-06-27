@@ -89,10 +89,29 @@ export function CreditHistoryModal({ history, onClose, reportData }) {
                       </span>
                     </td>
                     <td className="px-6 py-4">
-                      {item.estado === 'exitoso' ? 
-                        <span className="flex items-center gap-2 text-green-600"><FiCheckCircle /> Exitoso</span> : 
-                        <span className="flex items-center gap-2 text-red-600"><FiAlertTriangle /> Fallido</span>
-                      }
+                      {item.estado === 'exitoso' ? (
+                        <span className="flex items-center gap-2 text-green-600">
+                          <FiCheckCircle /> Exitoso
+                        </span>
+                      ) : item.estado === 'exitoso_vacio' ? (
+                        <span className="flex items-center gap-2 text-yellow-600">
+                          <FiCheckCircle /> Sin Resultados
+                        </span>
+                      ) : (
+                        // --- LÓGICA MEJORADA PARA ERRORES ---
+                        <div className="group relative flex items-center gap-2 text-red-600">
+                          <FiAlertTriangle />
+                          <span>Fallido</span>
+                          {/* El tooltip solo aparece si hay detalles del error */}
+                          {item.error_details && item.error_details.user_message && (
+                            <div className="absolute bottom-full left-1/2 z-20 mb-2 w-72 -translate-x-1/2 scale-95 transform rounded-lg bg-gray-800 px-3 py-2 text-left text-sm font-normal text-white opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100">
+                              <p className="font-bold border-b border-gray-600 pb-1 mb-1">Motivo del Fallo:</p>
+                              <p>{item.error_details.user_message}</p>
+                              <div className="absolute -bottom-2 left-1/2 h-0 w-0 -translate-x-1/2 border-x-8 border-t-8 border-x-transparent border-t-gray-800"></div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td className="px-6 py-4 text-gray-700">{formatTimestamp(item.fechaGeneracion)}</td>
                   </tr>
