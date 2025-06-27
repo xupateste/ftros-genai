@@ -27,55 +27,7 @@ from track_expenses import process_csv_lista_basica_reposicion_historico, proces
 from track_expenses import generar_reporte_maestro_inventario
 from report_config import REPORTS_CONFIG
 
-# # ===================================================================================
-# # --- CONFIGURACIÓN CENTRAL DEL NEGOCIO (FUENTE ÚNICA DE VERDAD) ---
-# # ===================================================================================
-# REPORTS_CONFIG = {
-#     # La 'key' debe coincidir con la que pusiste en tu `reportData` del frontend
-#     "ReporteABC": {
-#         "nombre_visible": "Análisis ABC de Productos",
-#         "isPro": False, 
-#         "costo": 5
-#     },
-#     "DiagnosticoStockMuerto": {
-#         "nombre_visible": "Diagnóstico de Stock Muerto",
-#         "isPro": False,
-#         "costo": 3
-#     },
-#     "ListaBasicaReposicionHistorico": {
-#         "nombre_visible": "Lista Básica de Reposición",
-#         "isPro": False,
-#         "costo": 8
-#     },
-#     "ReporteMaestro": {
-#         "nombre_visible": "Reporte Maestro de Inventario",
-#         "isPro": False,   # ¡Este es un reporte PRO!
-#         "costo": 15
-#     },
-#     "RotacionGeneralEstrategico": {
-#         "nombre_visible": "Análisis Estratégico de Rotación",
-#         "isPro": False,
-#         "costo": 10
-#     },
-#     "PuntosAlertaStock": {
-#         "nombre_visible": "Puntos de Alerta de Stock",
-#         "isPro": False,
-#         "costo": 10
-#     },
-#     "InteligenciaColectiva": {
-#         "nombre_visible": "Análisis de Inteligencia Colectiva",
-#         "isPro": True,
-#         "costo": 25
-#     },
-#     "PronosticoDemanda": {
-#         "nombre_visible": "Pronóstico de Demanda",
-#         "isPro": True,
-#         "costo": 20
-#     }
-#     # Puedes añadir más reportes y sus configuraciones aquí
-# }
-
-INITIAL_CREDITS = 350
+INITIAL_CREDITS = 35
 
 app = FastAPI(
     title="Ferretero.IA API",

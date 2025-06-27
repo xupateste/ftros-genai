@@ -178,7 +178,7 @@ REPORTS_CONFIG = {
     # "key": 'ReportePuntosAlertaStock',
     "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido",
     "isPro": False,
-    "costo": 10,
+    "costo": 6,
     "basic_parameters": [
       { "name": 'lead_time_dias', "label": 'El tiempo promedio de entrega del proveedor en días', "type": 'select',
         "options": [
@@ -207,7 +207,7 @@ REPORTS_CONFIG = {
     # "key": 'ReporteListaBasicaReposicionHistorica',
     "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido",
     "isPro": False,
-    "costo": 10,
+    "costo": 8,
     "basic_parameters": [
       { "name": 'ordenar_por', "label": 'Ordenar reporte por', "type": 'select', 
         "options": [
