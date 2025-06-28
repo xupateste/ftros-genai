@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'; // useCallback añadido
+import { useState, useEffect, useCallback, useMemo } from 'react'; // useCallback añadido
 import { useNavigate, Link } from 'react-router-dom';
 import '../index.css';
 import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, FiX, FiLoader} from 'react-icons/fi'
@@ -16,6 +16,13 @@ import { getSessionId } from '../utils/sessionManager'; // Ajusta la ruta
 import { StrategyProvider, useStrategy } from '../context/StrategyProvider';
 import { StrategyPanelModal } from '../components/StrategyPanelModal';
 import { FiSettings } from 'react-icons/fi';
+import { ProOfferModal } from '../components/ProOfferModal'; // Ajusta la ruta
+import { RegisterPage } from '../components/RegisterPage'; // Ajusta la ruta si es necesario
+import { InsufficientCreditsModal } from '../components/InsufficientCreditsModal'; // Ajusta la ruta
+
+import { CreditsPanel } from '../components/CreditsPanel';
+import { CreditHistoryModal } from '../components/CreditHistoryModal';
+import { ConversionModal } from '../components/ConversionModal'; // Ajusta la ruta si es necesario
 
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -148,274 +155,286 @@ const diccionarioData = {
   'Puntos de Alerta de Stock ✓' : 'done',
   'Lista básica de reposición según histórico ✓' : 'dancer2'
 };
-const reportData = {
-  "🧠 Diagnósticos generales": [
-    {
-      label: 'Análisis ABC de Productos ✓',
-      endpoint: '/abc',
-      insights: [],
-      basic_parameters: [
-        { name: 'periodo_abc', label: 'Período de Análisis ABC', type: 'select',
-          options: [
-            { value: '12', label: 'Últimos 12 meses' },
-            { value: '6', label: 'Últimos 6 meses' },
-            { value: '3', label: 'Últimos 3 meses' },
-            { value: '0', label: 'Todo' }
-          ],
-          defaultValue: '6'
-        },
-        { name: 'criterio_abc', label: 'Criterio Principal ABC', type: 'select',
-          options: [
-            { value: 'combinado', label: 'Combinado o Ponderado' },
-            { value: 'ingresos', label: 'Por Ingresos' },
-            { value: 'unidades', label: 'Por Cantidad Vendida' },
-            { value: 'margen', label: 'Por Margen' }
-          ],
-          defaultValue: 'combinado'
-        }
-      ]
-    },
-    { label: 'Diagnóstico de Stock Muerto ✓', endpoint: '/diagnostico-stock-muerto', insights: [],
-      basic_parameters: []
-    },
-    {
-      label: "⭐ Reporte Maestro de Inventario (Recomendado)",
-      endpoint: "/reporte-maestro-inventario",
-      insights: [
-        "Este es el reporte más completo. Combina la importancia de tus productos (Análisis ABC) con su salud de rotación (Stock Muerto) para crear un plan de acción 100% priorizado.",
-        "Te dice exactamente en qué productos debes enfocar tu atención, dinero y esfuerzo AHORA MISMO."
-      ],
-      basic_parameters: [
-        {
-          name: "criterio_abc",
-          label: "Criterio de Importancia (ABC)",
-          type: "select",
-          options: [
-            { value: "margen", label: "Por Margen de Ganancia (Recomendado)" },
-            { value: "ingresos", label: "Por Ingresos Totales" },
-            { value: "unidades", label: "Por Unidades Vendidas" },
-            { value: "combinado", label: "Ponderado Personalizado (Avanzado)" }
-          ],
-          defaultValue: "margen"
-        },
-        {
-          name: "periodo_abc",
-          label: "Período de Análisis de Importancia",
-          type: "select",
-          options: [
-              { value: "3", label: "Últimos 3 meses" },
-              { value: "6", label: "Últimos 6 meses" },
-              { value: "12", label: "Últimos 12 meses" },
-              { value: "0", label: "Historial completo" }
-          ],
-          defaultValue: "6"
-        }
-      ],
-      advanced_parameters: [
-        {
-          name: "dias_sin_venta_muerto",
-          label: "Umbral de Días para 'Stock Muerto'",
-          type: "number",
-          placeholder: "Default: dinámico",
-          defaultValue: 30,
-          min: 30
-        },
-        {
-          name: "meses_analisis_salud",
-          label: "Período para Cálculo de Salud (meses)",
-          type: "number",
-          placeholder: "Default: dinámico",
-          defaultValue: 1,
-          min: 1
-        },
-        {
-          name: "peso_margen",
-          label: "Peso de Margen (0.0 a 1.0)",
-          type: "number",
-          defaultValue: 0.5,
-          min: 0, max: 1, step: 0.1
-        },
-        {
-          name: "peso_ingresos",
-          label: "Peso de Ingresos (0.0 a 1.0)",
-          type: "number",
-          defaultValue: 0.3,
-          min: 0, max: 1, step: 0.1
-        },
-        {
-          name: "peso_unidades",
-          label: "Peso de Unidades (0.0 a 1.0)",
-          type: "number",
-          defaultValue: 0.2,
-          min: 0, max: 1, step: 0.1
-        }
-      ]
-    },
-    {
-      label: 'Análisis Estratégico de Rotación ✓',
-      endpoint: '/rotacion-general-estrategico',
-      insights: diccionarioData['Análisis Estratégico de Rotación ✓'],
-      basic_parameters: [
-        { name: 'sort_by', label: 'Ordenar Reporte Por', type: 'select',
-          options: [
-            { value: 'Importancia_Dinamica', label: 'Índice de Importancia (Recomendado)' },
-            { value: 'Inversion_Stock_Actual', label: 'Mayor Inversión en Stock' },
-            { value: 'Dias_Cobertura_Stock_Actual', label: 'Próximos a Agotarse (Cobertura)' },
-            { value: 'Ventas_Total_Reciente', label: 'Más Vendidos (Unidades Recientes)' },
-            { value: 'Clasificacion', label: 'Clasificación (A, B, C, D)' },
-          ],
-          defaultValue: 'Importancia_Dinamica'
-        },
-        { name: 'filtro_categorias_json', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
-        { name: 'filtro_marcas_json', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] },
-        { name: 'min_importancia', label: 'Mostrar solo con Importancia mayor a', type: 'number', defaultValue: '', min: 0, max: 1, step: 0.1, placeholder: 'Ej: 0.7' },
-        { name: 'max_dias_cobertura', label: 'Mostrar solo con Cobertura menor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 15 (para ver bajo stock)' },
-        { name: 'min_dias_cobertura', label: 'Mostrar solo con Cobertura mayor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 180 (para ver sobre-stock)' },
-      ],
-      advanced_parameters: [
-        { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
-        { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
-        // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
-        {
-            name: 'score_ventas',
-            label: 'Importancia de Ventas (1-10)',
-            type: 'number',
-            defaultValue: 8, // Corresponde al 40%
-            min: 1, max: 10
-        },
-        {
-            name: 'score_ingreso',
-            label: 'Importancia de Ingresos (1-10)',
-            type: 'number',
-            defaultValue: 6, // Corresponde al 30%
-            min: 1, max: 10
-        },
-        {
-            name: 'score_margen',
-            label: 'Importancia de Margen (1-10)',
-            type: 'number',
-            defaultValue: 4, // Corresponde al 20%
-            min: 1, max: 10
-        },
-        {
-            name: 'score_dias_venta',
-            label: 'Importancia de Frecuencia de Venta (1-10)',
-            type: 'number',
-            defaultValue: 2, // Corresponde al 10%
-            min: 1, max: 10
-        },
-      ]
-    },
+// const reportData = {
+//   "🧠 Diagnósticos generales": [
+//     {
+//       label: 'Análisis ABC de Productos ✓',
+//       endpoint: '/abc',
+//       key: 'ReporteABC',
+//       isPro: false,
+//       insights: [],
+//       basic_parameters: [
+//         { name: 'periodo_abc', label: 'Período de Análisis ABC', type: 'select',
+//           options: [
+//             { value: '12', label: 'Últimos 12 meses' },
+//             { value: '6', label: 'Últimos 6 meses' },
+//             { value: '3', label: 'Últimos 3 meses' },
+//             { value: '0', label: 'Todo' }
+//           ],
+//           defaultValue: '6'
+//         },
+//         { name: 'criterio_abc', label: 'Criterio Principal ABC', type: 'select',
+//           options: [
+//             { value: 'combinado', label: 'Combinado o Ponderado' },
+//             { value: 'ingresos', label: 'Por Ingresos' },
+//             { value: 'unidades', label: 'Por Cantidad Vendida' },
+//             { value: 'margen', label: 'Por Margen' }
+//           ],
+//           defaultValue: 'combinado'
+//         }
+//       ]
+//     },
+//     { label: 'Diagnóstico de Stock Muerto ✓', endpoint: '/diagnostico-stock-muerto', insights: [],
+//       key: 'ReporteStockMuerto',
+//       isPro: false,
+//       basic_parameters: []
+//     },
+//     {
+//       label: "⭐ Reporte Maestro de Inventario (Recomendado)",
+//       endpoint: "/reporte-maestro-inventario",
+//       key: 'ReporteMaestro',
+//       isPro: false,
+//       insights: [
+//         "Este es el reporte más completo. Combina la importancia de tus productos (Análisis ABC) con su salud de rotación (Stock Muerto) para crear un plan de acción 100% priorizado.",
+//         "Te dice exactamente en qué productos debes enfocar tu atención, dinero y esfuerzo AHORA MISMO."
+//       ],
+//       basic_parameters: [
+//         {
+//           name: "criterio_abc",
+//           label: "Criterio de Importancia (ABC)",
+//           type: "select",
+//           options: [
+//             { value: "margen", label: "Por Margen de Ganancia (Recomendado)" },
+//             { value: "ingresos", label: "Por Ingresos Totales" },
+//             { value: "unidades", label: "Por Unidades Vendidas" },
+//             { value: "combinado", label: "Ponderado Personalizado (Avanzado)" }
+//           ],
+//           defaultValue: "margen"
+//         },
+//         {
+//           name: "periodo_abc",
+//           label: "Período de Análisis de Importancia",
+//           type: "select",
+//           options: [
+//               { value: "3", label: "Últimos 3 meses" },
+//               { value: "6", label: "Últimos 6 meses" },
+//               { value: "12", label: "Últimos 12 meses" },
+//               { value: "0", label: "Historial completo" }
+//           ],
+//           defaultValue: "6"
+//         }
+//       ],
+//       advanced_parameters: [
+//         {
+//           name: "dias_sin_venta_muerto",
+//           label: "Umbral de Días para 'Stock Muerto'",
+//           type: "number",
+//           placeholder: "Default: dinámico",
+//           defaultValue: 30,
+//           min: 30
+//         },
+//         {
+//           name: "meses_analisis_salud",
+//           label: "Período para Cálculo de Salud (meses)",
+//           type: "number",
+//           placeholder: "Default: dinámico",
+//           defaultValue: 1,
+//           min: 1
+//         },
+//         {
+//           name: "peso_margen",
+//           label: "Peso de Margen (0.0 a 1.0)",
+//           type: "number",
+//           defaultValue: 0.5,
+//           min: 0, max: 1, step: 0.1
+//         },
+//         {
+//           name: "peso_ingresos",
+//           label: "Peso de Ingresos (0.0 a 1.0)",
+//           type: "number",
+//           defaultValue: 0.3,
+//           min: 0, max: 1, step: 0.1
+//         },
+//         {
+//           name: "peso_unidades",
+//           label: "Peso de Unidades (0.0 a 1.0)",
+//           type: "number",
+//           defaultValue: 0.2,
+//           min: 0, max: 1, step: 0.1
+//         }
+//       ]
+//     },
+//     {
+//       label: 'Análisis Estratégico de Rotación ✓',
+//       endpoint: '/rotacion-general-estrategico',
+//       key: 'ReporteAnalisisEstrategicoRotacion',
+//       isPro: false,
+//       insights: diccionarioData['Análisis Estratégico de Rotación ✓'],
+//       basic_parameters: [
+//         { name: 'sort_by', label: 'Ordenar Reporte Por', type: 'select',
+//           options: [
+//             { value: 'Importancia_Dinamica', label: 'Índice de Importancia (Recomendado)' },
+//             { value: 'Inversion_Stock_Actual', label: 'Mayor Inversión en Stock' },
+//             { value: 'Dias_Cobertura_Stock_Actual', label: 'Próximos a Agotarse (Cobertura)' },
+//             { value: 'Ventas_Total_Reciente', label: 'Más Vendidos (Unidades Recientes)' },
+//             { value: 'Clasificacion', label: 'Clasificación (A, B, C, D)' },
+//           ],
+//           defaultValue: 'Importancia_Dinamica'
+//         },
+//         { name: 'filtro_categorias_json', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
+//         { name: 'filtro_marcas_json', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] },
+//         { name: 'min_importancia', label: 'Mostrar solo con Importancia mayor a', type: 'number', defaultValue: '', min: 0, max: 1, step: 0.1, placeholder: 'Ej: 0.7' },
+//         { name: 'max_dias_cobertura', label: 'Mostrar solo con Cobertura menor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 15 (para ver bajo stock)' },
+//         { name: 'min_dias_cobertura', label: 'Mostrar solo con Cobertura mayor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 180 (para ver sobre-stock)' },
+//       ],
+//       advanced_parameters: [
+//         { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
+//         { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
+//         // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
+//         {
+//             name: 'score_ventas',
+//             label: 'Importancia de Ventas (1-10)',
+//             type: 'number',
+//             defaultValue: 8, // Corresponde al 40%
+//             min: 1, max: 10
+//         },
+//         {
+//             name: 'score_ingreso',
+//             label: 'Importancia de Ingresos (1-10)',
+//             type: 'number',
+//             defaultValue: 6, // Corresponde al 30%
+//             min: 1, max: 10
+//         },
+//         {
+//             name: 'score_margen',
+//             label: 'Importancia de Margen (1-10)',
+//             type: 'number',
+//             defaultValue: 4, // Corresponde al 20%
+//             min: 1, max: 10
+//         },
+//         {
+//             name: 'score_dias_venta',
+//             label: 'Importancia de Frecuencia de Venta (1-10)',
+//             type: 'number',
+//             defaultValue: 2, // Corresponde al 10%
+//             min: 1, max: 10
+//         },
+//       ]
+//     },
 
-  ],
-  "📦 Reposición Inteligente y Sugerencias de Pedido": [
-    { label: 'Puntos de Alerta de Stock ✓',
-      endpoint: '/reporte-puntos-alerta-stock',
-      insights: [],
-      basic_parameters: [
-        { name: 'lead_time_dias', label: 'El tiempo promedio de entrega del proveedor en días', type: 'select',
-          options: [
-            { value: '5', label: '5 días' },
-            { value: '7', label: '7 días' },
-            { value: '10', label: '10 días' },
-            { value: '12', label: '12 días' },
-            { value: '15', label: '15 días' }
-          ],
-          defaultValue: '7'
-        },
-        { name: 'dias_seguridad_base', label: 'Días adicionales de cobertura para stock de seguridad', type: 'select',
-          options: [
-            { value: '0', label: 'Ninguno' },
-            { value: '1', label: '1 día adicional' },
-            { value: '2', label: '2 días adicionales' },
-            { value: '3', label: '3 días adicionales' }
-          ],
-          defaultValue: '0'
-        }
-      ]
-    },
-    {
-      label: 'Lista básica de reposición según histórico ✓',
-      endpoint: '/lista-basica-reposicion-historico',
-      insights: [],
-      basic_parameters: [
-        { name: 'ordenar_por', label: 'Ordenar reporte por', type: 'select', 
-          options: [
-            { value: 'Importancia', label: 'Índice de Importancia (Recomendado)' },
-            { value: 'Índice de Urgencia', label: 'Índice de Urgencia (Stock bajo + Importancia)' },
-            { value: 'Inversion Requerida', label: 'Mayor Inversión Requerida' },
-            { value: 'Cantidad a Comprar', label: 'Mayor Cantidad a Comprar' },
-            { value: 'Margen Potencial', label: 'Mayor Margen Potencial de Ganancia' },
-            { value: 'Próximos a Agotarse', label: 'Próximos a Agotarse (Cobertura)' },
-            { value: 'rotacion', label: 'Mayor Rotación' },
-            { value: 'Categoría', label: 'Categoría (A-Z)' }
-          ],
-          defaultValue: 'Índice de Urgencia' // Default explícito
-        },
-        { name: 'incluir_solo_categorias', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
-        { name: 'incluir_solo_marcas', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] }
-      ],
-      advanced_parameters: [
-        { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
-        { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
-        { name: 'excluir_sin_ventas', label: '¿Excluir productos con CERO ventas?', type: 'boolean_select', 
-          options: [
-            { value: 'true', label: 'Sí, excluir (Recomendado)' },
-            { value: 'false', label: 'No, incluirlos' }
-          ],
-          defaultValue: 'true'
-        },
-        { name: 'lead_time_dias', label: 'Tiempo de Entrega del Proveedor en Días', type: 'number', defaultValue: 7, min: 0 },
-        { name: 'dias_cobertura_ideal_base', label: 'Días de Cobertura Ideal Base', type: 'number', defaultValue: 10, min: 3 },
-        { name: 'peso_ventas_historicas', label: 'Peso Ventas Históricas (0.0-1.0)', type: 'number', defaultValue: 0.6, min: 0, max: 1, step: 0.1 },
-        // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
-        {
-            name: 'score_ventas',
-            label: 'Importancia de Ventas (1-10)',
-            type: 'number',
-            defaultValue: 8, // Corresponde al 40%
-            min: 1, max: 10
-        },
-        {
-            name: 'score_ingreso',
-            label: 'Importancia de Ingresos (1-10)',
-            type: 'number',
-            defaultValue: 6, // Corresponde al 30%
-            min: 1, max: 10
-        },
-        {
-            name: 'score_margen',
-            label: 'Importancia de Margen (1-10)',
-            type: 'number',
-            defaultValue: 4, // Corresponde al 20%
-            min: 1, max: 10
-        },
-        {
-            name: 'score_dias_venta',
-            label: 'Importancia de Frecuencia de Venta (1-10)',
-            type: 'number',
-            defaultValue: 2, // Corresponde al 10%
-            min: 1, max: 10
-        }
-      ]
-    },
-    { label: 'Lista sugerida para alcanzar monto mínimo', endpoint: '/rotacion', insights: [], basic_parameters: [] },
-    { label: 'Pedido optimizado por marcas o líneas específicas', endpoint: '/rotacion', insights: [], basic_parameters: [] },
-    { label: 'Reposición inteligente por categoría', endpoint: '/rotacion', insights: [], basic_parameters: [] },
-    { label: 'Sugerencia combinada por zona', endpoint: '/rotacion', insights: [], basic_parameters: [] },
-  ],
-  "📊 Simulación y ROI de Compra": [
-    { label: 'Simulación de ahorro en compra grupal', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-    { label: 'Comparativa de precios actuales vs históricos', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-    { label: 'Estimación de margen bruto por sugerencia', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-    { label: 'Rentabilidad mensual por línea o proveedor', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-  ],
-  "🔄 Gestión de Inventario y Mermas": [
-    { label: 'Revisión de productos a punto de vencer o sin rotar', endpoint: '/stock-critico', insights: [], basic_parameters: [] },
-    { label: 'Listado de productos con alta rotación que necesitan reposición', endpoint: '/sobrestock', insights: [], basic_parameters: [] },
-    { label: 'Sugerencia de promociones para liquidar productos lentos', endpoint: '/rotacion', insights: [], basic_parameters: [] },
-  ]
-};
+//   ],
+//   "📦 Reposición Inteligente y Sugerencias de Pedido": [
+//     { label: 'Puntos de Alerta de Stock ✓',
+//       endpoint: '/reporte-puntos-alerta-stock',
+//       key: 'ReportePuntosAlertaStock',
+//       isPro: false,
+//       insights: [],
+//       basic_parameters: [
+//         { name: 'lead_time_dias', label: 'El tiempo promedio de entrega del proveedor en días', type: 'select',
+//           options: [
+//             { value: '5', label: '5 días' },
+//             { value: '7', label: '7 días' },
+//             { value: '10', label: '10 días' },
+//             { value: '12', label: '12 días' },
+//             { value: '15', label: '15 días' }
+//           ],
+//           defaultValue: '7'
+//         },
+//         { name: 'dias_seguridad_base', label: 'Días adicionales de cobertura para stock de seguridad', type: 'select',
+//           options: [
+//             { value: '0', label: 'Ninguno' },
+//             { value: '1', label: '1 día adicional' },
+//             { value: '2', label: '2 días adicionales' },
+//             { value: '3', label: '3 días adicionales' }
+//           ],
+//           defaultValue: '0'
+//         }
+//       ]
+//     },
+//     {
+//       label: 'Lista básica de reposición según histórico ✓',
+//       endpoint: '/lista-basica-reposicion-historico',
+//       key: 'ReporteListaBasicaReposicionHistorica',
+//       isPro: false,
+//       insights: [],
+//       basic_parameters: [
+//         { name: 'ordenar_por', label: 'Ordenar reporte por', type: 'select', 
+//           options: [
+//             { value: 'Importancia', label: 'Índice de Importancia (Recomendado)' },
+//             { value: 'Índice de Urgencia', label: 'Índice de Urgencia (Stock bajo + Importancia)' },
+//             { value: 'Inversion Requerida', label: 'Mayor Inversión Requerida' },
+//             { value: 'Cantidad a Comprar', label: 'Mayor Cantidad a Comprar' },
+//             { value: 'Margen Potencial', label: 'Mayor Margen Potencial de Ganancia' },
+//             { value: 'Próximos a Agotarse', label: 'Próximos a Agotarse (Cobertura)' },
+//             { value: 'rotacion', label: 'Mayor Rotación' },
+//             { value: 'Categoría', label: 'Categoría (A-Z)' }
+//           ],
+//           defaultValue: 'Índice de Urgencia' // Default explícito
+//         },
+//         { name: 'incluir_solo_categorias', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
+//         { name: 'incluir_solo_marcas', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] }
+//       ],
+//       advanced_parameters: [
+//         { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
+//         { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
+//         { name: 'excluir_sin_ventas', label: '¿Excluir productos con CERO ventas?', type: 'boolean_select', 
+//           options: [
+//             { value: 'true', label: 'Sí, excluir (Recomendado)' },
+//             { value: 'false', label: 'No, incluirlos' }
+//           ],
+//           defaultValue: 'true'
+//         },
+//         { name: 'lead_time_dias', label: 'Tiempo de Entrega del Proveedor en Días', type: 'number', defaultValue: 7, min: 0 },
+//         { name: 'dias_cobertura_ideal_base', label: 'Días de Cobertura Ideal Base', type: 'number', defaultValue: 10, min: 3 },
+//         { name: 'peso_ventas_historicas', label: 'Peso Ventas Históricas (0.0-1.0)', type: 'number', defaultValue: 0.6, min: 0, max: 1, step: 0.1 },
+//         // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
+//         {
+//             name: 'score_ventas',
+//             label: 'Importancia de Ventas (1-10)',
+//             type: 'number',
+//             defaultValue: 8, // Corresponde al 40%
+//             min: 1, max: 10
+//         },
+//         {
+//             name: 'score_ingreso',
+//             label: 'Importancia de Ingresos (1-10)',
+//             type: 'number',
+//             defaultValue: 6, // Corresponde al 30%
+//             min: 1, max: 10
+//         },
+//         {
+//             name: 'score_margen',
+//             label: 'Importancia de Margen (1-10)',
+//             type: 'number',
+//             defaultValue: 4, // Corresponde al 20%
+//             min: 1, max: 10
+//         },
+//         {
+//             name: 'score_dias_venta',
+//             label: 'Importancia de Frecuencia de Venta (1-10)',
+//             type: 'number',
+//             defaultValue: 2, // Corresponde al 10%
+//             min: 1, max: 10
+//         }
+//       ]
+//     },
+//     { label: 'Lista sugerida para alcanzar monto mínimo', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
+//     { label: 'Pedido optimizado por marcas o líneas específicas', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
+//     { label: 'Reposición inteligente por categoría', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
+//     { label: 'Sugerencia combinada por zona', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
+//   ],
+//   "📊 Simulación y ROI de Compra": [
+//     { label: 'Simulación de ahorro en compra grupal', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+//     { label: 'Comparativa de precios actuales vs históricos', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+//     { label: 'Estimación de margen bruto por sugerencia', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+//     { label: 'Rentabilidad mensual por línea o proveedor', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+//   ],
+//   "🔄 Gestión de Inventario y Mermas": [
+//     { label: 'Revisión de productos a punto de vencer o sin rotar', endpoint: '/stock-critico', insights: [], isPro: true, basic_parameters: [] },
+//     { label: 'Listado de productos con alta rotación que necesitan reposición', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
+//     { label: 'Sugerencia de promociones para liquidar productos lentos', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
+//   ]
+// };
 
 // ===================================================================================
 // --- VISTA 1: El Nuevo Landing Page ---
@@ -516,11 +535,25 @@ const OnboardingModal = ({ onSubmit, onCancel, isLoading }) => {
 // --- COMPONENTE PRINCIPAL: Ahora se llama App y orquesta las vistas ---
 // ===================================================================================
 function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar el import en App.jsx, etc.
-  const [appState, setAppState] = useState('landing');
+  const [appState, setAppState] = useState('landing'); // 'landing', 'onboarding', 'analysis', 'registering'
   const [sessionId, setSessionId] = useState(null);
+
+  const [reportsConfig, setReportsConfig] = useState(null); // Para guardar la respuesta cruda de la API
+  const [isConfigLoading, setIsConfigLoading] = useState(true);
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false); // Estado para el modal
   const { strategy } = useStrategy();
+
+  const [credits, setCredits] = useState({ used: 0, remaining: 0 });
+  const [creditHistory, setCreditHistory] = useState([]);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [showConversionModal, setShowConversionModal] = useState(false);
+
+  const [showProModal, setShowProModal] = useState(false);
+  const [proReportClicked, setProReportClicked] = useState(null);
+
+  const [showCreditsModal, setShowCreditsModal] = useState(false);
+  const [creditsInfo, setCreditsInfo] = useState({ required: 0, remaining: 0 });
 
   // --- NUEVOS ESTADOS PARA GESTIONAR LA CARGA DE ARCHIVOS ---
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
@@ -560,6 +593,23 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       setIsLoading(false);
     }
   };
+
+  const handleRegisterClick = () => {
+    // Por ahora, solo muestra una alerta. En el futuro, redirigiría a /register.
+    alert("¡Función de registro próximamente! Aquí es donde el usuario crearía su cuenta.");
+    setShowConversionModal(false);
+  };
+
+  const handleNewSessionClick = () => {
+    // Simplemente recarga la página para empezar una nueva sesión anónima
+    window.location.reload();
+  };
+
+  const handleGoToRegister = () => {
+        // Cerramos cualquier modal que esté abierto y cambiamos a la vista de registro
+        setShowProModal(false); 
+        setAppState('registering');
+    };
 
   // --- NUEVA FUNCIÓN PARA MANEJAR LA CARGA Y LLAMADA A LA API ---
   const handleFileProcessed = async (file, fileType) => {
@@ -622,61 +672,77 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   const handleInventarioInput = (file) => setInventarioFile(file);
 
   const getParameterLabelsForFilename = () => {
-  // Ahora, la lista de parámetros a incluir en el nombre se basa SOLO en los básicos.
-  const basicParameters = selectedReport?.basic_parameters || [];
+    // Ahora, la lista de parámetros a incluir en el nombre se basa SOLO en los básicos.
+    const basicParameters = selectedReport?.basic_parameters || [];
 
-  if (basicParameters.length === 0) return "";
+    if (basicParameters.length === 0) return "";
 
-  // La lógica de iteración ahora solo recorre los parámetros básicos.
-  return basicParameters.map(param => {
-    const selectedValue = modalParams[param.name];
+    // La lógica de iteración ahora solo recorre los parámetros básicos.
+    return basicParameters.map(param => {
+      const selectedValue = modalParams[param.name];
 
-    // Si el valor no existe, es el default, o es un array vacío, no lo incluye.
-    // (Esta es una mejora opcional para no incluir parámetros con su valor por defecto)
-    if (!selectedValue || selectedValue === param.defaultValue || (Array.isArray(selectedValue) && selectedValue.length === 0)) {
-      return null;
-    }
-    
-    // Si es un array, lo une con guiones para el nombre del archivo.
-    const valueString = Array.isArray(selectedValue) ? selectedValue.join('-') : selectedValue;
+      // Si el valor no existe, es el default, o es un array vacío, no lo incluye.
+      // (Esta es una mejora opcional para no incluir parámetros con su valor por defecto)
+      if (!selectedValue || selectedValue === param.defaultValue || (Array.isArray(selectedValue) && selectedValue.length === 0)) {
+        return null;
+      }
+      
+      // Si es un array, lo une con guiones para el nombre del archivo.
+      const valueString = Array.isArray(selectedValue) ? selectedValue.join('-') : selectedValue;
 
-    // Usamos una etiqueta más corta para el nombre del archivo, si está disponible
-    const paramLabel = param.shortLabel || param.name;
+      // Usamos una etiqueta más corta para el nombre del archivo, si está disponible
+      const paramLabel = param.shortLabel || param.name;
 
-    return `${paramLabel}-${valueString}`;
-  }).filter(Boolean).join('_');
-};
+      return `${paramLabel}-${valueString}`;
+    }).filter(Boolean).join('_');
+  };
 
   const handleReportView = useCallback((reportItem) => {
-    setSelectedReport(reportItem);
-    setInsightHtml(diccionarioData[reportItem.label] || "<p>No hay información disponible.</p>");
+    // --- NUEVA LÓGICA DE DECISIÓN ---
+    // Primero, verificamos si el reporte es una función "Pro"
+    if (reportItem.isPro) {
+        // Si es Pro, establecemos el reporte seleccionado y mostramos el modal de oferta
+        setProReportClicked(reportItem);
+        setShowProModal(true);
+    } else {
+        // Si NO es Pro, ejecutamos toda tu lógica original para el modal de parámetros
 
-    const initialParams = {};
-    const allParamsConfig = [
-        ...(reportItem.basic_parameters || []),
-        ...(reportItem.advanced_parameters || [])
-    ];
+        setSelectedReport(reportItem);
+        setInsightHtml(diccionarioData[reportItem.label] || "<p>No hay información disponible.</p>");
 
-    allParamsConfig.forEach(param => {
-        const paramName = param.name;
-        
-        // La lógica ahora es mucho más simple:
-        // Nivel 1: ¿Existe en la Estrategia Global?
-        if (strategy[paramName] !== undefined) {
-            initialParams[paramName] = strategy[paramName];
-        } 
-        // Nivel 2: Si no, usa el default del código.
-        else {
-            initialParams[paramName] = param.defaultValue;
-        }
-    });
+        const initialParams = {};
+        const allParamsConfig = [
+            ...(reportItem.basic_parameters || []),
+            ...(reportItem.advanced_parameters || [])
+        ];
 
-    setModalParams(initialParams);
-    setShowAdvanced(false);
-    setShowModal(true);
+        allParamsConfig.forEach(param => {
+            const paramName = param.name;
+            
+            // Tu lógica de jerarquía de 3 niveles se mantiene intacta aquí
+            if (strategy[paramName] !== undefined) {
+                initialParams[paramName] = strategy[paramName];
+            } else {
+                initialParams[paramName] = param.defaultValue;
+            }
+        });
 
-  }, [strategy, diccionarioData]); // Dependencia simplificada
-
+        setModalParams(initialParams);
+        setShowAdvanced(false);
+        setShowModal(true);
+    }
+  }, [
+      strategy, 
+      diccionarioData, 
+      // Añadimos las nuevas funciones de estado al array de dependencias
+      setProReportClicked, 
+      setShowProModal, 
+      setSelectedReport, 
+      setInsightHtml, 
+      setModalParams, 
+      setShowAdvanced, 
+      setShowModal
+  ]);; // Dependencia simplificada
 
 
   // --- MANEJO DE CAMBIOS EN PARÁMETROS DEL MODAL ---
@@ -720,14 +786,8 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   // --- MODIFICACIÓN 2: buttonDownloadHandleMulti para usar y actualizar caché ---
   const buttonDownloadHandleMulti = async () => {
     // 1. Verificación inicial (ahora comprueba los IDs de archivo)
-    if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario) {
-      alert("Asegúrate de haber subido exitosamente ambos archivos y seleccionado un reporte.");
-      return;
-    }
-    
-    // El sessionId ahora viene del estado del componente
-    if (!sessionId) {
-      alert("Error: No se ha iniciado una sesión de análisis.");
+    if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario || !sessionId) {
+      alert("Asegúrate de haber iniciado una sesión, subido ambos archivos y seleccionado un reporte.");
       return;
     }
 
@@ -807,15 +867,125 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       link.remove();
       window.URL.revokeObjectURL(url);
 
-    } catch (err) {
-      // Tu manejo de errores no cambia
-      console.error("Error al generar el reporte:", err);
-      const errorDetail = err.response?.data ? new TextDecoder().decode(await err.response.data.text()) : err.message;
-      alert(`Error al generar el reporte: ${errorDetail}`);
+      // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
+      const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': sessionId } });
+      setCredits(updatedState.data.credits);
+      setCreditHistory(updatedState.data.history);
+    } catch (error) {
+      // --- 5. LÓGICA DE MANEJO DE ERRORES MEJORADA ---
+      console.error("Error al generar el reporte:", error);
+
+      // Verificamos si el error es por falta de créditos (código 402)
+      if (error.response?.status === 402) {
+          // Obtenemos la información necesaria para el modal
+          const required = selectedReport?.costo || 0;
+          const remaining = credits.remaining || 0;
+          setCreditsInfo({ required, remaining });
+          
+          // Mostramos el modal específico de créditos insuficientes
+          setShowCreditsModal(true);
+      } else {
+          // Para cualquier otro error, mantenemos la lógica genérica
+          let errorMessage = "Ocurrió un error al generar el reporte.";
+          if (error.response?.data && error.response.data instanceof Blob) {
+              try {
+                  const errorText = await error.response.data.text();
+                  const errorJson = JSON.parse(errorText);
+                  errorMessage = errorJson.detail || errorMessage;
+              } catch (e) { /* Mantener mensaje genérico */ }
+          }
+          alert(errorMessage);
+      }
+
+      // Si el reporte falló, también es buena idea actualizar el historial
+      // para que el usuario vea el intento fallido.
+      try {
+          const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': sessionId } });
+          setCreditHistory(updatedState.data.history);
+      } catch (stateError) {
+          console.error("No se pudo actualizar el historial después de un error:", stateError);
+      }
+      // // Tu manejo de errores no cambia
+      // console.error("Error al generar el reporte:", error);
+      // if (error.response?.status === 402) {
+      //     // Si es un error 402, mostramos el modal de conversión
+      //     setShowConversionModal(true);
+      // } else {
+      //     // Para cualquier otro error, mostramos una alerta genérica
+      //     let errorMessage = "Ocurrió un error al generar el reporte.";
+      //     if (error.response?.data && error.response.data instanceof Blob) {
+      //         try {
+      //             const errorText = await error.response.data.text();
+      //             const errorJson = JSON.parse(errorText);
+      //             errorMessage = errorJson.detail || errorMessage;
+      //         } catch (e) { /* Mantener mensaje genérico */ }
+      //     }
+      //     alert(errorMessage);
+      // }
     } finally {
       setIsLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Solo se ejecuta una vez cuando el componente se monta
+    const fetchConfig = async () => {
+      setIsConfigLoading(true);
+      try {
+        const response = await axios.get(`${API_URL}/reports-config`);
+        setReportsConfig(response.data);
+      } catch (error) {
+        console.error("Error fatal: no se pudo cargar la configuración de reportes.", error);
+        alert("No se pudo conectar con el servidor para cargar los reportes disponibles.");
+      } finally {
+        setIsConfigLoading(false);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  const reportData = useMemo(() => {
+    if (!reportsConfig) return {}; // Si no hay config, devuelve un objeto vacío
+
+    const groupedData = {};
+    // Iteramos sobre la configuración recibida del backend
+    for (const key in reportsConfig) {
+      const report = { ...reportsConfig[key], key }; // Añadimos la key única al objeto del reporte
+      const category = report.categoria;
+      if (!groupedData[category]) {
+        groupedData[category] = [];
+      }
+      groupedData[category].push(report);
+    }
+    return groupedData;
+  }, [reportsConfig]);
+
+  useEffect(() => {
+    // Esta función se llamará solo cuando entremos a la vista de análisis
+    const fetchSessionState = async () => {
+        if (appState === 'analysis' && sessionId) {
+            try {
+                console.log("Obteniendo estado de la sesión...");
+                const response = await axios.get(`${API_URL}/session-state`, {
+                    headers: { 'X-Session-ID': sessionId }
+                });
+                
+                const { credits, history } = response.data;
+                setCredits(credits || { used: 0, remaining: 20 });
+                setCreditHistory(history || []);
+                console.log("Estado de la sesión cargado:", response.data);
+
+            } catch (error) {
+                console.error("Error al recuperar el estado de la sesión:", error);
+                alert("No se pudo recuperar tu sesión. Es posible que haya expirado. Refresca la página para iniciar una nueva.");
+                // Podrías redirigir al landing page si la sesión no se encuentra
+                // setAppState('landing'); 
+            }
+        }
+    };
+
+    fetchSessionState();
+  }, [appState, sessionId]);
 
 
   // --- MODIFICACIÓN 3: Invalidar caché al cerrar modal ---
@@ -874,18 +1044,26 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       }
   }, [showModal]);
 
-  
+  if (isConfigLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-900 text-white">
+        <p>Cargando configuración de Ferretero.IA...</p>
+      </div>
+    );
+  }
+
   return (
     <>
+    <div className={`min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
+          flex flex-col items-center justify-center px-4 sm:px-8 md:px-12 lg:px-20
+          ${showModal ? 'overflow-hidden h-screen' : ''}`}>
     {appState === 'landing' && <LandingView onStartSession={handleStartSession} />}
       
     {appState === 'onboarding' && <OnboardingModal onSubmit={handleOnboardingSubmit} onCancel={handleCancelOnboarding} isLoading={isLoading} />}
 
     {appState === 'analysis' && (
       <>
-        <div className={`min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
-          flex flex-col items-center justify-center text-center px-4 sm:px-8 md:px-12 lg:px-20
-          ${showModal ? 'overflow-hidden h-screen' : ''}`}>
+        <div>
           {/* --- ENCABEZADO AÑADIDO --- */}
           <header className="flex flex-col items-center justify-between gap-4 py-4 px-4 sm:px-6 lg:px-8 text-white w-full max-w-7xl mx-auto border-b border-gray-700">
             <div className='text-center'>
@@ -900,24 +1078,34 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
             </div>
 
             {/* Contenedor de Botones de Acción */}
-            <div className="flex items-center gap-3">
+            <div className="flex max-w-sm items-stretch justify-center gap-3 w-full sm:w-auto">
                 <button 
                     onClick={() => setStrategyPanelOpen(true)} 
-                    className="flex items-center gap-2 px-3 py-2 text-sm font-semibold bg-gray-700 hover:bg-purple-700 rounded-lg transition-colors"
+                    // 2. Se añade flex-1 y justify-center a ambos botones
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 hover:bg-purple-700 rounded-lg transition-colors"
                 >
                     <FiSettings />
-                    {/* El texto solo aparece en pantallas medianas y más grandes */}
+                    {/* Mantenemos la lógica responsiva para el texto */}
                     <span className="inline">Mi Estrategia</span>
                 </button>
-                <button className="flex items-center gap-2 px-3 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors">
-                    <FiLock /> {/* Añadí un icono para consistencia */}
-                    {/* El texto solo aparece en pantallas medianas y más grandes */}
+                
+                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-500 rounded-lg transition-colors">
+                    <FiLock /> 
                     <span className="inline">Registrarse</span>
                 </button>
             </div>
+
+            {/* Panel de Créditos y Botón de Estrategia */}
+            <div className="flex items-center gap-6">
+              <CreditsPanel 
+                used={credits.used} 
+                remaining={credits.remaining}
+                onHistoryClick={() => setIsHistoryModalOpen(true)}
+              />
+            </div>
           </header>
           {/* --- USO DEL NUEVO COMPONENTE REUTILIZABLE --- */}
-          <div className='mt-10 w-full max-w-5xl grid text-white md:grid-cols-2 gap-8 px-2 mx-auto'>
+          <div className='mt-10 w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
             <CsvImporterComponent 
               fileType="ventas"
               title="Historial de Ventas"
@@ -945,9 +1133,20 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                       <button
                         key={reportItem.label}
                         onClick={() => handleReportView(reportItem)}
-                        className="hover:ring-2 focus:ring-purple-800 bg-white bg-opacity-80 shadow-xl text-black text-sm font-medium rounded-lg px-4 py-3 hover:bg-purple-200 hover:text-purple-800 transition duration-200 ease-in-out transform hover:scale-105"
+                        className={`relative w-full text-left p-4 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group
+                          ${reportItem.isPro 
+                            ? 'bg-gray-700 text-gray-400 hover:bg-gray-600 border border-purple-800' // Estilo Pro
+                            : 'bg-white bg-opacity-90 text-black hover:bg-purple-100' // Estilo Básico
+                          }`
+                        }
                       >
-                        {reportItem.label}
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">{reportItem.label}</span>
+                          {reportItem.isPro && <FiLock className="text-yellow-500" />}
+                        </div>
+                        {reportItem.isPro && (
+                          <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -959,10 +1158,11 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
               📂 Carga tus archivos y activa la inteligencia comercial de tu ferretería.
             </p>
           )}
-          <a href="https://web.ferreteros.app" target="_blank" className="max-w-sm max-w-[200px] mt-4 mb-10 opacity-15 hover:opacity-25 text-white text-sm">Ferretero.IA<br/><img src="ferreteros-app-white.png"/></a>
+          <div className="flex items-stretch justify-center gap-3 w-full sm:w-auto">
+            <a href="https://web.ferreteros.app" target="_blank" className="max-w-[200px] mt-4 mb-10 opacity-15 hover:opacity-25 text-white text-sm">Ferretero.IA por<br/><img src="ferreteros-app-white.png"/></a>
+          </div>
         </div>
-        {/* Renderiza el modal de estrategia si el estado es true */}
-        {isStrategyPanelOpen && <StrategyPanelModal onClose={() => setStrategyPanelOpen(false)} />}
+         
         {showModal && selectedReport && (
           <div className="w-full h-full fixed z-50 inset-0 flex items-end justify-center mb-10 overflow-y-auto">
             <div className="w-full h-full bg-white absolute top-0 flex flex-col">
@@ -1141,8 +1341,61 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
             </div>
           </div>
         )}
+
+
+
+ 
+        {/* Renderiza el modal de conversión si el estado es true */}
+        {showConversionModal && (
+          <ConversionModal
+            onClose={() => setShowConversionModal(false)}
+            onRegister={handleRegisterClick}
+            onNewSession={handleNewSessionClick}
+          />
+        )}
+
+        {showProModal && proReportClicked && (
+          <ProOfferModal
+            reportName={proReportClicked.label}
+            onClose={() => setShowProModal(false)}
+            onRegister={() => alert("Redirigiendo a la página de registro...")}
+          />
+        )}
+
       </>
     )}
+
+    {appState === 'registering' && <RegisterPage onBackToLanding={() => setAppState('analysis')} />}
+
+    {/* Renderiza el modal de créditos insuficientes si está activo */}
+    {showCreditsModal && (
+      <InsufficientCreditsModal
+        required={creditsInfo.required}
+        remaining={creditsInfo.remaining}
+        onClose={() => setShowCreditsModal(false)}
+        onRegister={() => {
+            setShowCreditsModal(false);
+            handleGoToRegister(); // Reutilizamos la función que te lleva a la vista de registro
+        }}
+        onNewSession={() => window.location.reload()}
+      />
+    )}
+
+    {showProModal && proReportClicked && (
+      <ProOfferModal
+        reportName={proReportClicked.label}
+        onClose={() => setShowProModal(false)}
+        onRegister={handleGoToRegister} // <-- ¡CAMBIO CLAVE AQUÍ!
+      />
+    )}
+
+    {/* Renderiza el modal de estrategia si el estado es true */}
+    {isStrategyPanelOpen && <StrategyPanelModal onClose={() => setStrategyPanelOpen(false)} />}
+    
+    {/* Renderiza el modal del historial si está abierto */}
+    {isHistoryModalOpen && <CreditHistoryModal history={creditHistory} reportData={reportData} onClose={() => setIsHistoryModalOpen(false)} />}
+
+    </div>
     </>
   );
 }

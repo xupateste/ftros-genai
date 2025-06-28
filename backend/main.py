@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi import HTTPException
 import pandas as pd
+import traceback
 import io
 import math
 import uuid
@@ -915,8 +916,28 @@ async def _handle_report_generation(
         
         # Ejecución de la lógica de negocio
         resultado_df = processing_function(df_ventas, df_inventario, **processing_params)
+
+        columnas = resultado_df.columns
+        columnas_duplicadas = columnas[columnas.duplicated()].unique().tolist()
         
-        output = to_excel_with_autofit(resultado_df, sheet_name=report_key[:31])
+        if columnas_duplicadas:
+            print("\n--- 🕵️  DEBUG: ¡ADVERTENCIA DE COLUMNAS DUPLICADAS! ---")
+            print(f"El DataFrame final para el reporte '{report_key}' tiene nombres de columna repetidos:")
+            print(f"Columnas duplicadas encontradas: {columnas_duplicadas}")
+            print("Esto causará que se omitan datos en el frontend. Revisa tu función de procesamiento para renombrar o eliminar estas columnas antes de devolver el DataFrame.")
+            print("-----------------------------------------------------------\n")
+            # Opcional: Podrías decidir lanzar un error aquí para forzar la corrección
+            # raise ValueError(f"Columnas duplicadas detectadas: {columnas_duplicadas}")
+        # --- FIN DEL BLOQUE DE DEPURACIÓN ---
+        
+        insight_text = f"Análisis completado. Se encontraron {len(resultado_df)} productos que cumplen los criterios."
+        if resultado_df.empty:
+            insight_text = "El análisis se completó, pero no se encontraron productos con los filtros seleccionados."
+        
+        # Convertimos el DataFrame a un formato JSON (lista de diccionarios)
+        data_for_frontend = resultado_df.to_dict(orient='records')
+
+        # output = to_excel_with_autofit(resultado_df, sheet_name=report_key[:31])
         
         # --- Transacción Final ---
         if resultado_df.empty:
@@ -933,15 +954,25 @@ async def _handle_report_generation(
                 creditos_consumidos=report_cost, estado="exitoso"
             )
 
-        # Devolvemos el archivo que ya creamos en memoria
-        return StreamingResponse(
-            output,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={"Content-Disposition": f"attachment; filename={output_filename}"}
-        )
+        # Devolvemos la respuesta JSON
+        return JSONResponse(content={
+            "insight": insight_text,
+            "data": data_for_frontend,
+            "report_key": report_key # Enviamos la clave para que el frontend sepa qué hacer
+        })
+
 
     except Exception as e:
         # Si CUALQUIER COSA falla durante el procesamiento...
+        # --- BLOQUE DE MANEJO DE ERRORES MEJORADO ---
+        print("\n" + "="*50)
+        print("🔥🔥🔥 OCURRIÓ UN ERROR CRÍTICO DURANTE EL PROCESAMIENTO 🔥🔥🔥")
+        
+        # Esta línea imprimirá el traceback completo, diciéndonos el archivo,
+        # la línea y el tipo de error exacto.
+        traceback.print_exc() 
+        
+        print("="*50 + "\n")
         # ... registramos el intento fallido SIN descontar créditos.
         user_message, error_type, tech_details = "Error inesperado al procesar", type(e).__name__, str(e)
         if isinstance(e, KeyError): user_message = f"Columna requerida no encontrada: {e}"

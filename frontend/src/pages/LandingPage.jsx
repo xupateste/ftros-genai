@@ -6,9 +6,8 @@ import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, 
 import axios from 'axios';
 import Select from 'react-select';
 import CsvImporterComponent from '../assets/CsvImporterComponent';
+import * as XLSX from 'xlsx';
 
-import CsvDropZone from '../assets/CsvDropZone';
-import CsvDropZone2 from '../assets/CsvDropZone2';
 import { v4 as uuidv4 } from 'uuid';
 
 import { getSessionId } from '../utils/sessionManager'; // Ajusta la ruta
@@ -541,7 +540,6 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   const [reportsConfig, setReportsConfig] = useState(null); // Para guardar la respuesta cruda de la API
   const [isConfigLoading, setIsConfigLoading] = useState(true);
 
-
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false); // Estado para el modal
   const { strategy } = useStrategy();
 
@@ -555,6 +553,8 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
 
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [creditsInfo, setCreditsInfo] = useState({ required: 0, remaining: 0 });
+
+  const [analysisResult, setAnalysisResult] = useState(null); // Guardará { insight, data, report_key }
 
   // --- NUEVOS ESTADOS PARA GESTIONAR LA CARGA DE ARCHIVOS ---
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
@@ -770,6 +770,48 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     return new Date().toLocaleDateString('en-CA');
   }, []);
 
+  // --- NUEVA FUNCIÓN PARA GENERAR Y DESCARGAR EXCEL EN EL CLIENTE ---
+  const handleDownloadExcel = (type) => {
+    if (!analysisResult || !analysisResult.data) {
+        alert("No hay datos de análisis para descargar.");
+        return;
+    }
+
+    let dataToExport = analysisResult.data;
+    let filename = `FerreteroIA_${analysisResult.report_key}.xlsx`;
+
+    // Lógica para crear el reporte accionable
+    if (type === 'accionable') {
+        const columnasAccionables = [
+            'SKU / Código de producto', 
+            'Nombre del producto', 
+            'Stock Actual (Unds)', 
+            'Sugerencia_Pedido_Ideal_Unds', // Asegúrate que este nombre de columna coincida con el que devuelve tu backend
+            // ... puedes añadir más columnas clave aquí
+        ];
+
+        dataToExport = analysisResult.data.map(row => {
+            let newRow = {};
+            columnasAccionables.forEach(col => {
+                if (row[col] !== undefined) newRow[col] = row[col];
+            });
+            // Añadimos las columnas vacías que pediste para imprimir
+            newRow['Check ✓'] = '';
+            newRow['Cantidad Final'] = '';
+            return newRow;
+        });
+        filename = `FerreteroIA_${analysisResult.report_key}_Accionable.xlsx`;
+    }
+
+    // Usamos la librería xlsx para crear el archivo desde el JSON
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte");
+    
+    // Disparamos la descarga
+    XLSX.writeFile(workbook, filename);
+};
+
   // --- MODIFICACIÓN 4: Función auxiliar para disparar la descarga ---
   const triggerDownload = (blob, filename) => {
     const url = window.URL.createObjectURL(blob);
@@ -784,8 +826,8 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   };
 
 
-  // --- MODIFICACIÓN 2: buttonDownloadHandleMulti para usar y actualizar caché ---
-  const buttonDownloadHandleMulti = async () => {
+  // --- MODIFICACIÓN 2: handleGenerateAnalysis para usar y actualizar caché ---
+  const handleGenerateAnalysis = async () => {
     // 1. Verificación inicial (ahora comprueba los IDs de archivo)
     if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario || !sessionId) {
       alert("Asegúrate de haber iniciado una sesión, subido ambos archivos y seleccionado un reporte.");
@@ -793,33 +835,34 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     }
 
     setIsLoading(true);
+    setAnalysisResult(null);
 
-    // --- LÓGICA DE CACHÉ ---
-    // 1. Crear una clave única para la solicitud actual
-    const currentCacheKey = `${selectedReport.endpoint}-${uploadedFileIds.ventas}-${uploadedFileIds.inventario}-${JSON.stringify(modalParams)}`;
+    // // --- LÓGICA DE CACHÉ ---
+    // // 1. Crear una clave única para la solicitud actual
+    // const currentCacheKey = `${selectedReport.endpoint}-${uploadedFileIds.ventas}-${uploadedFileIds.inventario}-${JSON.stringify(modalParams)}`;
 
-    // 2. Verificar si hay una respuesta en caché que coincida con la clave actual
-    if (cachedResponse.key === currentCacheKey && cachedResponse.blob) {
-      console.log("Usando respuesta de caché para:", currentCacheKey);
+    // // 2. Verificar si hay una respuesta en caché que coincida con la clave actual
+    // if (cachedResponse.key === currentCacheKey && cachedResponse.blob) {
+    //   console.log("Usando respuesta de caché para:", currentCacheKey);
       
-      const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}_cached.xlsx`;
+    //   const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}_cached.xlsx`;
       
-      // Reutilizamos el blob guardado para la descarga
-      const url = window.URL.createObjectURL(cachedResponse.blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+    //   // Reutilizamos el blob guardado para la descarga
+    //   const url = window.URL.createObjectURL(cachedResponse.blob);
+    //   const link = document.createElement('a');
+    //   link.href = url;
+    //   link.setAttribute('download', filename);
+    //   document.body.appendChild(link);
+    //   link.click();
+    //   link.remove();
+    //   window.URL.revokeObjectURL(url);
 
-      setIsLoading(false); // Detenemos la carga
-      return; // Salimos de la función para evitar la llamada a la API
-    }
+    //   setIsLoading(false); // Detenemos la carga
+    //   return; // Salimos de la función para evitar la llamada a la API
+    // }
     
-    // --- SI NO HAY CACHÉ, CONTINUAMOS CON LA LLAMADA A LA API ---
-    console.log("No hay caché válido. Realizando nueva petición al servidor.");
+    // // --- SI NO HAY CACHÉ, CONTINUAMOS CON LA LLAMADA A LA API ---
+    // console.log("No hay caché válido. Realizando nueva petición al servidor.");
 
     // 2. Crear el FormData (ahora con IDs en lugar de archivos)
     const formData = new FormData();
@@ -834,6 +877,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       ...(selectedReport.basic_parameters || []),
       ...(selectedReport.advanced_parameters || [])
     ];
+
     allParameters.forEach(param => {
         const value = modalParams[param.name];
         if (value !== undefined && value !== null && value !== '') {
@@ -849,29 +893,33 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
 
     try {
       const response = await axios.post(`${API_URL}${selectedReport.endpoint}`, formData, {
-        responseType: 'blob',
+        // responseType: 'blob', // Ahora espera un JSON
         headers: { 'X-Session-ID': sessionId }
       });
       
       const newBlob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
       // 3. Guardar la nueva respuesta en el caché
-      setCachedResponse({ key: currentCacheKey, blob: newBlob });
+      // setCachedResponse({ key: currentCacheKey, blob: newBlob });
 
-      const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}.xlsx`;
-      const url = window.URL.createObjectURL(newBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
+      setAnalysisResult(response.data);
+
+      // const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}.xlsx`;
+      // const url = window.URL.createObjectURL(newBlob);
+      // const link = document.createElement('a');
+      // link.href = url;
+      // link.setAttribute('download', filename);
+      // document.body.appendChild(link);
+      // link.click();
+      // link.remove();
+      // window.URL.revokeObjectURL(url);
 
       // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
       const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': sessionId } });
       setCredits(updatedState.data.credits);
       setCreditHistory(updatedState.data.history);
+
     } catch (error) {
       // --- 5. LÓGICA DE MANEJO DE ERRORES MEJORADA ---
       console.error("Error al generar el reporte:", error);
@@ -1042,6 +1090,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       if (!showModal) {
           console.log("Modal cerrado, limpiando caché.");
           setCachedResponse({ key: null, blob: null });
+          setAnalysisResult(null)
       }
   }, [showModal]);
 
@@ -1066,7 +1115,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       <>
         <div>
           {/* --- ENCABEZADO AÑADIDO --- */}
-          <header className="flex flex-col items-center justify-between gap-4 py-4 px-4 sm:px-6 lg:px-8 text-white w-full max-w-7xl mx-auto border-b border-gray-700">
+          <header className="flex flex-col items-center justify-between gap-4 py-4 text-white w-full max-w-7xl mx-auto border-b border-gray-700">
             <div className='text-center'>
               <h1 className="text-3xl md:text-5xl font-bold text-white">
                   Sesión de <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
@@ -1097,7 +1146,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
             </div>
 
             {/* Panel de Créditos y Botón de Estrategia */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6 w-full">
               <CreditsPanel 
                 used={credits.used} 
                 remaining={credits.remaining}
@@ -1173,127 +1222,145 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                 </h2>
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="flex-1 min-h-0 gap-4 p-4">
-                  {(selectedReport.basic_parameters?.length > 0 || selectedReport.advanced_parameters?.length > 0) && (
-                      <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
-                        <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
-                        
-                        {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
-                        {selectedReport.basic_parameters?.map((param) => {
-                          // Lógica de renderizado para select y multi-select
-                          if (param.type === 'select') {
-                            return (
-                              <div key={param.name} className="mb-4">
-                                <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
-                                <select
-                                  id={param.name}
-                                  name={param.name}
-                                  value={modalParams[param.name] || ''}
-                                  onChange={e => handleParamChange(param.name, e.target.value)}
-                                  className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                >
-                                  {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                </select>
-                              </div>
-                            );
-                          }
-                          if (param.type === 'multi-select') {
-                            const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-                            const value = (modalParams[param.name] || []).map(val => ({ value: val, label: val }));
-                            return (
-                              <div key={param.name} className="mb-4">
-                                <label className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
-                                <Select
-                                  isMulti
-                                  name={param.name}
-                                  options={options}
-                                  className="mt-1 block w-full basic-multi-select"
-                                  classNamePrefix="select"
-                                  value={value}
-                                  isLoading={isLoadingFilters}
-                                  placeholder={isLoadingFilters ? "Cargando filtros..." : "Selecciona uno o más..."}
-                                  onChange={(selectedOptions) => {
-                                    const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-                                    handleParamChange(param.name, values);
-                                  }}
-                                />
-                              </div>
-                            );
-                          }
-                          return null;
-                        })}
-
-                        {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
-                        {selectedReport.advanced_parameters && selectedReport.advanced_parameters.length > 0 && (
-                          <div className="mt-6 pt-4 border-t border-gray-200">
-                            <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
-                              {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
-                              {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
-                              <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            
-                            {showAdvanced && (
-                              <>
-                                <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
-                                  {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
-                                  {selectedReport.advanced_parameters.map(param => {
-                                    if (param.type === 'boolean_select') {
-                                      return (
-                                        <div key={param.name} className="mb-4">
-                                          <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
-                                          <select
-                                            id={param.name}
-                                            name={param.name}
-                                            value={modalParams[param.name] || ''}
-                                            onChange={e => handleParamChange(param.name, e.target.value)}
-                                            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                          >
-                                            {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                          </select>
-                                        </div>
-                                      );
-                                    }
-                                    if (param.type === 'number') {
-                                      return (
-                                        <div key={param.name} className="mb-4">
-                                          <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
-                                          <input
-                                            type="number"
-                                            id={param.name}
-                                            name={param.name}
-                                            value={modalParams[param.name] || ''}
-                                            onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                            min={param.min}
-                                            max={param.max}
-                                            step={param.step}
-                                            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                          />
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  })}
+                {/* Renderizado Condicional: Muestra parámetros O resultados */}
+                {!analysisResult ? (
+                  <div className="flex-1 min-h-0 gap-4 p-4">
+                    {(selectedReport.basic_parameters?.length > 0 || selectedReport.advanced_parameters?.length > 0) && (
+                        <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
+                          <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
+                          
+                          {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
+                          {selectedReport.basic_parameters?.map((param) => {
+                            // Lógica de renderizado para select y multi-select
+                            if (param.type === 'select') {
+                              return (
+                                <div key={param.name} className="mb-4">
+                                  <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                  <select
+                                    id={param.name}
+                                    name={param.name}
+                                    value={modalParams[param.name] || ''}
+                                    onChange={e => handleParamChange(param.name, e.target.value)}
+                                    className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                  >
+                                    {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                  </select>
                                 </div>
-                                {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
-                                <button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
-                                  <FiRefreshCw className="text-md"/> Restaurar valores por defecto
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                  )}
-                </div>
-                <div
-                  className="w-full max-w-full overflow-x-auto text-gray-700 space-y-2 mt-1 text-left text-sm"
-                  dangerouslySetInnerHTML={{ __html: insightHtml }}
-                >
-                </div>
+                              );
+                            }
+                            if (param.type === 'multi-select') {
+                              const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
+                              const value = (modalParams[param.name] || []).map(val => ({ value: val, label: val }));
+                              return (
+                                <div key={param.name} className="mb-4">
+                                  <label className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                  <Select
+                                    isMulti
+                                    name={param.name}
+                                    options={options}
+                                    className="mt-1 block w-full basic-multi-select"
+                                    classNamePrefix="select"
+                                    value={value}
+                                    isLoading={isLoadingFilters}
+                                    placeholder={isLoadingFilters ? "Cargando filtros..." : "Selecciona uno o más..."}
+                                    onChange={(selectedOptions) => {
+                                      const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
+                                      handleParamChange(param.name, values);
+                                    }}
+                                  />
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
+
+                          {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
+                          {selectedReport.advanced_parameters && selectedReport.advanced_parameters.length > 0 && (
+                            <div className="mt-6 pt-4 border-t border-gray-200">
+                              <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
+                                {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
+                                {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
+                                <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                              </button>
+                              
+                              {showAdvanced && (
+                                <>
+                                  <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
+                                    {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
+                                    {selectedReport.advanced_parameters.map(param => {
+                                      if (param.type === 'boolean_select') {
+                                        return (
+                                          <div key={param.name} className="mb-4">
+                                            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                            <select
+                                              id={param.name}
+                                              name={param.name}
+                                              value={modalParams[param.name] || ''}
+                                              onChange={e => handleParamChange(param.name, e.target.value)}
+                                              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                            >
+                                              {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                            </select>
+                                          </div>
+                                        );
+                                      }
+                                      if (param.type === 'number') {
+                                        return (
+                                          <div key={param.name} className="mb-4">
+                                            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                            <input
+                                              type="number"
+                                              id={param.name}
+                                              name={param.name}
+                                              value={modalParams[param.name] || ''}
+                                              onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                              min={param.min}
+                                              max={param.max}
+                                              step={param.step}
+                                              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                            />
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })}
+                                  </div>
+                                  {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
+                                  <button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
+                                    <FiRefreshCw className="text-md"/> Restaurar valores por defecto
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                    )}
+                  </div>
+                ) : (
+                  // VISTA DE RESULTADOS: Botones de descarga y para volver
+                  <div className="space-y-3">
+                    <div className="flex gap-4">
+                        <button onClick={() => handleDownloadExcel('accionable')} className="flex-1 bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700">
+                            📋 Descargar Accionable
+                        </button>
+                        <button onClick={() => handleDownloadExcel('detallado')} className="flex-1 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">
+                            📊 Descargar Detallado
+                        </button>
+                    </div>
+                    <button onClick={() => setAnalysisResult(null)} className="text-sm text-gray-600 hover:text-black">
+                        ‹ Volver a Parámetros
+                    </button>
+                  </div>
+                // <div
+                //   className="w-full max-w-full overflow-x-auto text-gray-700 space-y-2 mt-1 text-left text-sm"
+                //   dangerouslySetInnerHTML={{ __html: insightHtml }}
+                // >
+                // </div>
+                )}
               </div>
               <div className="p-4 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
                 <button
-                    onClick={buttonDownloadHandleMulti}
+                    onClick={handleGenerateAnalysis}
                     // La condición disabled ahora solo depende de si los archivos están listos o si está cargando
                     disabled={!filesReady || isLoading}
                     className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
@@ -1338,7 +1405,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                 >
                     Cerrar
                 </button>
-            </div>
+              </div>
             </div>
           </div>
         )}
