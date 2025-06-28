@@ -1458,8 +1458,12 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     )}
 
     {/* Renderiza el modal de estrategia si el estado es true */}
-    {isStrategyPanelOpen && <StrategyPanelModal onClose={() => setStrategyPanelOpen(false)} />}
-    
+    {isStrategyPanelOpen && (
+      <StrategyPanelModal 
+        sessionId={sessionId} 
+        onClose={() => setStrategyPanelOpen(false)} 
+      />
+    )}
     {/* Renderiza el modal del historial si está abierto */}
     {isHistoryModalOpen && <CreditHistoryModal history={creditHistory} reportData={reportData} onClose={() => setIsHistoryModalOpen(false)} />}
 

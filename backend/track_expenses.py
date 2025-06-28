@@ -655,7 +655,29 @@ def process_csv_analisis_estrategico_rotacion(
     df_final['Índice de Importancia'] = df_final['Índice de Importancia'].round(3)
     df_final['Cobertura Actual (Días)'] = df_final['Cobertura Actual (Días)'].round(1)
 
-    return df_final
+     # Redondeo final para mejor visualización
+    if 'Inversión Stock Actual (S/.)' in df_final.columns:
+        df_final['Inversión Stock Actual (S/.)'] = df_final['Inversión Stock Actual (S/.)'].round(2)
+    if 'Índice de Importancia' in df_final.columns:
+        df_final['Índice de Importancia'] = df_final['Índice de Importancia'].round(3)
+    if 'Cobertura Actual (Días)' in df_final.columns:
+        df_final['Cobertura Actual (Días)'] = df_final['Cobertura Actual (Días)'].round(1)
+
+    # --- NUEVO PASO FINAL: LIMPIEZA PARA COMPATIBILIDAD CON JSON ---
+    print("Limpiando DataFrame de análisis estratégico para JSON...")
+
+    # Si el dataframe está vacío, lo devolvemos tal cual.
+    if df_final.empty:
+        return df_final
+
+    # 1. Reemplazar valores infinitos (inf, -inf) con NaN.
+    df_limpio = df_final.replace([np.inf, -np.inf], np.nan)
+
+    # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
+    # El método .where() es muy eficiente para esto.
+    resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
+    
+    return resultado_final_json_safe
 
 
 def process_csv_rotacion_general_version_anterior(
@@ -1749,7 +1771,19 @@ def process_csv_lista_basica_reposicion_historico(
         }
         df_resultado_final.rename(columns=column_rename_map, inplace=True)
 
-    return df_resultado_final
+    # --- NUEVO PASO FINAL: LIMPIEZA PARA COMPATIBILIDAD CON JSON ---
+    print("Limpiando DataFrame de reposición para JSON...")
+
+    if df_resultado_final.empty:
+        return df_resultado_final
+
+    # 1. Reemplazar valores infinitos (inf, -inf) con NaN.
+    df_limpio = df_resultado_final.replace([np.inf, -np.inf], np.nan)
+
+    # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
+    resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
+    
+    return resultado_final_json_safe
 
 
 
@@ -1957,7 +1991,7 @@ def procesar_stock_muerto(
     # El método .where() es muy eficiente para esto.
     resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
     
-    return df_final
+    return resultado_final_json_safe
 
 
 # ----------------------------------------------------------

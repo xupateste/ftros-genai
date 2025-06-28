@@ -1,8 +1,10 @@
 // src/components/StrategyPanel.jsx
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useStrategy } from '../context/StrategyProvider';
 import { StrategySlider } from './StrategySlider';
+import { useDebounce } from '../utils/useDebounce'; // Importamos nuestro nuevo hook
+import axios from 'axios';
 
 const tooltips = {
   score_margen: "Mide la rentabilidad pura. Un peso alto prioriza los productos que te dejan más ganancia neta por venta.",
@@ -12,8 +14,20 @@ const tooltips = {
   // Puedes añadir tooltips para los otros parámetros aquí...
 };
 
-export function StrategyPanel() {
-  const { strategy, setStrategy, restoreDefaults } = useStrategy();
+const API_URL = import.meta.env.VITE_API_URL;
+
+export function StrategyPanel({ sessionId }) {
+  const { strategy, setStrategy, restoreDefaults, isLoading, saveStrategy } = useStrategy();
+  
+  const debouncedStrategy = useDebounce(strategy, 750);
+
+  // useEffect ahora llama a la función de guardado del contexto
+  useEffect(() => {
+    // No guardamos si la estrategia aún se está cargando (es nula)
+    if (debouncedStrategy) {
+      saveStrategy(debouncedStrategy, sessionId);
+    }
+  }, [debouncedStrategy, sessionId, saveStrategy]);
 
   const handleChange = (e) => {
     const { name, value, type } = e.target;
@@ -22,6 +36,10 @@ export function StrategyPanel() {
       [name]: type === 'number' || type === 'range' ? parseFloat(value) || 0 : value
     }));
   };
+
+  if (isLoading || !strategy) {
+    return <div className="p-6 text-center">Cargando estrategia...</div>;
+  }
 
   // Helper para crear los sliders de rango
   const renderRangeSlider = (name, label) => (

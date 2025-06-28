@@ -1,40 +1,76 @@
 // src/context/StrategyProvider.jsx
 
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import axios from 'axios';
+import { useDebounce } from '../utils/useDebounce';
 
-// Valores por defecto "de fábrica" para la estrategia
-const defaultStrategy = {
-  // Pesos de Importancia (1-10)
-  score_ventas: 8,
-  score_ingreso: 6,
-  score_margen: 4,
-  score_dias_venta: 2,
-  
-  // Parámetros de Riesgo y Cobertura
-  lead_time_dias: 7,
-  dias_cobertura_ideal_base: 10,
-  dias_seguridad_base: 0,
-
-  // Parámetros de Análisis
-  dias_analisis_ventas_recientes: 30,
-  dias_analisis_ventas_general: 180,
-  excluir_sin_ventas: 'true',
-  peso_ventas_historicas: 0.6,
-};
+const API_URL = import.meta.env.VITE_API_URL;
 
 const StrategyContext = createContext();
 
-export function StrategyProvider({ children }) {
-  // El estado SIEMPRE inicia con los valores por defecto.
-  // Ya no lee de localStorage para mantener la sesión efímera.
-  const [strategy, setStrategy] = useState(defaultStrategy);
+export function StrategyProvider({ children, sessionId }) { // Ahora recibe sessionId
+  const [strategy, setStrategy] = useState(null); // Inicia como null
+  const [isLoading, setIsLoading] = useState(true);
 
-  const restoreDefaults = () => {
-    setStrategy(defaultStrategy);
+  // El valor "debounced" solo se actualizará 500ms después del último cambio
+  const debouncedStrategy = useDebounce(strategy, 5750);
+
+  // Efecto para cargar la estrategia inicial
+  useEffect(() => {
+    const fetchInitialStrategy = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/strategy/default`);
+        setStrategy(response.data);
+      } catch (error) {
+        console.error("Error al cargar la estrategia por defecto:", error);
+        // Aquí podrías establecer un default local como plan B
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchInitialStrategy();
+  }, []); // Se ejecuta solo una vez
+
+  // // Efecto para guardar la estrategia en Firestore cuando cambia
+  // useEffect(() => {
+  //   // No guardamos si la estrategia aún no se ha cargado o si no hay sesión
+  //   if (!debouncedStrategy || !sessionId || isLoading) return;
+
+  //   const saveStrategy = async () => {
+  //     console.log("Guardando estrategia en el servidor...", debouncedStrategy);
+  //     try {
+  //       await axios.post(`${API_URL}/sessions/${sessionId}/strategy`, debouncedStrategy);
+  //       console.log("✅ Estrategia guardada en Firestore.");
+  //     } catch (error) {
+  //       console.error("🔥 Error al guardar la estrategia:", error);
+  //     }
+  //   };
+  //   saveStrategy();
+  // }, [debouncedStrategy, sessionId, isLoading]);
+
+  const saveStrategy = useCallback(async (strategyToSave, sessionId) => {
+    if (!sessionId || !strategyToSave) return;
+    console.log(`Guardando estrategia para la sesión ${sessionId}...`, strategyToSave);
+    try {
+      await axios.post(`${API_URL}/sessions/${sessionId}/strategy`, strategyToSave);
+      console.log("✅ Estrategia guardada en Firestore.");
+    } catch (error) {
+      console.error("🔥 Error al guardar la estrategia:", error);
+    }
+  }, []);
+
+  const restoreDefaults = async () => {
+     // Ahora, restaurar también pide los defaults a la API
+     try {
+        const response = await axios.get(`${API_URL}/strategy/default`);
+        setStrategy(response.data);
+      } catch (error) {
+        console.error("Error al restaurar defaults:", error);
+      }
   };
 
-  // El valor del contexto ahora solo contiene el estado, el setter y la función de reseteo.
-  const value = { strategy, setStrategy, restoreDefaults };
+  const value = { strategy, setStrategy, restoreDefaults, isLoading, saveStrategy };
+
 
   return (
     <StrategyContext.Provider value={value}>
@@ -43,7 +79,6 @@ export function StrategyProvider({ children }) {
   );
 }
 
-// Hook personalizado para usar el contexto fácilmente
 export function useStrategy() {
   return useContext(StrategyContext);
 }

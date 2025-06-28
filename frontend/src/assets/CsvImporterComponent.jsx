@@ -72,7 +72,7 @@ function CsvImporterComponent({
     <div className="w-full h-full p-4 flex items-center justify-center">
       <div
         onClick={() => uploadStatus !== 'uploading' && setIsOpen(true)}
-        className={`cursor-pointer flex flex-col items-center justify-center p-8 w-full max-w-md mx-auto rounded-lg transition-all duration-300 border-2 bg-transparent text-white ${
+        className={`cursor-pointer flex flex-col items-center text-center justify-center p-8 w-full max-w-md mx-auto rounded-lg transition-all duration-300 border-2 bg-transparent text-white ${
           uploadStatus === 'success' ? 'border-green-500' : 
           uploadStatus === 'error' ? 'border-red-500' : 'border-dashed border-white border-opacity-30'
         } ${uploadStatus === 'uploading' ? 'cursor-not-allowed' : 'hover:ring-2 hover:ring-purple-400'}`}

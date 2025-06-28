@@ -3,11 +3,11 @@ import React from 'react';
 import { StrategyPanel } from './StrategyPanel';
 import { FiX } from 'react-icons/fi';
 
-export function StrategyPanelModal({ onClose }) {
+export function StrategyPanelModal({ onClose, sessionId }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="bg-gray-50 rounded-lg shadow-xl max-w-4xl w-full flex flex-col max-h-[90vh]">
-        <StrategyPanel />
+        <StrategyPanel sessionId={sessionId} />
         <div className="p-4 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
           <button
             onClick={onClose}

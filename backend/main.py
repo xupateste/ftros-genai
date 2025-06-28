@@ -27,6 +27,7 @@ from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario
 from report_config import REPORTS_CONFIG
+from strategy_config import DEFAULT_STRATEGY
 
 INITIAL_CREDITS = 35
 
@@ -68,11 +69,27 @@ async def get_reports_configuration():
     return JSONResponse(content=REPORTS_CONFIG)
 
 # ===================================================================================
-# --- NUEVO MODELO DE DATOS PARA ONBOARDING ---
+# --- MODELOS DE DATOS ---
 # ===================================================================================
+
+# --- NUEVO MODELO DE DATOS PARA ONBOARDING ---
 class OnboardingData(BaseModel):
     """Define la estructura de datos que esperamos recibir del formulario de onboarding."""
     rol: str = Field(..., description="El rol seleccionado por el usuario (e.g., 'dueño', 'consultor').")
+
+# --- MODELO DE DATOS PARA VALIDAR LA ESTRATEGIA ---
+class StrategyData(BaseModel):
+    score_ventas: int = Field(..., ge=1, le=10)
+    score_ingreso: int = Field(..., ge=1, le=10)
+    score_margen: int = Field(..., ge=1, le=10)
+    score_dias_venta: int = Field(..., ge=1, le=10)
+    lead_time_dias: int = Field(..., ge=0)
+    dias_cobertura_ideal_base: int = Field(..., ge=1)
+    dias_seguridad_base: int = Field(..., ge=0)
+    dias_analisis_ventas_recientes: int = Field(..., ge=1)
+    dias_analisis_ventas_general: int = Field(..., ge=1)
+    excluir_sin_ventas: str
+    peso_ventas_historicas: float = Field(..., ge=0, le=1)
 
 
 # ===================================================================================
@@ -181,6 +198,32 @@ async def get_session_state(
         print(f"🔥 Error al recuperar estado de sesión para {X_Session_ID}: {e}")
         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado de la sesión desde el servidor.")
 
+
+# ===================================================================================
+# --- NUEVO ENDPOINT PARA GUARDAR LA ESTRATEGIA ---
+# ===================================================================================
+@app.get("/strategy/default", summary="Obtiene la estrategia de negocio por defecto", tags=["Estrategia"])
+async def get_default_strategy():
+    """Devuelve la configuración base recomendada para los parámetros de análisis."""
+    return JSONResponse(content=DEFAULT_STRATEGY)
+
+@app.post("/sessions/{session_id}/strategy", summary="Guarda la estrategia de negocio para una sesión", tags=["Estrategia"])
+async def save_strategy(session_id: str, strategy_data: StrategyData):
+    """
+    Actualiza la configuración de la estrategia para una sesión dada en Firestore.
+    """
+    try:
+        session_ref = db.collection('sesiones_anonimas').document(session_id)
+        # Usamos .set con merge=True para añadir o sobrescribir el campo 'estrategia'
+        # sin borrar otros datos de la sesión como los créditos.
+        session_ref.set({"estrategia": strategy_data.dict()}, merge=True)
+        
+        print(f"✅ Estrategia actualizada para la sesión: {session_id}")
+        return {"message": "Estrategia guardada exitosamente."}
+        
+    except Exception as e:
+        print(f"🔥 Error al guardar la estrategia para la sesión {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"No se pudo guardar la estrategia: {e}")
 
 # ===================================================================================
 # --- NUEVO ENDPOINT PARA LA CARGA DE ARCHIVOS DEDICADA ---
