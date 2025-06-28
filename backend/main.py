@@ -117,10 +117,9 @@ async def create_analysis_session(onboarding_data: OnboardingData):
                 "rol": onboarding_data.rol
             },
             "ultimoAcceso": now,
-            
-            # --- NUEVOS CAMPOS PARA EL MONEDERO DE CRÉDITOS ---
             "creditos_iniciales": INITIAL_CREDITS,
-            "creditos_restantes": INITIAL_CREDITS
+            "creditos_restantes": INITIAL_CREDITS,
+            "estrategia": DEFAULT_STRATEGY 
         }
         
         session_ref.set(session_log)
@@ -200,12 +199,44 @@ async def get_session_state(
 
 
 # ===================================================================================
-# --- NUEVO ENDPOINT PARA GUARDAR LA ESTRATEGIA ---
+# --- NUEVOS ENDPOINTS PARA GESTIONAR LA ESTRATEGIA ---
 # ===================================================================================
 @app.get("/strategy/default", summary="Obtiene la estrategia de negocio por defecto", tags=["Estrategia"])
 async def get_default_strategy():
     """Devuelve la configuración base recomendada para los parámetros de análisis."""
     return JSONResponse(content=DEFAULT_STRATEGY)
+
+@app.get("/sessions/{session_id}/strategy", summary="Obtiene la estrategia guardada para una sesión", tags=["Estrategia"])
+async def get_session_strategy(session_id: str):
+    """
+    Devuelve la configuración de estrategia personalizada que está guardada
+    para una sesión específica en Firestore.
+    """
+    try:
+        session_ref = db.collection('sesiones_anonimas').document(session_id)
+        session_doc = session_ref.get()
+
+        if not session_doc.exists:
+            # Si la sesión no existe, es un error del cliente.
+            raise HTTPException(status_code=404, detail="La sesión no existe.")
+
+        # Buscamos el campo 'estrategia' dentro del documento de la sesión.
+        strategy_data = session_doc.to_dict().get("estrategia")
+
+        if not strategy_data:
+            # Como plan B, si por alguna razón el campo no existe,
+            # devolvemos la estrategia por defecto para que la app no se rompa.
+            print(f"Advertencia: No se encontró estrategia para la sesión {session_id}. Devolviendo default.")
+            return JSONResponse(content=DEFAULT_STRATEGY)
+
+        return JSONResponse(content=strategy_data)
+
+    except HTTPException as http_exc:
+        # Relanzamos los errores HTTP que nosotros mismos generamos
+        raise http_exc
+    except Exception as e:
+        print(f"🔥 Error al obtener la estrategia para la sesión {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"No se pudo obtener la estrategia: {e}")
 
 @app.post("/sessions/{session_id}/strategy", summary="Guarda la estrategia de negocio para una sesión", tags=["Estrategia"])
 async def save_strategy(session_id: str, strategy_data: StrategyData):
@@ -214,16 +245,26 @@ async def save_strategy(session_id: str, strategy_data: StrategyData):
     """
     try:
         session_ref = db.collection('sesiones_anonimas').document(session_id)
-        # Usamos .set con merge=True para añadir o sobrescribir el campo 'estrategia'
-        # sin borrar otros datos de la sesión como los créditos.
+
+        # --- CAMBIO CLAVE: LÓGICA DE ESCRITURA ---
+        # Usamos .set() con merge=True. Esto añadirá el campo 'estrategia' si no existe,
+        # o lo sobrescribirá por completo si ya existe, sin tocar otros campos
+        # como los créditos.
+        # El método .dict() de Pydantic convierte el objeto strategy_data en un diccionario
+        # que Firestore puede entender.
         session_ref.set({"estrategia": strategy_data.dict()}, merge=True)
         
-        print(f"✅ Estrategia actualizada para la sesión: {session_id}")
-        return {"message": "Estrategia guardada exitosamente."}
+        print(f"✅ Estrategia actualizada exitosamente para la sesión: {session_id}")
+        
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Estrategia guardada exitosamente."}
+        )
         
     except Exception as e:
         print(f"🔥 Error al guardar la estrategia para la sesión {session_id}: {e}")
         raise HTTPException(status_code=500, detail=f"No se pudo guardar la estrategia: {e}")
+
 
 # ===================================================================================
 # --- NUEVO ENDPOINT PARA LA CARGA DE ARCHIVOS DEDICADA ---

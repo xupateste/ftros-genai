@@ -13,6 +13,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { getSessionId } from '../utils/sessionManager'; // Ajusta la ruta
 
 import { StrategyProvider, useStrategy } from '../context/StrategyProvider';
+
 import { StrategyPanelModal } from '../components/StrategyPanelModal';
 import { FiSettings } from 'react-icons/fi';
 import { ProOfferModal } from '../components/ProOfferModal'; // Ajusta la ruta
@@ -535,10 +536,13 @@ const OnboardingModal = ({ onSubmit, onCancel, isLoading }) => {
 // ===================================================================================
 function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar el import en App.jsx, etc.
   const [appState, setAppState] = useState('landing'); // 'landing', 'onboarding', 'analysis', 'registering'
+  const { loadStrategy } = useStrategy();
   const [sessionId, setSessionId] = useState(null);
 
   const [reportsConfig, setReportsConfig] = useState(null); // Para guardar la respuesta cruda de la API
   const [isConfigLoading, setIsConfigLoading] = useState(true);
+
+  const { initializeSessionAndLoadStrategy } = useStrategy();
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false); // Estado para el modal
   const { strategy } = useStrategy();
@@ -583,6 +587,8 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       const response = await axios.post(`${API_URL}/sessions`, data);
       const newSessionId = response.data.sessionId; // Usar el ID del backend
 
+      await initializeSessionAndLoadStrategy(newSessionId);
+      // await loadStrategy(newSessionId);
       setSessionId(newSessionId);
       setAppState('analysis');
 

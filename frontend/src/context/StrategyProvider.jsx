@@ -1,76 +1,61 @@
-// src/context/StrategyProvider.jsx
+// src/context/StrategyProvider.jsx (Versión Orquestada y Final)
 
-import React, { createContext, useState, useEffect, useContext, useCallback } from 'react';
+import React, { createContext, useState, useContext, useCallback } from 'react';
 import axios from 'axios';
-import { useDebounce } from '../utils/useDebounce';
 
-const API_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const StrategyContext = createContext();
 
-export function StrategyProvider({ children, sessionId }) { // Ahora recibe sessionId
-  const [strategy, setStrategy] = useState(null); // Inicia como null
-  const [isLoading, setIsLoading] = useState(true);
+export function StrategyProvider({ children }) {
+  // --- ESTADOS INTERNOS ---
+  const [strategy, setStrategy] = useState(null); // La estrategia "maestra" o guardada
+  const [isLoading, setIsLoading] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState(null); // El ID de la sesión activa
 
-  // El valor "debounced" solo se actualizará 500ms después del último cambio
-  const debouncedStrategy = useDebounce(strategy, 5750);
+  // --- FUNCIONES EXPUESTAS ---
 
-  // Efecto para cargar la estrategia inicial
-  useEffect(() => {
-    const fetchInitialStrategy = async () => {
-      try {
-        const response = await axios.get(`${API_URL}/strategy/default`);
-        setStrategy(response.data);
-      } catch (error) {
-        console.error("Error al cargar la estrategia por defecto:", error);
-        // Aquí podrías establecer un default local como plan B
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    fetchInitialStrategy();
-  }, []); // Se ejecuta solo una vez
-
-  // // Efecto para guardar la estrategia en Firestore cuando cambia
-  // useEffect(() => {
-  //   // No guardamos si la estrategia aún no se ha cargado o si no hay sesión
-  //   if (!debouncedStrategy || !sessionId || isLoading) return;
-
-  //   const saveStrategy = async () => {
-  //     console.log("Guardando estrategia en el servidor...", debouncedStrategy);
-  //     try {
-  //       await axios.post(`${API_URL}/sessions/${sessionId}/strategy`, debouncedStrategy);
-  //       console.log("✅ Estrategia guardada en Firestore.");
-  //     } catch (error) {
-  //       console.error("🔥 Error al guardar la estrategia:", error);
-  //     }
-  //   };
-  //   saveStrategy();
-  // }, [debouncedStrategy, sessionId, isLoading]);
-
-  const saveStrategy = useCallback(async (strategyToSave, sessionId) => {
-    if (!sessionId || !strategyToSave) return;
-    console.log(`Guardando estrategia para la sesión ${sessionId}...`, strategyToSave);
+  // Se llama una vez, cuando la sesión de análisis comienza.
+  const initializeSessionAndLoadStrategy = useCallback(async (sessionId) => {
+    if (!sessionId) return;
+    setIsLoading(true);
+    setActiveSessionId(sessionId); // Guarda el ID de sesión para usarlo después
     try {
-      await axios.post(`${API_URL}/sessions/${sessionId}/strategy`, strategyToSave);
-      console.log("✅ Estrategia guardada en Firestore.");
+      const response = await axios.get(`${API_URL}/sessions/${sessionId}/strategy`);
+      setStrategy(response.data);
     } catch (error) {
-      console.error("🔥 Error al guardar la estrategia:", error);
+      console.error("Error al cargar la estrategia inicial:", error);
+      alert("No se pudo cargar la configuración de la estrategia.");
+    } finally {
+      setIsLoading(false);
     }
   }, []);
 
-  const restoreDefaults = async () => {
-     // Ahora, restaurar también pide los defaults a la API
-     try {
-        const response = await axios.get(`${API_URL}/strategy/default`);
-        setStrategy(response.data);
-      } catch (error) {
-        console.error("Error al restaurar defaults:", error);
-      }
+  // Se llama desde el modal al hacer clic en "Guardar Cambios".
+  const saveStrategy = useCallback(async (strategyToSave) => {
+    if (!activeSessionId || !strategyToSave) {
+      console.error("No se puede guardar: falta el ID de sesión o los datos.");
+      throw new Error("Falta ID de sesión o datos para guardar.");
+    }
+    console.log(`Guardando estrategia para la sesión ${activeSessionId}...`);
+    try {
+      await axios.post(`${API_URL}/sessions/${activeSessionId}/strategy`, strategyToSave);
+      // Actualizamos el estado "maestro" con los nuevos datos guardados
+      setStrategy(strategyToSave);
+      console.log("✅ Estrategia guardada en Firestore y actualizada en el contexto.");
+    } catch (error) {
+      console.error("🔥 Error al guardar la estrategia:", error);
+      throw error; // Lanzamos el error para que el modal pueda informar al usuario
+    }
+  }, [activeSessionId]); // Esta función depende del ID de sesión activo
+
+  // El valor que se comparte con toda la aplicación
+  const value = { 
+    strategy, 
+    isLoading,
+    initializeSessionAndLoadStrategy, 
+    saveStrategy
   };
-
-  const value = { strategy, setStrategy, restoreDefaults, isLoading, saveStrategy };
-
 
   return (
     <StrategyContext.Provider value={value}>
@@ -79,6 +64,7 @@ export function StrategyProvider({ children, sessionId }) { // Ahora recibe sess
   );
 }
 
+// Hook personalizado para un uso más fácil
 export function useStrategy() {
   return useContext(StrategyContext);
 }
