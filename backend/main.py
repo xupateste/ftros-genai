@@ -2,7 +2,11 @@ import os
 import uvicorn
 import json
 
-from fastapi import FastAPI, UploadFile, File, Form, Header, Request
+from jose import JWTError, jwt
+from passlib.context import CryptContext
+from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+
+from fastapi import Depends, FastAPI, UploadFile, File, Form, status, Header, Request, Body
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi import HTTPException
@@ -16,17 +20,17 @@ from firebase_admin import firestore
 import firebase_config # Importar para asegurar que se inicialice
 from firebase_helpers import db, upload_to_storage, log_analysis_in_firestore, extraer_metadatos_df, log_file_upload_in_firestore, descargar_contenido_de_storage, log_report_generation
 from pydantic import BaseModel, Field
-import firebase_config 
 from io import StringIO
 import openpyxl
-from typing import Optional, Dict, Any, Literal # Any para pd.ExcelWriter
-from datetime import datetime, timezone # Para pd.Timestamp.now()
+from typing import Optional, Dict, Any, Literal, Callable # Any para pd.ExcelWriter
+from datetime import datetime, timedelta, timezone # Para pd.Timestamp.now()
 from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
 from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario
 from report_config import REPORTS_CONFIG
+from plan_config import PLANS_CONFIG
 from strategy_config import DEFAULT_STRATEGY
 
 INITIAL_CREDITS = 35
@@ -68,6 +72,61 @@ async def get_reports_configuration():
     """
     return JSONResponse(content=REPORTS_CONFIG)
 
+
+# ===================================================================================
+# --- CONFIGURACIÓN DE SEGURIDAD ---
+# ===================================================================================
+
+# Clave secreta para firmar los tokens. En producción, ¡debe estar en una variable de entorno!
+SECRET_KEY = os.getenv("SECRET_KEY", "una-clave-secreta-muy-segura-para-desarrollo")
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # Token válido por 7 días
+
+# Configuración para el hasheo de contraseñas
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+
+# ===================================================================================
+# --- MODELOS DE DATOS (PYDANTIC) PARA USUARIOS Y TOKENS ---
+# ===================================================================================
+class User(BaseModel):
+    email: str
+    rol: str
+
+class UserInDB(User):
+    hashed_password: str
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
+
+# ===================================================================================
+# --- FUNCIONES AUXILIARES DE SEGURIDAD ---
+# ===================================================================================
+
+def verify_password(plain_password, hashed_password):
+    """Verifica si una contraseña en texto plano coincide con su hash."""
+    return pwd_context.verify(plain_password, hashed_password)
+
+def get_password_hash(password):
+    """Genera el hash de una contraseña."""
+    return pwd_context.hash(password)
+
+def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Crea un nuevo token de acceso (JWT)."""
+    to_encode = data.copy()
+    if expires_delta:
+        expire = datetime.now(timezone.utc) + expires_delta
+    else:
+        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return encoded_jwt
+
 # ===================================================================================
 # --- MODELOS DE DATOS ---
 # ===================================================================================
@@ -90,6 +149,97 @@ class StrategyData(BaseModel):
     dias_analisis_ventas_general: int = Field(..., ge=1)
     excluir_sin_ventas: str
     peso_ventas_historicas: float = Field(..., ge=0, le=1)
+
+
+# ===================================================================================
+# --- ENDPOINTS DE AUTENTICACIÓN ---
+# ===================================================================================
+@app.post("/register", summary="Registra un nuevo usuario y crea su primer espacio de trabajo", tags=["Usuarios"])
+async def register_user(
+    email: str = Form(...),
+    password: str = Form(...),
+    rol: str = Form(...),
+    # La sesión anónima sigue siendo opcional, para una futura migración de datos
+    X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID")
+):
+    """
+    Crea una nueva cuenta de usuario y, crucialmente, inicializa su primer
+    espacio de trabajo con una estrategia por defecto.
+    """
+    user_ref = db.collection('usuarios').document(email)
+    if user_ref.get().exists:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Ya existe un usuario con este correo electrónico.",
+        )
+        
+    hashed_password = get_password_hash(password)
+    now_utc = datetime.now(timezone.utc)
+
+    # Datos principales del usuario
+    new_user_data = {
+        "email": email,
+        "rol": rol,
+        "hashed_password": hashed_password,
+        "fechaRegistro": now_utc,
+        "creditos_restantes": 50, # Bono de bienvenida para usuarios registrados
+        "plan": "gratis" 
+    }
+    
+    # --- LÓGICA CLAVE: CREACIÓN DEL PRIMER ESPACIO DE TRABAJO ---
+    # Creamos la referencia al nuevo documento del usuario
+    batch = db.batch()
+    batch.set(user_ref, new_user_data)
+
+    # Creamos la referencia a la sub-colección de espacios de trabajo
+    workspaces_ref = user_ref.collection('espacios_trabajo')
+    
+    # Creamos el primer espacio de trabajo por defecto
+    default_workspace_data = {
+        "nombre": "Mi Primera Ferretería",
+        "fechaCreacion": now_utc
+    }
+    # Creamos un nuevo documento para el espacio de trabajo
+    # (podríamos usar un ID autogenerado o uno predecible)
+    new_workspace_ref = workspaces_ref.document("default_workspace")
+    batch.set(new_workspace_ref, default_workspace_data)
+    
+    # Aquí iría la lógica para migrar los archivos de la sesión anónima (si existe X_Session_ID)
+    # a la sub-colección 'archivos_cargados' de este nuevo espacio de trabajo.
+    
+    # Ejecutamos todas las operaciones en una sola transacción
+    batch.commit()
+
+    return {"message": "Usuario registrado exitosamente. Tu primer espacio de trabajo 'Mi Primera Ferretería' ha sido creado."}
+
+
+@app.post("/token", response_model=Token, summary="Inicia sesión y obtiene un token", tags=["Usuarios"])
+async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+    """
+    Autentica a un usuario y devuelve un token JWT para usar en las siguientes peticiones.
+    FastAPI usa el campo 'username' para el email.
+    """
+    email = form_data.username
+    password = form_data.password
+
+    user_ref = db.collection('usuarios').document(email)
+    user_doc = user_ref.get()
+
+    if not user_doc.exists:
+        raise HTTPException(status_code=400, detail="Correo o contraseña incorrectos")
+
+    user_data = user_doc.to_dict()
+    if not verify_password(password, user_data.get("hashed_password")):
+        raise HTTPException(status_code=400, detail="Correo o contraseña incorrectos")
+
+    # Si la autenticación es exitosa, creamos el token
+    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = create_access_token(
+        data={"sub": user_data["email"]}, expires_delta=access_token_expires
+    )
+
+    return {"access_token": access_token, "token_type": "bearer"}
+
 
 
 # ===================================================================================
@@ -197,6 +347,256 @@ async def get_session_state(
         print(f"🔥 Error al recuperar estado de sesión para {X_Session_ID}: {e}")
         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado de la sesión desde el servidor.")
 
+# ===================================================================================
+# --- NUEVOS ENDPOINTS PARA GESTIONAR LOS WORKSPACES ---
+# ===================================================================================
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """
+    Decodifica el token JWT para obtener la información del usuario.
+    Esta función se usará en todos los endpoints protegidos.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudieron validar las credenciales",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+    
+    user_ref = db.collection('usuarios').document(token_data.email)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        raise credentials_exception
+        
+    return user_doc.to_dict()
+
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[dict]:
+    """
+    Intenta obtener el usuario autenticado desde el token.
+    Si no hay token, devuelve None sin causar un error.
+    """
+    # Si el frontend no envió una cabecera de autorización, el token será None
+    if token is None:
+        return None
+
+    # Si hay un token, intentamos validarlo como antes
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token inválido o expirado",
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None # El token es válido pero no contiene la información esperada
+        
+        user_ref = db.collection('usuarios').document(email)
+        user_doc = user_ref.get()
+        if not user_doc.exists:
+            return None # El usuario en el token ya no existe en la base de datos
+            
+        return user_doc.to_dict()
+    except JWTError:
+        # El token es inválido o ha expirado
+        return None
+
+
+# ===================================================================================
+# --- MODELOS DE DATOS (PYDANTIC) PARA LA CREACIÓN DE WORKSPACES ---
+# ===================================================================================
+class WorkspaceCreate(BaseModel):
+    nombre: str = Field(..., min_length=3, max_length=50, description="El nombre del nuevo espacio de trabajo.")
+
+class WorkspaceUpdate(BaseModel):
+    nombre: str = Field(..., min_length=3, max_length=50, description="El nuevo nombre para el espacio de trabajo.")
+
+# ===================================================================================
+# --- API PARA GESTIÓN DE ESPACIOS DE TRABAJO ---
+# ===================================================================================
+@app.get("/workspaces", summary="Obtiene los espacios de trabajo del usuario", tags=["Espacios de Trabajo"])
+async def get_workspaces(current_user: dict = Depends(get_current_user)):
+    """
+    Devuelve una lista de todos los espacios de trabajo pertenecientes
+    al usuario autenticado. La autenticación es obligatoria.
+    """
+    try:
+        user_email = current_user.get("email")
+        # Apuntamos a la sub-colección 'espacios_trabajo' del usuario logueado
+        workspaces_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo')
+        
+        query = workspaces_ref.order_by("fechaModificacion", direction=firestore.Query.DESCENDING)
+
+        workspaces = []
+        for doc in workspaces_ref.stream():
+            workspace_data = doc.to_dict()
+            workspace_data['id'] = doc.id # Es crucial añadir el ID del documento
+            if 'fechaCreacion' in workspace_data and isinstance(workspace_data['fechaCreacion'], datetime):
+                # Convertimos la fecha a un string en formato ISO 8601, que Javascript entiende
+                workspace_data['fechaCreacion'] = workspace_data['fechaCreacion'].isoformat()
+            workspaces.append(workspace_data)
+            
+        return workspaces
+    except Exception as e:
+        print(f"🔥 Error al obtener workspaces para el usuario {user_email}: {e}")
+        raise HTTPException(status_code=500, detail="No se pudieron obtener los espacios de trabajo.")
+
+@app.post("/workspaces", summary="Crea un nuevo espacio de trabajo", tags=["Espacios de Trabajo"])
+async def create_workspace(
+    workspace: WorkspaceCreate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Crea un nuevo documento en la sub-colección 'espacios_trabajo'
+    para el usuario autenticado.
+    """
+    try:
+        user_email = current_user.get("email")
+        user_plan = current_user.get("plan", "gratis") # Obtenemos el plan del usuario
+        
+        # --- LÓGICA DE VALIDACIÓN DE LÍMITES ---
+        plan_config = PLANS_CONFIG.get(user_plan, PLANS_CONFIG["gratis"])
+        limit = plan_config["workspace_limit"]
+
+        workspaces_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo')
+        
+        # Lógica futura: podrías limitar el número de workspaces según el plan del usuario
+        # workspaces_count = len(list(workspaces_ref.stream()))
+        # if workspaces_count >= 3 and current_user.get("plan") == "gratis":
+        #     raise HTTPException(status_code=403, detail="Has alcanzado el límite de 3 espacios de trabajo para cuentas gratuitas.")
+        
+        now_utc = datetime.now(timezone.utc)
+        new_workspace_data = {
+            "nombre": workspace.nombre,
+            "fechaCreacion": now_utc,
+            "fechaModificacion": now_utc
+        }
+
+        update_time, new_workspace_ref = workspaces_ref.add(new_workspace_data)
+
+        # Verificamos si hay un límite (-1 significa ilimitado)
+        if limit != -1:
+            # Contamos los workspaces existentes
+            workspaces_count = len(list(workspaces_ref.stream()))
+            if workspaces_count >= limit:
+                raise HTTPException(
+                    status_code=403, # 403 Forbidden es el código correcto
+                    detail=f"Has alcanzado el límite de {limit} espacios de trabajo para el plan '{plan_config['plan_name']}'. Considera mejorar tu plan."
+                )
+            
+        new_workspace_data = {
+            "id": new_workspace_ref.id,
+            "nombre": workspace.nombre,
+            "fechaCreacion": new_workspace_data["fechaCreacion"].isoformat() 
+        }
+        
+        return JSONResponse(
+            status_code=201, # 201 Created es el código correcto para una creación exitosa
+            content={"message": "Espacio de trabajo creado exitosamente.", "workspace": new_workspace_data}
+        )
+    except Exception as e:
+        print(f"🔥 Error al crear workspace para el usuario {user_email}: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo crear el espacio de trabajo.")
+
+@app.put("/workspaces/{workspace_id}", summary="Actualiza el nombre de un espacio de trabajo", tags=["Espacios de Trabajo"])
+async def update_workspace(
+    workspace_id: str,
+    workspace_update: WorkspaceUpdate,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Permite a un usuario autenticado renombrar uno de sus espacios de trabajo.
+    """
+    try:
+        user_email = current_user.get("email")
+        # La referencia al documento verifica implícitamente la propiedad
+        workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+        
+        # Verificamos que el workspace exista antes de intentar actualizarlo
+        if not workspace_ref.get().exists:
+            raise HTTPException(status_code=404, detail="El espacio de trabajo no fue encontrado o no te pertenece.")
+            
+        # Actualizamos solo el campo 'nombre'
+        workspace_ref.update({"nombre": workspace_update.nombre})
+        
+        print(f"✅ Workspace '{workspace_id}' renombrado a '{workspace_update.nombre}' para el usuario {user_email}.")
+        return {"message": "Espacio de trabajo actualizado exitosamente.", "id": workspace_id, "nuevo_nombre": workspace_update.nombre}
+
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        print(f"🔥 Error al actualizar workspace '{workspace_id}': {e}")
+        raise HTTPException(status_code=500, detail="No se pudo actualizar el espacio de trabajo.")
+
+
+@app.delete("/workspaces/{workspace_id}", summary="Elimina un espacio de trabajo", tags=["Espacios de Trabajo"])
+async def delete_workspace(
+    workspace_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Permite a un usuario autenticado eliminar uno de sus espacios de trabajo.
+    ADVERTENCIA: En esta versión MVP, esto solo elimina el documento del workspace,
+    pero las sub-colecciones (archivos, reportes) pueden quedar huérfanas.
+    """
+    try:
+        user_email = current_user.get("email")
+        workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+
+        if not workspace_ref.get().exists:
+            raise HTTPException(status_code=404, detail="El espacio de trabajo no fue encontrado o no te pertenece.")
+
+        # Eliminamos el documento del espacio de trabajo
+        workspace_ref.delete()
+        
+        print(f"✅ Workspace '{workspace_id}' eliminado para el usuario {user_email}.")
+        return {"message": "Espacio de trabajo eliminado exitosamente."}
+        
+    except HTTPException as http_exc:
+        raise http_exc
+    except Exception as e:
+        print(f"🔥 Error al eliminar workspace '{workspace_id}': {e}")
+        raise HTTPException(status_code=500, detail="No se pudo eliminar el espacio de trabajo.")
+
+
+@app.put("/workspaces/{workspace_id}/pin", summary="Fija o desfija un espacio de trabajo", tags=["Espacios de Trabajo"])
+async def pin_workspace(
+    workspace_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Invierte el estado 'isPinned' de un espacio de trabajo.
+    Esta es una funcionalidad Pro.
+    """
+    user_email = current_user.get("email")
+    
+    # Lógica de Permisos (Ejemplo)
+    if current_user.get("plan") not in ["pro", "diamond"]:
+        raise HTTPException(status_code=403, detail="Fijar espacios de trabajo es una funcionalidad Pro.")
+        
+    try:
+        workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+        workspace_doc = workspace_ref.get()
+        
+        if not workspace_doc.exists:
+            raise HTTPException(status_code=404, detail="Espacio de trabajo no encontrado.")
+        
+        # Obtenemos el estado actual de 'isPinned' y lo invertimos
+        current_pin_status = workspace_doc.to_dict().get("isPinned", False)
+        new_pin_status = not current_pin_status
+        
+        workspace_ref.update({"isPinned": new_pin_status})
+        
+        return {"message": "Estado de fijado actualizado.", "id": workspace_id, "isPinned": new_pin_status}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"No se pudo actualizar el estado: {e}")
+
 
 # ===================================================================================
 # --- NUEVOS ENDPOINTS PARA GESTIONAR LA ESTRATEGIA ---
@@ -271,12 +671,31 @@ async def save_strategy(session_id: str, strategy_data: StrategyData):
 # ===================================================================================
 @app.post("/upload-file", summary="Sube, registra y extrae metadatos de un archivo", tags=["Archivos"])
 async def upload_file(
-    X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    # --- Parámetros de contexto (TODOS OPCIONALES) ---
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+    # --- Parámetros de la petición ---
     tipo_archivo: Literal['inventario', 'ventas'] = Form(...),
     file: UploadFile = File(...)
 ):
-    if not X_Session_ID:
-        raise HTTPException(status_code=400, detail="La cabecera X-Session-ID es requerida.")
+    user_id = None
+    session_id_to_use = None
+
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    if current_user:
+        # CASO 1: Usuario Registrado
+        if not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        user_id = current_user['email']
+        print(f"Contexto de carga: Usuario Registrado ({user_id}), Workspace ({workspace_id})")
+    elif X_Session_ID:
+        # CASO 2: Usuario Anónimo
+        session_id_to_use = X_Session_ID
+        print(f"Contexto de carga: Sesión Anónima ({session_id_to_use})")
+    else:
+        # CASO 3: No hay identificador
+        raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
     # Leemos el contenido del archivo una sola vez al principio
     contents = await file.read()
@@ -326,18 +745,22 @@ async def upload_file(
         timestamp_str = now.strftime('%Y-%m-%d_%H%M%S')
         
         ruta_storage = upload_to_storage(
-            session_id=X_Session_ID,
+            # Esta función también debería ser refactorizada para aceptar el contexto
+            session_id=(session_id_to_use or user_id), # Usamos el ID de usuario como "carpeta" si existe
             file_contents=contents,
             tipo_archivo=tipo_archivo,
             original_filename=file.filename,
             content_type=file.content_type,
             timestamp_str=timestamp_str
         )
-        
+          
         file_id = f"{timestamp_str}_{tipo_archivo}"
 
+        # Llamamos a la función de logging con el contexto correcto
         log_file_upload_in_firestore(
-            session_id=X_Session_ID,
+            user_id=user_id,
+            workspace_id=workspace_id,
+            session_id=session_id_to_use,
             file_id=file_id,
             tipo_archivo=tipo_archivo,
             nombre_original=file.filename,
@@ -345,6 +768,11 @@ async def upload_file(
             metadata=metadata,
             timestamp_obj=now
         )
+
+        if user_id and workspace_id:
+            workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+            workspace_ref.update({"fechaModificacion": datetime.now(timezone.utc)})
+
         
         response_content = {
             "message": f"Archivo de {tipo_archivo} subido y registrado exitosamente.",
@@ -362,7 +790,7 @@ async def upload_file(
         return JSONResponse(content=response_content)
 
     except Exception as e:
-        print(f"🔥 Error en la fase de guardado para la sesión {X_Session_ID}: {e}")
+        print(f"🔥 Error en la fase de guardado para la sesión: {e}")
         raise HTTPException(status_code=500, detail="Ocurrió un error al guardar el archivo en el servidor.")
 
 
@@ -563,28 +991,55 @@ async def run_analisis_estrategico_rotacion(
 async def diagnostico_stock_muerto(
     # Inyectamos el request para el logging
     request: Request, 
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
     # Definimos explícitamente los parámetros que la LÓGICA necesit
-    X_Session_ID: str = Header(..., alias="X-Session-ID"),
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
     # meses_analisis: int = Form(...)
     # meses: int = Query(6, description="Cantidad de meses hacia atrás para analizar")
 ):
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    # --- Determinación del Contexto ---
+    # user_id = current_user['email'] if current_user else None
+    user_id = None
+    
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    if current_user:
+        # CASO 1: Usuario Registrado
+        if not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        user_id = current_user['email']
+        print(f"Petición de usuario registrado: {user_id} para workspace: {workspace_id}")
+        # Para el logging y descarga, pasamos el contexto del usuario
+        log_session_id = None # No usamos el ID de sesión anónima
+    
+    elif X_Session_ID:
+        # CASO 2: Usuario Anónimo
+        print(f"Petición de usuario anónimo: {X_Session_ID}")
+        log_session_id = X_Session_ID
+    else:
+        # CASO 3: No hay identificador, denegamos el acceso
+        raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
+
     processing_params = {}
     full_params_for_logging = dict(await request.form())
 
-    # Llamamos a la función manejadora central
     return await _handle_report_generation(
         full_params_for_logging=full_params_for_logging,
-        session_id=X_Session_ID,
-        ventas_file_id=ventas_file_id,
-        inventario_file_id=inventario_file_id,
         report_key="ReporteDiagnosticoStockMuerto",
-        processing_function=procesar_stock_muerto, # Pasamos la función de lógica como argumento
+        processing_function=procesar_stock_muerto,
         processing_params=processing_params,
-        output_filename="ReporteDiagnosticoStockMuerto.xlsx"
+        output_filename="ReporteDiagnosticoStockMuerto.xlsx",
+        # --- Pasamos el contexto correcto al manejador ---
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=log_session_id,
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id
     )
-
 
 @app.post("/reporte-maestro-inventario")
 async def generar_reporte_maestro_endpoint(
@@ -947,60 +1402,78 @@ async def upload_csvs(
 #     output.seek(0)
 #     return output
 
+
 async def _handle_report_generation(
-    full_params_for_logging: Dict[str, Any], 
-    session_id: str,
-    ventas_file_id: str,
-    inventario_file_id: str,
-    report_key: str, # <-- Ahora usamos una clave única para identificar el reporte
-    processing_function: callable,
-    processing_params: dict,
+    # user_id: Optional[str] = None, # <-- Parámetro para el futuro (usuarios registrados)
+    # workspace_id: Optional[str] = None,
+    # session_id: Optional[str] = None
+    # Ya no depende de 'request'. Recibe todos los contextos necesarios.
+    full_params_for_logging: Dict[str, Any],
+    report_key: str,
+    processing_function: Callable,
+    processing_params: Dict[str, Any],
     output_filename: str,
-    user_id: Optional[str] = None # <-- Parámetro para el futuro (usuarios registrados)
+    # Parámetros de contexto. Solo un conjunto estará presente.
+    user_id: Optional[str],
+    workspace_id: Optional[str],
+    session_id: Optional[str],
+    # IDs de los archivos a procesar
+    ventas_file_id: str,
+    inventario_file_id: str
 ):
     """
-    Función central final que primero valida permisos y créditos, y luego procesa,
-    asegurando que el cobro solo se realice si la generación del archivo es exitosa.
+    Función central refactorizada que maneja la generación de CUALQUIER reporte
+    para usuarios anónimos O registrados, aplicando la lógica de negocio correcta.
     """
-    # --- PASO 1: CONFIGURACIÓN Y PARÁMETROS ---
+    # --- PASO 1: DETERMINAR EL CONTEXTO Y LA REFERENCIA BASE EN FIRESTORE ---
     report_config = REPORTS_CONFIG.get(report_key)
     if not report_config:
         raise HTTPException(status_code=404, detail=f"La configuración para el reporte '{report_key}' no fue encontrada.")
     
     report_cost = report_config['costo']
     is_pro_report = report_config['isPro']
-    session_ref = db.collection('sesiones_anonimas').document(session_id)
 
-    # --- PASO 2: VALIDACIONES DE NEGOCIO (FUERA DEL TRY/EXCEPT PRINCIPAL) ---
-    # Si estas validaciones fallan, se lanza una excepción HTTP específica (403, 402, 404)
-    # que el frontend puede interpretar para mostrar el modal correcto.
+# Esta es la lógica clave. `entity_ref` apuntará al documento que contiene los créditos.
+    if user_id:
+        # CONTEXTO: Usuario Registrado
+        print(f"Procesando para usuario registrado: {user_id}")
+        entity_ref = db.collection('usuarios').document(user_id)
+    elif session_id:
+        # CONTEXTO: Sesión Anónima
+        print(f"Procesando para sesión anónima: {session_id}")
+        entity_ref = db.collection('sesiones_anonimas').document(session_id)
+    else:
+        # Si no hay ningún identificador, es un error de lógica interna.
+        raise HTTPException(status_code=500, detail="Error interno: no se pudo determinar el contexto de la sesión.")
 
+    # --- PASO 2: VALIDACIONES DE NEGOCIO (Usando la referencia correcta) ---
+    
     # Guardián de Acceso Pro
     if is_pro_report and user_id is None:
         print(f"🚫 Acceso denegado: Sesión anónima ({session_id}) intentó acceder al reporte PRO '{report_key}'.")
         raise HTTPException(status_code=403, detail="Este es un reporte 'Pro'. Debes registrarte para acceder.")
 
     # Cajero (Verificación de Créditos)
-    session_doc = session_ref.get()
-    if not session_doc.exists:
-        raise HTTPException(status_code=404, detail="La sesión no existe.")
+    entity_doc = entity_ref.get()
+    if not entity_doc.exists:
+        raise HTTPException(status_code=404, detail="La sesión o el perfil de usuario no existe.")
     
-    creditos_restantes = session_doc.to_dict().get("creditos_restantes", 0)
+    creditos_restantes = entity_doc.to_dict().get("creditos_restantes", 0)
     if creditos_restantes < report_cost:
         raise HTTPException(status_code=402, detail=f"Créditos insuficientes. Este reporte requiere {report_cost} créditos y solo tienes {creditos_restantes}.")
 
     # --- PASO 3: PROCESAMIENTO Y GENERACIÓN (DENTRO DE UN TRY/EXCEPT) ---
     # Si algo falla aquí, es un error de ejecución. Lo registraremos como "fallido" sin cobrar.
     try:
-        # Descarga y lectura de archivos
-        ventas_contents = descargar_contenido_de_storage(session_id, ventas_file_id)
-        inventario_contents = descargar_contenido_de_storage(session_id, inventario_file_id)
+         # La llamada a las funciones auxiliares ahora incluye el contexto completo
+        ventas_contents = descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id)
+        inventario_contents = descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id)
+        
         df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
         df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
         
-        # Ejecución de la lógica de negocio
         resultado_df = processing_function(df_ventas, df_inventario, **processing_params)
-
+        
         columnas = resultado_df.columns
         columnas_duplicadas = columnas[columnas.duplicated()].unique().tolist()
         
@@ -1020,23 +1493,28 @@ async def _handle_report_generation(
         
         # Convertimos el DataFrame a un formato JSON (lista de diccionarios)
         data_for_frontend = resultado_df.to_dict(orient='records')
-
-        # output = to_excel_with_autofit(resultado_df, sheet_name=report_key[:31])
         
         # --- Transacción Final ---
         if resultado_df.empty:
             log_report_generation(
-                session_id=session_id, report_name=report_key, params=full_params_for_logging,
+                user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+                report_name=report_key, params=full_params_for_logging,
                 ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
                 creditos_consumidos=0, estado="exitoso_vacio"
             )
         else:
-            session_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
+            # Usamos la `entity_ref` correcta para descontar créditos
+            entity_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
             log_report_generation(
-                session_id=session_id, report_name=report_key, params=full_params_for_logging,
+                user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+                report_name=report_key, params=full_params_for_logging,
                 ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
                 creditos_consumidos=report_cost, estado="exitoso"
             )
+
+        if user_id and workspace_id:
+            workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+            workspace_ref.update({"fechaModificacion": datetime.now(timezone.utc)})
 
         # Devolvemos la respuesta JSON
         return JSONResponse(content={
@@ -1054,19 +1532,25 @@ async def _handle_report_generation(
         
         # Esta línea imprimirá el traceback completo, diciéndonos el archivo,
         # la línea y el tipo de error exacto.
-        traceback.print_exc() 
+        traceback.print_exc()
         
         print("="*50 + "\n")
         # ... registramos el intento fallido SIN descontar créditos.
         user_message, error_type, tech_details = "Error inesperado al procesar", type(e).__name__, str(e)
         if isinstance(e, KeyError): user_message = f"Columna requerida no encontrada: {e}"
-        
+
         log_report_generation(
-            session_id=session_id, report_name=report_key, params=full_params_for_logging,
+            user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+            report_name=report_key, params=full_params_for_logging,
             ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
             creditos_consumidos=0, estado="fallido",
-            error_details={"user_message": user_message, "error_type": error_type, "technical_details": tech_details}
+            error_details={"user_message": user_message, "error_type": type(e).__name__, "technical_details": str(e)}
         )
+
+        if user_id and workspace_id:
+            workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+            workspace_ref.update({"fechaModificacion": datetime.now(timezone.utc)})
+
         raise HTTPException(status_code=500, detail=user_message)
 
 # async def _handle_report_generation(

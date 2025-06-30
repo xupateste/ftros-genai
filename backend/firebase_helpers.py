@@ -105,37 +105,55 @@ def extraer_metadatos_df(df: pd.DataFrame, tipo_archivo: str) -> Dict[str, Any]:
     return metadata
 
 def log_file_upload_in_firestore(
-    session_id: str,
+    # --- Parámetros de contexto (todos opcionales) ---
+    user_id: Optional[str],
+    workspace_id: Optional[str],
+    session_id: Optional[str],
+    # --- Parámetros del archivo ---
     file_id: str,
     tipo_archivo: str,
     nombre_original: str,
     ruta_storage: str,
     metadata: dict,
-    timestamp_obj: datetime
+    timestamp_obj: datetime,
 ) -> None:
     """
-    Crea un documento para un archivo recién subido en la sub-colección 'archivos_cargados'.
+    Crea un documento para un archivo subido, construyendo la ruta correcta
+    dependiendo si es un usuario registrado o una sesión anónima.
     """
-    try:
-        # Referencia a la sub-colección donde se registrarán los archivos
-        files_ref = db.collection('sesiones_anonimas').document(session_id).collection('archivos_cargados')
+    base_ref = None
+    log_context_id = ""
 
-        # Datos a guardar para este archivo específico
+    if user_id and workspace_id:
+        # Ruta para usuarios registrados
+        base_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+        log_context_id = f"usuario {user_id}"
+    elif session_id:
+        # Ruta para sesiones anónimas
+        base_ref = db.collection('sesiones_anonimas').document(session_id)
+        log_context_id = f"sesión {session_id}"
+    else:
+        print("🔥 Error de logging: No se proporcionó contexto (usuario/workspace o sesión).")
+        return
+
+    try:
+        # La sub-colección siempre se llamará 'archivos_cargados'
+        files_ref = base_ref.collection('archivos_cargados')
+
         file_data = {
             "fechaCarga": timestamp_obj,
             "tipoArchivo": tipo_archivo,
             "nombreOriginal": nombre_original,
             "rutaStorage": ruta_storage,
-            "metadata": metadata # Guardamos el objeto completo de metadatos
+            "metadata": metadata
         }
         
-        # Creamos el documento usando el file_id único
         files_ref.document(file_id).set(file_data)
         
-        print(f"✅ Registro de archivo '{file_id}' guardado en Firestore para la sesión '{session_id}'")
+        print(f"✅ Registro de archivo '{file_id}' guardado en Firestore para {log_context_id}")
 
     except Exception as e:
-        print(f"🔥 Error al registrar el archivo en Firestore: {e}")
+        print(f"🔥 Error al registrar el archivo en Firestore para {log_context_id}: {e}")
         raise e
 
 
@@ -183,13 +201,28 @@ def log_analysis_in_firestore(
         raise e
 
 
-def descargar_contenido_de_storage(session_id: str, file_id: str) -> bytes:
+def descargar_contenido_de_storage(
+    user_email: Optional[str],
+    workspace_id: Optional[str],
+    session_id: str,
+    file_id: str
+) -> bytes:
     """
-    Descarga el contenido de un archivo desde Firebase Storage usando su ID de Firestore.
+    Descarga un archivo desde Storage, construyendo la ruta correcta
+    dependiendo si es un usuario registrado o una sesión anónima.
     """
+    if user_email and workspace_id:
+        # Ruta para usuarios registrados
+        base_path = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+    elif session_id:
+        # Ruta para sesiones anónimas
+        base_path = db.collection('sesiones_anonimas').document(session_id)
+    else:
+        raise ValueError("Se debe proporcionar un contexto (usuario/workspace o sesión).")
+
     try:
         # 1. Obtener la ruta del archivo desde Firestore
-        file_ref = db.collection('sesiones_anonimas').document(session_id).collection('archivos_cargados').document(file_id).get()
+        file_ref = base_path.collection('archivos_cargados').document(file_id).get()
         if not file_ref.exists:
             raise ValueError(f"No se encontró el archivo con ID '{file_id}' para esta sesión.")
         
@@ -208,24 +241,45 @@ def descargar_contenido_de_storage(session_id: str, file_id: str) -> bytes:
 
 
 def log_report_generation(
-    session_id: str,
     report_name: str,
-    params: dict,
+    params: Dict[str, Any],
     ventas_file_id: str,
     inventario_file_id: str,
     creditos_consumidos: int,
     estado: str,
-    # --- NUEVO PARÁMETRO OPCIONAL ---
+    user_id: Optional[str] = None,
+    workspace_id: Optional[str] = None,
+    session_id: Optional[str] = None,
     error_details: Optional[Dict[str, str]] = None 
+    # user_email: Optional[str], 
 ):
     """
-    Registra la ejecución de un reporte, incluyendo detalles del error si ocurrió.
+    Registra la ejecución de un reporte, construyendo la ruta correcta en Firestore
+    dependiendo si es un usuario registrado o una sesión anónima.
     """
+    base_ref = None
+    log_context_id = ""
+    
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    if user_id and workspace_id:
+        # Ruta para usuarios registrados
+        base_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+        log_context_id = f"usuario {user_id}"
+    elif session_id:
+        # Ruta para sesiones anónimas
+        base_ref = db.collection('sesiones_anonimas').document(session_id)
+        log_context_id = f"sesión {session_id}"
+    else:
+        # Si no hay contexto, no podemos registrar. Imprimimos una advertencia y salimos.
+        print("🔥 Advertencia de Logging: No se proporcionó contexto (usuario/workspace o sesión) para registrar el reporte.")
+        return
+
     try:
         now = datetime.now(timezone.utc)
         doc_id = f"{now.strftime('%Y-%m-%d_%H%M%S')}_{report_name}"
         
-        reports_ref = db.collection('sesiones_anonimas').document(session_id).collection('reportes_generados')
+        # La sub-colección siempre se llamará 'reportes_generados'
+        reports_ref = base_ref.collection('reportes_generados')
 
         log_data = {
             "fechaGeneracion": now,
@@ -237,12 +291,12 @@ def log_report_generation(
             "estado": estado
         }
         
-        # Si se proporcionaron detalles del error, los añadimos al log
         if error_details:
             log_data["error_details"] = error_details
         
         reports_ref.document(doc_id).set(log_data)
-        print(f"✅ Log de reporte '{report_name}' guardado. Estado: {estado}")
+        
+        print(f"✅ Log de reporte '{report_name}' guardado para {log_context_id}. Estado: {estado}")
 
     except Exception as e:
-        print(f"🔥 Advertencia: No se pudo registrar la generación del reporte. Error: {e}")
+        print(f"🔥 Error al registrar la generación del reporte para {log_context_id}: {e}")

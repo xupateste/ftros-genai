@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi import HTTPException
 import pandas as pd
+import traceback
 import io
 import math
 import uuid
@@ -26,6 +27,7 @@ from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario
 from report_config import REPORTS_CONFIG
+from strategy_config import DEFAULT_STRATEGY
 
 INITIAL_CREDITS = 35
 
@@ -67,11 +69,27 @@ async def get_reports_configuration():
     return JSONResponse(content=REPORTS_CONFIG)
 
 # ===================================================================================
-# --- NUEVO MODELO DE DATOS PARA ONBOARDING ---
+# --- MODELOS DE DATOS ---
 # ===================================================================================
+
+# --- NUEVO MODELO DE DATOS PARA ONBOARDING ---
 class OnboardingData(BaseModel):
     """Define la estructura de datos que esperamos recibir del formulario de onboarding."""
     rol: str = Field(..., description="El rol seleccionado por el usuario (e.g., 'dueño', 'consultor').")
+
+# --- MODELO DE DATOS PARA VALIDAR LA ESTRATEGIA ---
+class StrategyData(BaseModel):
+    score_ventas: int = Field(..., ge=1, le=10)
+    score_ingreso: int = Field(..., ge=1, le=10)
+    score_margen: int = Field(..., ge=1, le=10)
+    score_dias_venta: int = Field(..., ge=1, le=10)
+    lead_time_dias: int = Field(..., ge=0)
+    dias_cobertura_ideal_base: int = Field(..., ge=1)
+    dias_seguridad_base: int = Field(..., ge=0)
+    dias_analisis_ventas_recientes: int = Field(..., ge=1)
+    dias_analisis_ventas_general: int = Field(..., ge=1)
+    excluir_sin_ventas: str
+    peso_ventas_historicas: float = Field(..., ge=0, le=1)
 
 
 # ===================================================================================
@@ -99,10 +117,9 @@ async def create_analysis_session(onboarding_data: OnboardingData):
                 "rol": onboarding_data.rol
             },
             "ultimoAcceso": now,
-            
-            # --- NUEVOS CAMPOS PARA EL MONEDERO DE CRÉDITOS ---
             "creditos_iniciales": INITIAL_CREDITS,
-            "creditos_restantes": INITIAL_CREDITS
+            "creditos_restantes": INITIAL_CREDITS,
+            "estrategia": DEFAULT_STRATEGY 
         }
         
         session_ref.set(session_log)
@@ -179,6 +196,74 @@ async def get_session_state(
         # Capturamos cualquier otro error inesperado con Firebase
         print(f"🔥 Error al recuperar estado de sesión para {X_Session_ID}: {e}")
         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado de la sesión desde el servidor.")
+
+
+# ===================================================================================
+# --- NUEVOS ENDPOINTS PARA GESTIONAR LA ESTRATEGIA ---
+# ===================================================================================
+@app.get("/strategy/default", summary="Obtiene la estrategia de negocio por defecto", tags=["Estrategia"])
+async def get_default_strategy():
+    """Devuelve la configuración base recomendada para los parámetros de análisis."""
+    return JSONResponse(content=DEFAULT_STRATEGY)
+
+@app.get("/sessions/{session_id}/strategy", summary="Obtiene la estrategia guardada para una sesión", tags=["Estrategia"])
+async def get_session_strategy(session_id: str):
+    """
+    Devuelve la configuración de estrategia personalizada que está guardada
+    para una sesión específica en Firestore.
+    """
+    try:
+        session_ref = db.collection('sesiones_anonimas').document(session_id)
+        session_doc = session_ref.get()
+
+        if not session_doc.exists:
+            # Si la sesión no existe, es un error del cliente.
+            raise HTTPException(status_code=404, detail="La sesión no existe.")
+
+        # Buscamos el campo 'estrategia' dentro del documento de la sesión.
+        strategy_data = session_doc.to_dict().get("estrategia")
+
+        if not strategy_data:
+            # Como plan B, si por alguna razón el campo no existe,
+            # devolvemos la estrategia por defecto para que la app no se rompa.
+            print(f"Advertencia: No se encontró estrategia para la sesión {session_id}. Devolviendo default.")
+            return JSONResponse(content=DEFAULT_STRATEGY)
+
+        return JSONResponse(content=strategy_data)
+
+    except HTTPException as http_exc:
+        # Relanzamos los errores HTTP que nosotros mismos generamos
+        raise http_exc
+    except Exception as e:
+        print(f"🔥 Error al obtener la estrategia para la sesión {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"No se pudo obtener la estrategia: {e}")
+
+@app.post("/sessions/{session_id}/strategy", summary="Guarda la estrategia de negocio para una sesión", tags=["Estrategia"])
+async def save_strategy(session_id: str, strategy_data: StrategyData):
+    """
+    Actualiza la configuración de la estrategia para una sesión dada en Firestore.
+    """
+    try:
+        session_ref = db.collection('sesiones_anonimas').document(session_id)
+
+        # --- CAMBIO CLAVE: LÓGICA DE ESCRITURA ---
+        # Usamos .set() con merge=True. Esto añadirá el campo 'estrategia' si no existe,
+        # o lo sobrescribirá por completo si ya existe, sin tocar otros campos
+        # como los créditos.
+        # El método .dict() de Pydantic convierte el objeto strategy_data en un diccionario
+        # que Firestore puede entender.
+        session_ref.set({"estrategia": strategy_data.dict()}, merge=True)
+        
+        print(f"✅ Estrategia actualizada exitosamente para la sesión: {session_id}")
+        
+        return JSONResponse(
+            status_code=200,
+            content={"message": "Estrategia guardada exitosamente."}
+        )
+        
+    except Exception as e:
+        print(f"🔥 Error al guardar la estrategia para la sesión {session_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"No se pudo guardar la estrategia: {e}")
 
 
 # ===================================================================================
@@ -915,8 +1000,28 @@ async def _handle_report_generation(
         
         # Ejecución de la lógica de negocio
         resultado_df = processing_function(df_ventas, df_inventario, **processing_params)
+
+        columnas = resultado_df.columns
+        columnas_duplicadas = columnas[columnas.duplicated()].unique().tolist()
         
-        output = to_excel_with_autofit(resultado_df, sheet_name=report_key[:31])
+        if columnas_duplicadas:
+            print("\n--- 🕵️  DEBUG: ¡ADVERTENCIA DE COLUMNAS DUPLICADAS! ---")
+            print(f"El DataFrame final para el reporte '{report_key}' tiene nombres de columna repetidos:")
+            print(f"Columnas duplicadas encontradas: {columnas_duplicadas}")
+            print("Esto causará que se omitan datos en el frontend. Revisa tu función de procesamiento para renombrar o eliminar estas columnas antes de devolver el DataFrame.")
+            print("-----------------------------------------------------------\n")
+            # Opcional: Podrías decidir lanzar un error aquí para forzar la corrección
+            # raise ValueError(f"Columnas duplicadas detectadas: {columnas_duplicadas}")
+        # --- FIN DEL BLOQUE DE DEPURACIÓN ---
+        
+        insight_text = f"Análisis completado. Se encontraron {len(resultado_df)} productos que cumplen los criterios."
+        if resultado_df.empty:
+            insight_text = "El análisis se completó, pero no se encontraron productos con los filtros seleccionados."
+        
+        # Convertimos el DataFrame a un formato JSON (lista de diccionarios)
+        data_for_frontend = resultado_df.to_dict(orient='records')
+
+        # output = to_excel_with_autofit(resultado_df, sheet_name=report_key[:31])
         
         # --- Transacción Final ---
         if resultado_df.empty:
@@ -933,15 +1038,25 @@ async def _handle_report_generation(
                 creditos_consumidos=report_cost, estado="exitoso"
             )
 
-        # Devolvemos el archivo que ya creamos en memoria
-        return StreamingResponse(
-            output,
-            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={"Content-Disposition": f"attachment; filename={output_filename}"}
-        )
+        # Devolvemos la respuesta JSON
+        return JSONResponse(content={
+            "insight": insight_text,
+            "data": data_for_frontend,
+            "report_key": report_key # Enviamos la clave para que el frontend sepa qué hacer
+        })
+
 
     except Exception as e:
         # Si CUALQUIER COSA falla durante el procesamiento...
+        # --- BLOQUE DE MANEJO DE ERRORES MEJORADO ---
+        print("\n" + "="*50)
+        print("🔥🔥🔥 OCURRIÓ UN ERROR CRÍTICO DURANTE EL PROCESAMIENTO 🔥🔥🔥")
+        
+        # Esta línea imprimirá el traceback completo, diciéndonos el archivo,
+        # la línea y el tipo de error exacto.
+        traceback.print_exc() 
+        
+        print("="*50 + "\n")
         # ... registramos el intento fallido SIN descontar créditos.
         user_message, error_type, tech_details = "Error inesperado al procesar", type(e).__name__, str(e)
         if isinstance(e, KeyError): user_message = f"Columna requerida no encontrada: {e}"

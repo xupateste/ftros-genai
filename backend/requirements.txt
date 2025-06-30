@@ -48,7 +48,7 @@ PyJWT==2.10.1
 pyparsing==3.2.3
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.0
-python-multipart==0.0.20
+# python-multipart==0.0.20
 pytz==2025.2
 PyYAML==6.0.2
 requests==2.32.4
@@ -66,3 +66,12 @@ uvloop==0.21.0
 watchfiles==1.0.5
 websockets==15.0.1
 XlsxWriter==3.2.3
+
+# --- LÍNEAS CLAVE PARA LA SOLUCIÓN ---
+# Forzamos versiones que sabemos que son compatibles entre sí.
+passlib==1.7.4
+bcrypt==3.2.0 
+# --- FIN DE LAS LÍNEAS CLAVE ---
+
+python-jose[cryptography]==3.3.0
+python-multipart==0.0.9

@@ -1,21 +1,26 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'; // useCallback añadido
 import { useNavigate, Link } from 'react-router-dom';
 import '../index.css';
-import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, FiX, FiLoader} from 'react-icons/fi'
+import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, FiX, FiLoader, FiSettings} from 'react-icons/fi'
 
 import axios from 'axios';
 import Select from 'react-select';
 import CsvImporterComponent from '../assets/CsvImporterComponent';
+import * as XLSX from 'xlsx';
 
-import CsvDropZone from '../assets/CsvDropZone';
-import CsvDropZone2 from '../assets/CsvDropZone2';
 import { v4 as uuidv4 } from 'uuid';
 
 import { getSessionId } from '../utils/sessionManager'; // Ajusta la ruta
 
 import { StrategyProvider, useStrategy } from '../context/StrategyProvider';
+import { WorkspaceProvider } from '../context/WorkspaceProvider';
+
+import { useWorkspace } from '../context/WorkspaceProvider';
+import { WorkspaceSelector } from '../components/WorkspaceSelector';
+
+import { LoginPage } from '../components/LoginPage'; // Ajusta la ruta
+
 import { StrategyPanelModal } from '../components/StrategyPanelModal';
-import { FiSettings } from 'react-icons/fi';
 import { ProOfferModal } from '../components/ProOfferModal'; // Ajusta la ruta
 import { RegisterPage } from '../components/RegisterPage'; // Ajusta la ruta si es necesario
 import { InsufficientCreditsModal } from '../components/InsufficientCreditsModal'; // Ajusta la ruta
@@ -30,7 +35,9 @@ const API_URL = import.meta.env.VITE_API_URL;
 export default function App() {
   return (
     <StrategyProvider>
-      <LandingPage />
+      <WorkspaceProvider>
+        <LandingPage /> {/* O tu componente principal con las rutas */}
+      </WorkspaceProvider>
     </StrategyProvider>
   );
 }
@@ -155,286 +162,6 @@ const diccionarioData = {
   'Puntos de Alerta de Stock ✓' : 'done',
   'Lista básica de reposición según histórico ✓' : 'dancer2'
 };
-// const reportData = {
-//   "🧠 Diagnósticos generales": [
-//     {
-//       label: 'Análisis ABC de Productos ✓',
-//       endpoint: '/abc',
-//       key: 'ReporteABC',
-//       isPro: false,
-//       insights: [],
-//       basic_parameters: [
-//         { name: 'periodo_abc', label: 'Período de Análisis ABC', type: 'select',
-//           options: [
-//             { value: '12', label: 'Últimos 12 meses' },
-//             { value: '6', label: 'Últimos 6 meses' },
-//             { value: '3', label: 'Últimos 3 meses' },
-//             { value: '0', label: 'Todo' }
-//           ],
-//           defaultValue: '6'
-//         },
-//         { name: 'criterio_abc', label: 'Criterio Principal ABC', type: 'select',
-//           options: [
-//             { value: 'combinado', label: 'Combinado o Ponderado' },
-//             { value: 'ingresos', label: 'Por Ingresos' },
-//             { value: 'unidades', label: 'Por Cantidad Vendida' },
-//             { value: 'margen', label: 'Por Margen' }
-//           ],
-//           defaultValue: 'combinado'
-//         }
-//       ]
-//     },
-//     { label: 'Diagnóstico de Stock Muerto ✓', endpoint: '/diagnostico-stock-muerto', insights: [],
-//       key: 'ReporteStockMuerto',
-//       isPro: false,
-//       basic_parameters: []
-//     },
-//     {
-//       label: "⭐ Reporte Maestro de Inventario (Recomendado)",
-//       endpoint: "/reporte-maestro-inventario",
-//       key: 'ReporteMaestro',
-//       isPro: false,
-//       insights: [
-//         "Este es el reporte más completo. Combina la importancia de tus productos (Análisis ABC) con su salud de rotación (Stock Muerto) para crear un plan de acción 100% priorizado.",
-//         "Te dice exactamente en qué productos debes enfocar tu atención, dinero y esfuerzo AHORA MISMO."
-//       ],
-//       basic_parameters: [
-//         {
-//           name: "criterio_abc",
-//           label: "Criterio de Importancia (ABC)",
-//           type: "select",
-//           options: [
-//             { value: "margen", label: "Por Margen de Ganancia (Recomendado)" },
-//             { value: "ingresos", label: "Por Ingresos Totales" },
-//             { value: "unidades", label: "Por Unidades Vendidas" },
-//             { value: "combinado", label: "Ponderado Personalizado (Avanzado)" }
-//           ],
-//           defaultValue: "margen"
-//         },
-//         {
-//           name: "periodo_abc",
-//           label: "Período de Análisis de Importancia",
-//           type: "select",
-//           options: [
-//               { value: "3", label: "Últimos 3 meses" },
-//               { value: "6", label: "Últimos 6 meses" },
-//               { value: "12", label: "Últimos 12 meses" },
-//               { value: "0", label: "Historial completo" }
-//           ],
-//           defaultValue: "6"
-//         }
-//       ],
-//       advanced_parameters: [
-//         {
-//           name: "dias_sin_venta_muerto",
-//           label: "Umbral de Días para 'Stock Muerto'",
-//           type: "number",
-//           placeholder: "Default: dinámico",
-//           defaultValue: 30,
-//           min: 30
-//         },
-//         {
-//           name: "meses_analisis_salud",
-//           label: "Período para Cálculo de Salud (meses)",
-//           type: "number",
-//           placeholder: "Default: dinámico",
-//           defaultValue: 1,
-//           min: 1
-//         },
-//         {
-//           name: "peso_margen",
-//           label: "Peso de Margen (0.0 a 1.0)",
-//           type: "number",
-//           defaultValue: 0.5,
-//           min: 0, max: 1, step: 0.1
-//         },
-//         {
-//           name: "peso_ingresos",
-//           label: "Peso de Ingresos (0.0 a 1.0)",
-//           type: "number",
-//           defaultValue: 0.3,
-//           min: 0, max: 1, step: 0.1
-//         },
-//         {
-//           name: "peso_unidades",
-//           label: "Peso de Unidades (0.0 a 1.0)",
-//           type: "number",
-//           defaultValue: 0.2,
-//           min: 0, max: 1, step: 0.1
-//         }
-//       ]
-//     },
-//     {
-//       label: 'Análisis Estratégico de Rotación ✓',
-//       endpoint: '/rotacion-general-estrategico',
-//       key: 'ReporteAnalisisEstrategicoRotacion',
-//       isPro: false,
-//       insights: diccionarioData['Análisis Estratégico de Rotación ✓'],
-//       basic_parameters: [
-//         { name: 'sort_by', label: 'Ordenar Reporte Por', type: 'select',
-//           options: [
-//             { value: 'Importancia_Dinamica', label: 'Índice de Importancia (Recomendado)' },
-//             { value: 'Inversion_Stock_Actual', label: 'Mayor Inversión en Stock' },
-//             { value: 'Dias_Cobertura_Stock_Actual', label: 'Próximos a Agotarse (Cobertura)' },
-//             { value: 'Ventas_Total_Reciente', label: 'Más Vendidos (Unidades Recientes)' },
-//             { value: 'Clasificacion', label: 'Clasificación (A, B, C, D)' },
-//           ],
-//           defaultValue: 'Importancia_Dinamica'
-//         },
-//         { name: 'filtro_categorias_json', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
-//         { name: 'filtro_marcas_json', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] },
-//         { name: 'min_importancia', label: 'Mostrar solo con Importancia mayor a', type: 'number', defaultValue: '', min: 0, max: 1, step: 0.1, placeholder: 'Ej: 0.7' },
-//         { name: 'max_dias_cobertura', label: 'Mostrar solo con Cobertura menor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 15 (para ver bajo stock)' },
-//         { name: 'min_dias_cobertura', label: 'Mostrar solo con Cobertura mayor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 180 (para ver sobre-stock)' },
-//       ],
-//       advanced_parameters: [
-//         { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
-//         { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
-//         // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
-//         {
-//             name: 'score_ventas',
-//             label: 'Importancia de Ventas (1-10)',
-//             type: 'number',
-//             defaultValue: 8, // Corresponde al 40%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_ingreso',
-//             label: 'Importancia de Ingresos (1-10)',
-//             type: 'number',
-//             defaultValue: 6, // Corresponde al 30%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_margen',
-//             label: 'Importancia de Margen (1-10)',
-//             type: 'number',
-//             defaultValue: 4, // Corresponde al 20%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_dias_venta',
-//             label: 'Importancia de Frecuencia de Venta (1-10)',
-//             type: 'number',
-//             defaultValue: 2, // Corresponde al 10%
-//             min: 1, max: 10
-//         },
-//       ]
-//     },
-
-//   ],
-//   "📦 Reposición Inteligente y Sugerencias de Pedido": [
-//     { label: 'Puntos de Alerta de Stock ✓',
-//       endpoint: '/reporte-puntos-alerta-stock',
-//       key: 'ReportePuntosAlertaStock',
-//       isPro: false,
-//       insights: [],
-//       basic_parameters: [
-//         { name: 'lead_time_dias', label: 'El tiempo promedio de entrega del proveedor en días', type: 'select',
-//           options: [
-//             { value: '5', label: '5 días' },
-//             { value: '7', label: '7 días' },
-//             { value: '10', label: '10 días' },
-//             { value: '12', label: '12 días' },
-//             { value: '15', label: '15 días' }
-//           ],
-//           defaultValue: '7'
-//         },
-//         { name: 'dias_seguridad_base', label: 'Días adicionales de cobertura para stock de seguridad', type: 'select',
-//           options: [
-//             { value: '0', label: 'Ninguno' },
-//             { value: '1', label: '1 día adicional' },
-//             { value: '2', label: '2 días adicionales' },
-//             { value: '3', label: '3 días adicionales' }
-//           ],
-//           defaultValue: '0'
-//         }
-//       ]
-//     },
-//     {
-//       label: 'Lista básica de reposición según histórico ✓',
-//       endpoint: '/lista-basica-reposicion-historico',
-//       key: 'ReporteListaBasicaReposicionHistorica',
-//       isPro: false,
-//       insights: [],
-//       basic_parameters: [
-//         { name: 'ordenar_por', label: 'Ordenar reporte por', type: 'select', 
-//           options: [
-//             { value: 'Importancia', label: 'Índice de Importancia (Recomendado)' },
-//             { value: 'Índice de Urgencia', label: 'Índice de Urgencia (Stock bajo + Importancia)' },
-//             { value: 'Inversion Requerida', label: 'Mayor Inversión Requerida' },
-//             { value: 'Cantidad a Comprar', label: 'Mayor Cantidad a Comprar' },
-//             { value: 'Margen Potencial', label: 'Mayor Margen Potencial de Ganancia' },
-//             { value: 'Próximos a Agotarse', label: 'Próximos a Agotarse (Cobertura)' },
-//             { value: 'rotacion', label: 'Mayor Rotación' },
-//             { value: 'Categoría', label: 'Categoría (A-Z)' }
-//           ],
-//           defaultValue: 'Índice de Urgencia' // Default explícito
-//         },
-//         { name: 'incluir_solo_categorias', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
-//         { name: 'incluir_solo_marcas', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] }
-//       ],
-//       advanced_parameters: [
-//         { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
-//         { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
-//         { name: 'excluir_sin_ventas', label: '¿Excluir productos con CERO ventas?', type: 'boolean_select', 
-//           options: [
-//             { value: 'true', label: 'Sí, excluir (Recomendado)' },
-//             { value: 'false', label: 'No, incluirlos' }
-//           ],
-//           defaultValue: 'true'
-//         },
-//         { name: 'lead_time_dias', label: 'Tiempo de Entrega del Proveedor en Días', type: 'number', defaultValue: 7, min: 0 },
-//         { name: 'dias_cobertura_ideal_base', label: 'Días de Cobertura Ideal Base', type: 'number', defaultValue: 10, min: 3 },
-//         { name: 'peso_ventas_historicas', label: 'Peso Ventas Históricas (0.0-1.0)', type: 'number', defaultValue: 0.6, min: 0, max: 1, step: 0.1 },
-//         // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
-//         {
-//             name: 'score_ventas',
-//             label: 'Importancia de Ventas (1-10)',
-//             type: 'number',
-//             defaultValue: 8, // Corresponde al 40%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_ingreso',
-//             label: 'Importancia de Ingresos (1-10)',
-//             type: 'number',
-//             defaultValue: 6, // Corresponde al 30%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_margen',
-//             label: 'Importancia de Margen (1-10)',
-//             type: 'number',
-//             defaultValue: 4, // Corresponde al 20%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_dias_venta',
-//             label: 'Importancia de Frecuencia de Venta (1-10)',
-//             type: 'number',
-//             defaultValue: 2, // Corresponde al 10%
-//             min: 1, max: 10
-//         }
-//       ]
-//     },
-//     { label: 'Lista sugerida para alcanzar monto mínimo', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Pedido optimizado por marcas o líneas específicas', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Reposición inteligente por categoría', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Sugerencia combinada por zona', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//   ],
-//   "📊 Simulación y ROI de Compra": [
-//     { label: 'Simulación de ahorro en compra grupal', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Comparativa de precios actuales vs históricos', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Estimación de margen bruto por sugerencia', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Rentabilidad mensual por línea o proveedor', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//   ],
-//   "🔄 Gestión de Inventario y Mermas": [
-//     { label: 'Revisión de productos a punto de vencer o sin rotar', endpoint: '/stock-critico', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Listado de productos con alta rotación que necesitan reposición', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Sugerencia de promociones para liquidar productos lentos', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//   ]
-// };
 
 // ===================================================================================
 // --- VISTA 1: El Nuevo Landing Page ---
@@ -535,14 +262,28 @@ const OnboardingModal = ({ onSubmit, onCancel, isLoading }) => {
 // --- COMPONENTE PRINCIPAL: Ahora se llama App y orquesta las vistas ---
 // ===================================================================================
 function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar el import en App.jsx, etc.
-  const [appState, setAppState] = useState('landing'); // 'landing', 'onboarding', 'analysis', 'registering'
+  const [appState, setAppState] = useState('landing'); // 'landing', 'onboarding', 'analysis', 'registering', 'login'
+  
+  const [authToken, setAuthToken] = useState(localStorage.getItem('accessToken'));
+
+  const { loadStrategy } = useStrategy();
   const [sessionId, setSessionId] = useState(null);
 
   const [reportsConfig, setReportsConfig] = useState(null); // Para guardar la respuesta cruda de la API
   const [isConfigLoading, setIsConfigLoading] = useState(true);
 
+  const { initializeSessionAndLoadStrategy } = useStrategy();
+
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false); // Estado para el modal
   const { strategy } = useStrategy();
+
+  const { 
+        workspaces, 
+        activeWorkspace, 
+        setActiveWorkspace, 
+        fetchWorkspaces,
+        createWorkspace 
+    } = useWorkspace();
 
   const [credits, setCredits] = useState({ used: 0, remaining: 0 });
   const [creditHistory, setCreditHistory] = useState([]);
@@ -554,6 +295,8 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
 
   const [showCreditsModal, setShowCreditsModal] = useState(false);
   const [creditsInfo, setCreditsInfo] = useState({ required: 0, remaining: 0 });
+
+  const [analysisResult, setAnalysisResult] = useState(null); // Guardará { insight, data, report_key }
 
   // --- NUEVOS ESTADOS PARA GESTIONAR LA CARGA DE ARCHIVOS ---
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
@@ -582,6 +325,8 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       const response = await axios.post(`${API_URL}/sessions`, data);
       const newSessionId = response.data.sessionId; // Usar el ID del backend
 
+      await initializeSessionAndLoadStrategy(newSessionId);
+      // await loadStrategy(newSessionId);
       setSessionId(newSessionId);
       setAppState('analysis');
 
@@ -594,11 +339,44 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     }
   };
 
+  const handleGoToLogin = () => {
+        // Cierra cualquier modal abierto y muestra la página de login
+        setShowProModal(false);
+        setShowCreditsModal(false);
+        setAppState('login');
+    };
+
+  const handleLoginSuccess = (token) => {
+      // Guardamos el token en localStorage para persistir la sesión
+      localStorage.setItem('accessToken', token);
+      setAuthToken(token);
+      // Aquí podrías guardar el perfil del usuario en el estado
+      // Por ahora, lo redirigimos al landing para que inicie una sesión autenticada
+      setAppState('analysis'); 
+      alert("¡Inicio de sesión exitoso!");
+  };
+
+
+  
+  const handleLogout = () => {
+      localStorage.removeItem('accessToken');
+      setAuthToken(null);
+      // Recargamos la página para asegurar una sesión limpia
+      window.location.reload();
+  };
+
   const handleRegisterClick = () => {
     // Por ahora, solo muestra una alerta. En el futuro, redirigiría a /register.
     alert("¡Función de registro próximamente! Aquí es donde el usuario crearía su cuenta.");
     setShowConversionModal(false);
   };
+
+  const handleRegisterSuccess = () => {
+      // Después de un registro exitoso, llevamos al usuario a la vista de login
+      // para que inicie sesión con su nueva cuenta.
+      setAppState('login');
+  };
+
 
   const handleNewSessionClick = () => {
     // Simplemente recarga la página para empezar una nueva sesión anónima
@@ -613,9 +391,16 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
 
   // --- NUEVA FUNCIÓN PARA MANEJAR LA CARGA Y LLAMADA A LA API ---
   const handleFileProcessed = async (file, fileType) => {
-    if (!sessionId) {
-      alert("Error: No se ha iniciado una sesión de análisis.");
-      return;
+    const isUserLoggedIn = !!authToken; // True si hay un token, false si no
+
+    // 2. Verificaciones iniciales
+    if (isUserLoggedIn && !activeWorkspace) {
+        alert("Por favor, selecciona o crea un espacio de trabajo antes de subir archivos.");
+        return;
+    }
+    if (!isUserLoggedIn && !sessionId) {
+        alert("Error: No se ha iniciado una sesión de análisis.");
+        return;
     }
 
     setUploadStatus(prev => ({ ...prev, [fileType]: 'uploading' }));
@@ -624,11 +409,20 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     formData.append("file", file);
     formData.append("tipo_archivo", fileType);
 
-    try {
-      const response = await axios.post(`${API_URL}/upload-file`, formData, {
-        headers: { 'X-Session-ID': sessionId }
-      });
+    const headers = {};
+    if (isUserLoggedIn) {
+        // --- LÓGICA PARA USUARIO REGISTRADO ---
+        headers['Authorization'] = `Bearer ${authToken}`;
+        formData.append("workspace_id", activeWorkspace.id);
+        console.log(`Enviando archivo al workspace: ${activeWorkspace.id}`);
+    } else {
+        // --- LÓGICA PARA USUARIO ANÓNIMO ---
+        headers['X-Session-ID'] = sessionId;
+        console.log(`Enviando archivo a la sesión anónima: ${sessionId}`);
+    }
 
+    try {
+      const response = await axios.post(`${API_URL}/upload-file`, formData, { headers });
       console.log('Respuesta del servidor:', response.data);
 
       setUploadedFileIds(prev => ({ ...prev, [fileType]: response.data.file_id }));
@@ -769,6 +563,48 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     return new Date().toLocaleDateString('en-CA');
   }, []);
 
+  // --- NUEVA FUNCIÓN PARA GENERAR Y DESCARGAR EXCEL EN EL CLIENTE ---
+  const handleDownloadExcel = (type) => {
+    if (!analysisResult || !analysisResult.data) {
+        alert("No hay datos de análisis para descargar.");
+        return;
+    }
+
+    let dataToExport = analysisResult.data;
+    let filename = `FerreteroIA_${analysisResult.report_key}.xlsx`;
+
+    // Lógica para crear el reporte accionable
+    if (type === 'accionable') {
+        const columnasAccionables = [
+            'SKU / Código de producto', 
+            'Nombre del producto', 
+            'Stock Actual (Unds)', 
+            'Sugerencia_Pedido_Ideal_Unds', // Asegúrate que este nombre de columna coincida con el que devuelve tu backend
+            // ... puedes añadir más columnas clave aquí
+        ];
+
+        dataToExport = analysisResult.data.map(row => {
+            let newRow = {};
+            columnasAccionables.forEach(col => {
+                if (row[col] !== undefined) newRow[col] = row[col];
+            });
+            // Añadimos las columnas vacías que pediste para imprimir
+            newRow['Check ✓'] = '';
+            newRow['Cantidad Final'] = '';
+            return newRow;
+        });
+        filename = `FerreteroIA_${analysisResult.report_key}_Accionable.xlsx`;
+    }
+
+    // Usamos la librería xlsx para crear el archivo desde el JSON
+    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte");
+    
+    // Disparamos la descarga
+    XLSX.writeFile(workbook, filename);
+};
+
   // --- MODIFICACIÓN 4: Función auxiliar para disparar la descarga ---
   const triggerDownload = (blob, filename) => {
     const url = window.URL.createObjectURL(blob);
@@ -783,8 +619,8 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   };
 
 
-  // --- MODIFICACIÓN 2: buttonDownloadHandleMulti para usar y actualizar caché ---
-  const buttonDownloadHandleMulti = async () => {
+  // --- MODIFICACIÓN 2: handleGenerateAnalysis para usar y actualizar caché ---
+  const handleGenerateAnalysis = async () => {
     // 1. Verificación inicial (ahora comprueba los IDs de archivo)
     if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario || !sessionId) {
       alert("Asegúrate de haber iniciado una sesión, subido ambos archivos y seleccionado un reporte.");
@@ -792,33 +628,34 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     }
 
     setIsLoading(true);
+    setAnalysisResult(null);
 
-    // --- LÓGICA DE CACHÉ ---
-    // 1. Crear una clave única para la solicitud actual
-    const currentCacheKey = `${selectedReport.endpoint}-${uploadedFileIds.ventas}-${uploadedFileIds.inventario}-${JSON.stringify(modalParams)}`;
+    // // --- LÓGICA DE CACHÉ ---
+    // // 1. Crear una clave única para la solicitud actual
+    // const currentCacheKey = `${selectedReport.endpoint}-${uploadedFileIds.ventas}-${uploadedFileIds.inventario}-${JSON.stringify(modalParams)}`;
 
-    // 2. Verificar si hay una respuesta en caché que coincida con la clave actual
-    if (cachedResponse.key === currentCacheKey && cachedResponse.blob) {
-      console.log("Usando respuesta de caché para:", currentCacheKey);
+    // // 2. Verificar si hay una respuesta en caché que coincida con la clave actual
+    // if (cachedResponse.key === currentCacheKey && cachedResponse.blob) {
+    //   console.log("Usando respuesta de caché para:", currentCacheKey);
       
-      const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}_cached.xlsx`;
+    //   const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}_cached.xlsx`;
       
-      // Reutilizamos el blob guardado para la descarga
-      const url = window.URL.createObjectURL(cachedResponse.blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+    //   // Reutilizamos el blob guardado para la descarga
+    //   const url = window.URL.createObjectURL(cachedResponse.blob);
+    //   const link = document.createElement('a');
+    //   link.href = url;
+    //   link.setAttribute('download', filename);
+    //   document.body.appendChild(link);
+    //   link.click();
+    //   link.remove();
+    //   window.URL.revokeObjectURL(url);
 
-      setIsLoading(false); // Detenemos la carga
-      return; // Salimos de la función para evitar la llamada a la API
-    }
+    //   setIsLoading(false); // Detenemos la carga
+    //   return; // Salimos de la función para evitar la llamada a la API
+    // }
     
-    // --- SI NO HAY CACHÉ, CONTINUAMOS CON LA LLAMADA A LA API ---
-    console.log("No hay caché válido. Realizando nueva petición al servidor.");
+    // // --- SI NO HAY CACHÉ, CONTINUAMOS CON LA LLAMADA A LA API ---
+    // console.log("No hay caché válido. Realizando nueva petición al servidor.");
 
     // 2. Crear el FormData (ahora con IDs en lugar de archivos)
     const formData = new FormData();
@@ -833,6 +670,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       ...(selectedReport.basic_parameters || []),
       ...(selectedReport.advanced_parameters || [])
     ];
+
     allParameters.forEach(param => {
         const value = modalParams[param.name];
         if (value !== undefined && value !== null && value !== '') {
@@ -848,29 +686,33 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
 
     try {
       const response = await axios.post(`${API_URL}${selectedReport.endpoint}`, formData, {
-        responseType: 'blob',
+        // responseType: 'blob', // Ahora espera un JSON
         headers: { 'X-Session-ID': sessionId }
       });
       
       const newBlob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
       // 3. Guardar la nueva respuesta en el caché
-      setCachedResponse({ key: currentCacheKey, blob: newBlob });
+      // setCachedResponse({ key: currentCacheKey, blob: newBlob });
 
-      const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}.xlsx`;
-      const url = window.URL.createObjectURL(newBlob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', filename);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
+      setAnalysisResult(response.data);
+
+      // const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}.xlsx`;
+      // const url = window.URL.createObjectURL(newBlob);
+      // const link = document.createElement('a');
+      // link.href = url;
+      // link.setAttribute('download', filename);
+      // document.body.appendChild(link);
+      // link.click();
+      // link.remove();
+      // window.URL.revokeObjectURL(url);
 
       // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
       const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': sessionId } });
       setCredits(updatedState.data.credits);
       setCreditHistory(updatedState.data.history);
+
     } catch (error) {
       // --- 5. LÓGICA DE MANEJO DE ERRORES MEJORADA ---
       console.error("Error al generar el reporte:", error);
@@ -987,6 +829,12 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     fetchSessionState();
   }, [appState, sessionId]);
 
+  // 2. Carga los espacios de trabajo cuando el usuario se autentica
+  useEffect(() => {
+      if (authToken) {
+          fetchWorkspaces(authToken);
+      }
+  }, [authToken, fetchWorkspaces]);
 
   // --- MODIFICACIÓN 3: Invalidar caché al cerrar modal ---
   // (usando useCallback para handleEsc si se añade como dependencia)
@@ -1041,6 +889,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       if (!showModal) {
           console.log("Modal cerrado, limpiando caché.");
           setCachedResponse({ key: null, blob: null });
+          setAnalysisResult(null)
       }
   }, [showModal]);
 
@@ -1065,7 +914,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       <>
         <div>
           {/* --- ENCABEZADO AÑADIDO --- */}
-          <header className="flex flex-col items-center justify-between gap-4 py-4 px-4 sm:px-6 lg:px-8 text-white w-full max-w-7xl mx-auto border-b border-gray-700">
+          <header className="flex flex-col items-center justify-between gap-4 py-4 text-white w-full max-w-7xl mx-auto border-b border-gray-700">
             <div className='text-center'>
               <h1 className="text-3xl md:text-5xl font-bold text-white">
                   Sesión de <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
@@ -1079,6 +928,28 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
 
             {/* Contenedor de Botones de Acción */}
             <div className="flex max-w-sm items-stretch justify-center gap-3 w-full sm:w-auto">
+              <div className="flex items-center gap-4">
+                    {authToken ? (
+                        <button onClick={handleLogout} className="...">Desconectar</button>
+                    ) : (
+                      <>
+                        <button onClick={handleGoToLogin} className="...">Iniciar Sesión</button>
+                        <button onClick={handleGoToRegister} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-500 rounded-lg transition-colors">
+                            <FiLock /> 
+                            <span className="inline">Registrarse</span>
+                        </button>
+                      </>
+                    )}
+                    {/* El resto de tus botones */}
+                </div>
+            </div>
+            <div className="flex max-w-sm items-stretch justify-between gap-3 w-full sm:w-auto">
+                <WorkspaceSelector
+                    workspaces={workspaces}
+                    activeWorkspace={activeWorkspace}
+                    onWorkspaceChange={setActiveWorkspace}
+                    onCreateNew={() => { /* Lógica para abrir un modal de creación */ }}
+                />
                 <button 
                     onClick={() => setStrategyPanelOpen(true)} 
                     // 2. Se añade flex-1 y justify-center a ambos botones
@@ -1088,15 +959,10 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                     {/* Mantenemos la lógica responsiva para el texto */}
                     <span className="inline">Mi Estrategia</span>
                 </button>
-                
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-500 rounded-lg transition-colors">
-                    <FiLock /> 
-                    <span className="inline">Registrarse</span>
-                </button>
             </div>
 
             {/* Panel de Créditos y Botón de Estrategia */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-6 w-full">
               <CreditsPanel 
                 used={credits.used} 
                 remaining={credits.remaining}
@@ -1172,127 +1038,145 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                 </h2>
               </div>
               <div className="flex-1 min-h-0 overflow-y-auto">
-                <div className="flex-1 min-h-0 gap-4 p-4">
-                  {(selectedReport.basic_parameters?.length > 0 || selectedReport.advanced_parameters?.length > 0) && (
-                      <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
-                        <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
-                        
-                        {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
-                        {selectedReport.basic_parameters?.map((param) => {
-                          // Lógica de renderizado para select y multi-select
-                          if (param.type === 'select') {
-                            return (
-                              <div key={param.name} className="mb-4">
-                                <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
-                                <select
-                                  id={param.name}
-                                  name={param.name}
-                                  value={modalParams[param.name] || ''}
-                                  onChange={e => handleParamChange(param.name, e.target.value)}
-                                  className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                >
-                                  {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                </select>
-                              </div>
-                            );
-                          }
-                          if (param.type === 'multi-select') {
-                            const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-                            const value = (modalParams[param.name] || []).map(val => ({ value: val, label: val }));
-                            return (
-                              <div key={param.name} className="mb-4">
-                                <label className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
-                                <Select
-                                  isMulti
-                                  name={param.name}
-                                  options={options}
-                                  className="mt-1 block w-full basic-multi-select"
-                                  classNamePrefix="select"
-                                  value={value}
-                                  isLoading={isLoadingFilters}
-                                  placeholder={isLoadingFilters ? "Cargando filtros..." : "Selecciona uno o más..."}
-                                  onChange={(selectedOptions) => {
-                                    const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-                                    handleParamChange(param.name, values);
-                                  }}
-                                />
-                              </div>
-                            );
-                          }
-                          return null;
-                        })}
-
-                        {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
-                        {selectedReport.advanced_parameters && selectedReport.advanced_parameters.length > 0 && (
-                          <div className="mt-6 pt-4 border-t border-gray-200">
-                            <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
-                              {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
-                              {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
-                              <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                            </button>
-                            
-                            {showAdvanced && (
-                              <>
-                                <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
-                                  {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
-                                  {selectedReport.advanced_parameters.map(param => {
-                                    if (param.type === 'boolean_select') {
-                                      return (
-                                        <div key={param.name} className="mb-4">
-                                          <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
-                                          <select
-                                            id={param.name}
-                                            name={param.name}
-                                            value={modalParams[param.name] || ''}
-                                            onChange={e => handleParamChange(param.name, e.target.value)}
-                                            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                          >
-                                            {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                          </select>
-                                        </div>
-                                      );
-                                    }
-                                    if (param.type === 'number') {
-                                      return (
-                                        <div key={param.name} className="mb-4">
-                                          <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
-                                          <input
-                                            type="number"
-                                            id={param.name}
-                                            name={param.name}
-                                            value={modalParams[param.name] || ''}
-                                            onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                            min={param.min}
-                                            max={param.max}
-                                            step={param.step}
-                                            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                          />
-                                        </div>
-                                      );
-                                    }
-                                    return null;
-                                  })}
+                {/* Renderizado Condicional: Muestra parámetros O resultados */}
+                {!analysisResult ? (
+                  <div className="flex-1 min-h-0 gap-4 p-4">
+                    {(selectedReport.basic_parameters?.length > 0 || selectedReport.advanced_parameters?.length > 0) && (
+                        <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
+                          <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
+                          
+                          {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
+                          {selectedReport.basic_parameters?.map((param) => {
+                            // Lógica de renderizado para select y multi-select
+                            if (param.type === 'select') {
+                              return (
+                                <div key={param.name} className="mb-4">
+                                  <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                  <select
+                                    id={param.name}
+                                    name={param.name}
+                                    value={modalParams[param.name] || ''}
+                                    onChange={e => handleParamChange(param.name, e.target.value)}
+                                    className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                  >
+                                    {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                  </select>
                                 </div>
-                                {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
-                                <button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
-                                  <FiRefreshCw className="text-md"/> Restaurar valores por defecto
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                  )}
-                </div>
-                <div
-                  className="w-full max-w-full overflow-x-auto text-gray-700 space-y-2 mt-1 text-left text-sm"
-                  dangerouslySetInnerHTML={{ __html: insightHtml }}
-                >
-                </div>
+                              );
+                            }
+                            if (param.type === 'multi-select') {
+                              const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
+                              const value = (modalParams[param.name] || []).map(val => ({ value: val, label: val }));
+                              return (
+                                <div key={param.name} className="mb-4">
+                                  <label className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                  <Select
+                                    isMulti
+                                    name={param.name}
+                                    options={options}
+                                    className="mt-1 block w-full basic-multi-select"
+                                    classNamePrefix="select"
+                                    value={value}
+                                    isLoading={isLoadingFilters}
+                                    placeholder={isLoadingFilters ? "Cargando filtros..." : "Selecciona uno o más..."}
+                                    onChange={(selectedOptions) => {
+                                      const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
+                                      handleParamChange(param.name, values);
+                                    }}
+                                  />
+                                </div>
+                              );
+                            }
+                            return null;
+                          })}
+
+                          {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
+                          {selectedReport.advanced_parameters && selectedReport.advanced_parameters.length > 0 && (
+                            <div className="mt-6 pt-4 border-t border-gray-200">
+                              <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
+                                {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
+                                {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
+                                <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                              </button>
+                              
+                              {showAdvanced && (
+                                <>
+                                  <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
+                                    {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
+                                    {selectedReport.advanced_parameters.map(param => {
+                                      if (param.type === 'boolean_select') {
+                                        return (
+                                          <div key={param.name} className="mb-4">
+                                            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                            <select
+                                              id={param.name}
+                                              name={param.name}
+                                              value={modalParams[param.name] || ''}
+                                              onChange={e => handleParamChange(param.name, e.target.value)}
+                                              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                            >
+                                              {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                            </select>
+                                          </div>
+                                        );
+                                      }
+                                      if (param.type === 'number') {
+                                        return (
+                                          <div key={param.name} className="mb-4">
+                                            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                            <input
+                                              type="number"
+                                              id={param.name}
+                                              name={param.name}
+                                              value={modalParams[param.name] || ''}
+                                              onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                              min={param.min}
+                                              max={param.max}
+                                              step={param.step}
+                                              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                            />
+                                          </div>
+                                        );
+                                      }
+                                      return null;
+                                    })}
+                                  </div>
+                                  {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
+                                  <button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
+                                    <FiRefreshCw className="text-md"/> Restaurar valores por defecto
+                                  </button>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                    )}
+                  </div>
+                ) : (
+                  // VISTA DE RESULTADOS: Botones de descarga y para volver
+                  <div className="space-y-3">
+                    <div className="flex gap-4">
+                        <button onClick={() => handleDownloadExcel('accionable')} className="flex-1 bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700">
+                            📋 Descargar Accionable
+                        </button>
+                        <button onClick={() => handleDownloadExcel('detallado')} className="flex-1 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">
+                            📊 Descargar Detallado
+                        </button>
+                    </div>
+                    <button onClick={() => setAnalysisResult(null)} className="text-sm text-gray-600 hover:text-black">
+                        ‹ Volver a Parámetros
+                    </button>
+                  </div>
+                // <div
+                //   className="w-full max-w-full overflow-x-auto text-gray-700 space-y-2 mt-1 text-left text-sm"
+                //   dangerouslySetInnerHTML={{ __html: insightHtml }}
+                // >
+                // </div>
+                )}
               </div>
               <div className="p-4 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
                 <button
-                    onClick={buttonDownloadHandleMulti}
+                    onClick={handleGenerateAnalysis}
                     // La condición disabled ahora solo depende de si los archivos están listos o si está cargando
                     disabled={!filesReady || isLoading}
                     className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
@@ -1337,7 +1221,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                 >
                     Cerrar
                 </button>
-            </div>
+              </div>
             </div>
           </div>
         )}
@@ -1365,7 +1249,26 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       </>
     )}
 
-    {appState === 'registering' && <RegisterPage onBackToLanding={() => setAppState('analysis')} />}
+    {appState === 'login' && (
+      <LoginPage 
+        onLoginSuccess={handleLoginSuccess}
+        onSwitchToRegister={handleGoToRegister}
+        onBackToLanding={() => setAppState('analysis')}
+      />
+    )}
+
+    {/*{appState === 'registering' && <RegisterPage onBackToLanding={() => setAppState('analysis')} />}*/}
+
+    {appState === 'registering' && (
+        <RegisterPage 
+            // Pasamos las props que el componente necesita
+            sessionId={sessionId}
+            // onboardingData={onboardingData} // Asumiendo que guardas esto en el estado
+            onRegisterSuccess={handleRegisterSuccess}
+            onSwitchToLogin={() => setAppState('login')}
+            onBackToLanding={() => setAppState('analysis')}
+        />
+    )}
 
     {/* Renderiza el modal de créditos insuficientes si está activo */}
     {showCreditsModal && (
@@ -1390,8 +1293,12 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     )}
 
     {/* Renderiza el modal de estrategia si el estado es true */}
-    {isStrategyPanelOpen && <StrategyPanelModal onClose={() => setStrategyPanelOpen(false)} />}
-    
+    {isStrategyPanelOpen && (
+      <StrategyPanelModal 
+        sessionId={sessionId} 
+        onClose={() => setStrategyPanelOpen(false)} 
+      />
+    )}
     {/* Renderiza el modal del historial si está abierto */}
     {isHistoryModalOpen && <CreditHistoryModal history={creditHistory} reportData={reportData} onClose={() => setIsHistoryModalOpen(false)} />}
 

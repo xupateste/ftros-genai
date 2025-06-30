@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'; // useCallback añadido
 import { useNavigate, Link } from 'react-router-dom';
 import '../index.css';
-import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, FiX, FiLoader} from 'react-icons/fi'
+// import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, FiX, FiLoader, FiSettings} from 'react-icons/fi'
 
 import axios from 'axios';
 import Select from 'react-select';
-import CsvImporterComponent from '../assets/CsvImporterComponent';
+// import CsvImporterComponent from '../assets/CsvImporterComponent';
 import * as XLSX from 'xlsx';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -13,27 +13,46 @@ import { v4 as uuidv4 } from 'uuid';
 import { getSessionId } from '../utils/sessionManager'; // Ajusta la ruta
 
 import { StrategyProvider, useStrategy } from '../context/StrategyProvider';
+import { WorkspaceProvider } from '../context/WorkspaceProvider';
+
+import { useWorkspace } from '../context/WorkspaceProvider';
+import { WorkspaceSelector } from '../components/WorkspaceSelector';
+
+// import { LoginPage } from '../components/LoginPage'; // Ajusta la ruta
 
 import { StrategyPanelModal } from '../components/StrategyPanelModal';
-import { FiSettings } from 'react-icons/fi';
-import { ProOfferModal } from '../components/ProOfferModal'; // Ajusta la ruta
-import { RegisterPage } from '../components/RegisterPage'; // Ajusta la ruta si es necesario
-import { InsufficientCreditsModal } from '../components/InsufficientCreditsModal'; // Ajusta la ruta
+// import { ProOfferModal } from '../components/ProOfferModal'; // Ajusta la ruta
+// import { RegisterPage } from '../components/RegisterPage'; // Ajusta la ruta si es necesario
+// import { InsufficientCreditsModal } from '../components/InsufficientCreditsModal'; // Ajusta la ruta
 
-import { CreditsPanel } from '../components/CreditsPanel';
-import { CreditHistoryModal } from '../components/CreditHistoryModal';
+// import { CreditsPanel } from '../components/CreditsPanel';
+// import { CreditHistoryModal } from '../components/CreditHistoryModal';
 import { ConversionModal } from '../components/ConversionModal'; // Ajusta la ruta si es necesario
 
 
-const API_URL = import.meta.env.VITE_API_URL;
 
-export default function App() {
-  return (
-    <StrategyProvider>
-      <LandingPage />
-    </StrategyProvider>
-  );
-}
+// nuevas imports
+// (Asegúrate de que estas importaciones sean correctas para tu proyecto)
+import { FiLock, FiBarChart2, FiChevronsRight, FiSettings, FiLogIn, FiUser, FiMail, FiKey, FiUserPlus, FiX, FiLoader, FiRefreshCw, FiDownload, FiSend} from 'react-icons/fi';
+import { CreditsPanel } from '../components/CreditsPanel';
+import { CreditHistoryModal } from '../components/CreditHistoryModal';
+import { ProOfferModal } from '../components/ProOfferModal';
+import { InsufficientCreditsModal } from '../components/InsufficientCreditsModal';
+import CsvImporterComponent from '../assets/CsvImporterComponent';
+
+
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+// export default function App() {
+//   return (
+//     <StrategyProvider>
+//       <WorkspaceProvider>
+//         <LandingPage /> {/* O tu componente principal con las rutas */}
+//       </WorkspaceProvider>
+//     </StrategyProvider>
+//   );
+// }
 
 const templateVentas = {
         columns: [
@@ -155,286 +174,6 @@ const diccionarioData = {
   'Puntos de Alerta de Stock ✓' : 'done',
   'Lista básica de reposición según histórico ✓' : 'dancer2'
 };
-// const reportData = {
-//   "🧠 Diagnósticos generales": [
-//     {
-//       label: 'Análisis ABC de Productos ✓',
-//       endpoint: '/abc',
-//       key: 'ReporteABC',
-//       isPro: false,
-//       insights: [],
-//       basic_parameters: [
-//         { name: 'periodo_abc', label: 'Período de Análisis ABC', type: 'select',
-//           options: [
-//             { value: '12', label: 'Últimos 12 meses' },
-//             { value: '6', label: 'Últimos 6 meses' },
-//             { value: '3', label: 'Últimos 3 meses' },
-//             { value: '0', label: 'Todo' }
-//           ],
-//           defaultValue: '6'
-//         },
-//         { name: 'criterio_abc', label: 'Criterio Principal ABC', type: 'select',
-//           options: [
-//             { value: 'combinado', label: 'Combinado o Ponderado' },
-//             { value: 'ingresos', label: 'Por Ingresos' },
-//             { value: 'unidades', label: 'Por Cantidad Vendida' },
-//             { value: 'margen', label: 'Por Margen' }
-//           ],
-//           defaultValue: 'combinado'
-//         }
-//       ]
-//     },
-//     { label: 'Diagnóstico de Stock Muerto ✓', endpoint: '/diagnostico-stock-muerto', insights: [],
-//       key: 'ReporteStockMuerto',
-//       isPro: false,
-//       basic_parameters: []
-//     },
-//     {
-//       label: "⭐ Reporte Maestro de Inventario (Recomendado)",
-//       endpoint: "/reporte-maestro-inventario",
-//       key: 'ReporteMaestro',
-//       isPro: false,
-//       insights: [
-//         "Este es el reporte más completo. Combina la importancia de tus productos (Análisis ABC) con su salud de rotación (Stock Muerto) para crear un plan de acción 100% priorizado.",
-//         "Te dice exactamente en qué productos debes enfocar tu atención, dinero y esfuerzo AHORA MISMO."
-//       ],
-//       basic_parameters: [
-//         {
-//           name: "criterio_abc",
-//           label: "Criterio de Importancia (ABC)",
-//           type: "select",
-//           options: [
-//             { value: "margen", label: "Por Margen de Ganancia (Recomendado)" },
-//             { value: "ingresos", label: "Por Ingresos Totales" },
-//             { value: "unidades", label: "Por Unidades Vendidas" },
-//             { value: "combinado", label: "Ponderado Personalizado (Avanzado)" }
-//           ],
-//           defaultValue: "margen"
-//         },
-//         {
-//           name: "periodo_abc",
-//           label: "Período de Análisis de Importancia",
-//           type: "select",
-//           options: [
-//               { value: "3", label: "Últimos 3 meses" },
-//               { value: "6", label: "Últimos 6 meses" },
-//               { value: "12", label: "Últimos 12 meses" },
-//               { value: "0", label: "Historial completo" }
-//           ],
-//           defaultValue: "6"
-//         }
-//       ],
-//       advanced_parameters: [
-//         {
-//           name: "dias_sin_venta_muerto",
-//           label: "Umbral de Días para 'Stock Muerto'",
-//           type: "number",
-//           placeholder: "Default: dinámico",
-//           defaultValue: 30,
-//           min: 30
-//         },
-//         {
-//           name: "meses_analisis_salud",
-//           label: "Período para Cálculo de Salud (meses)",
-//           type: "number",
-//           placeholder: "Default: dinámico",
-//           defaultValue: 1,
-//           min: 1
-//         },
-//         {
-//           name: "peso_margen",
-//           label: "Peso de Margen (0.0 a 1.0)",
-//           type: "number",
-//           defaultValue: 0.5,
-//           min: 0, max: 1, step: 0.1
-//         },
-//         {
-//           name: "peso_ingresos",
-//           label: "Peso de Ingresos (0.0 a 1.0)",
-//           type: "number",
-//           defaultValue: 0.3,
-//           min: 0, max: 1, step: 0.1
-//         },
-//         {
-//           name: "peso_unidades",
-//           label: "Peso de Unidades (0.0 a 1.0)",
-//           type: "number",
-//           defaultValue: 0.2,
-//           min: 0, max: 1, step: 0.1
-//         }
-//       ]
-//     },
-//     {
-//       label: 'Análisis Estratégico de Rotación ✓',
-//       endpoint: '/rotacion-general-estrategico',
-//       key: 'ReporteAnalisisEstrategicoRotacion',
-//       isPro: false,
-//       insights: diccionarioData['Análisis Estratégico de Rotación ✓'],
-//       basic_parameters: [
-//         { name: 'sort_by', label: 'Ordenar Reporte Por', type: 'select',
-//           options: [
-//             { value: 'Importancia_Dinamica', label: 'Índice de Importancia (Recomendado)' },
-//             { value: 'Inversion_Stock_Actual', label: 'Mayor Inversión en Stock' },
-//             { value: 'Dias_Cobertura_Stock_Actual', label: 'Próximos a Agotarse (Cobertura)' },
-//             { value: 'Ventas_Total_Reciente', label: 'Más Vendidos (Unidades Recientes)' },
-//             { value: 'Clasificacion', label: 'Clasificación (A, B, C, D)' },
-//           ],
-//           defaultValue: 'Importancia_Dinamica'
-//         },
-//         { name: 'filtro_categorias_json', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
-//         { name: 'filtro_marcas_json', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] },
-//         { name: 'min_importancia', label: 'Mostrar solo con Importancia mayor a', type: 'number', defaultValue: '', min: 0, max: 1, step: 0.1, placeholder: 'Ej: 0.7' },
-//         { name: 'max_dias_cobertura', label: 'Mostrar solo con Cobertura menor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 15 (para ver bajo stock)' },
-//         { name: 'min_dias_cobertura', label: 'Mostrar solo con Cobertura mayor a (días)', type: 'number', defaultValue: '', min: 0, placeholder: 'Ej: 180 (para ver sobre-stock)' },
-//       ],
-//       advanced_parameters: [
-//         { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
-//         { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
-//         // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
-//         {
-//             name: 'score_ventas',
-//             label: 'Importancia de Ventas (1-10)',
-//             type: 'number',
-//             defaultValue: 8, // Corresponde al 40%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_ingreso',
-//             label: 'Importancia de Ingresos (1-10)',
-//             type: 'number',
-//             defaultValue: 6, // Corresponde al 30%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_margen',
-//             label: 'Importancia de Margen (1-10)',
-//             type: 'number',
-//             defaultValue: 4, // Corresponde al 20%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_dias_venta',
-//             label: 'Importancia de Frecuencia de Venta (1-10)',
-//             type: 'number',
-//             defaultValue: 2, // Corresponde al 10%
-//             min: 1, max: 10
-//         },
-//       ]
-//     },
-
-//   ],
-//   "📦 Reposición Inteligente y Sugerencias de Pedido": [
-//     { label: 'Puntos de Alerta de Stock ✓',
-//       endpoint: '/reporte-puntos-alerta-stock',
-//       key: 'ReportePuntosAlertaStock',
-//       isPro: false,
-//       insights: [],
-//       basic_parameters: [
-//         { name: 'lead_time_dias', label: 'El tiempo promedio de entrega del proveedor en días', type: 'select',
-//           options: [
-//             { value: '5', label: '5 días' },
-//             { value: '7', label: '7 días' },
-//             { value: '10', label: '10 días' },
-//             { value: '12', label: '12 días' },
-//             { value: '15', label: '15 días' }
-//           ],
-//           defaultValue: '7'
-//         },
-//         { name: 'dias_seguridad_base', label: 'Días adicionales de cobertura para stock de seguridad', type: 'select',
-//           options: [
-//             { value: '0', label: 'Ninguno' },
-//             { value: '1', label: '1 día adicional' },
-//             { value: '2', label: '2 días adicionales' },
-//             { value: '3', label: '3 días adicionales' }
-//           ],
-//           defaultValue: '0'
-//         }
-//       ]
-//     },
-//     {
-//       label: 'Lista básica de reposición según histórico ✓',
-//       endpoint: '/lista-basica-reposicion-historico',
-//       key: 'ReporteListaBasicaReposicionHistorica',
-//       isPro: false,
-//       insights: [],
-//       basic_parameters: [
-//         { name: 'ordenar_por', label: 'Ordenar reporte por', type: 'select', 
-//           options: [
-//             { value: 'Importancia', label: 'Índice de Importancia (Recomendado)' },
-//             { value: 'Índice de Urgencia', label: 'Índice de Urgencia (Stock bajo + Importancia)' },
-//             { value: 'Inversion Requerida', label: 'Mayor Inversión Requerida' },
-//             { value: 'Cantidad a Comprar', label: 'Mayor Cantidad a Comprar' },
-//             { value: 'Margen Potencial', label: 'Mayor Margen Potencial de Ganancia' },
-//             { value: 'Próximos a Agotarse', label: 'Próximos a Agotarse (Cobertura)' },
-//             { value: 'rotacion', label: 'Mayor Rotación' },
-//             { value: 'Categoría', label: 'Categoría (A-Z)' }
-//           ],
-//           defaultValue: 'Índice de Urgencia' // Default explícito
-//         },
-//         { name: 'incluir_solo_categorias', label: 'Filtrar por Categorías', type: 'multi-select', optionsKey: 'categorias', defaultValue: [] },
-//         { name: 'incluir_solo_marcas', label: 'Filtrar por Marcas', type: 'multi-select', optionsKey: 'marcas', defaultValue: [] }
-//       ],
-//       advanced_parameters: [
-//         { name: 'dias_analisis_ventas_recientes', label: 'Período de Análisis Reciente (días)', type: 'number', defaultValue: 30, min: 15 },
-//         { name: 'dias_analisis_ventas_general', label: 'Período de Análisis General (días)', type: 'number', defaultValue: 180, min: 30 },
-//         { name: 'excluir_sin_ventas', label: '¿Excluir productos con CERO ventas?', type: 'boolean_select', 
-//           options: [
-//             { value: 'true', label: 'Sí, excluir (Recomendado)' },
-//             { value: 'false', label: 'No, incluirlos' }
-//           ],
-//           defaultValue: 'true'
-//         },
-//         { name: 'lead_time_dias', label: 'Tiempo de Entrega del Proveedor en Días', type: 'number', defaultValue: 7, min: 0 },
-//         { name: 'dias_cobertura_ideal_base', label: 'Días de Cobertura Ideal Base', type: 'number', defaultValue: 10, min: 3 },
-//         { name: 'peso_ventas_historicas', label: 'Peso Ventas Históricas (0.0-1.0)', type: 'number', defaultValue: 0.6, min: 0, max: 1, step: 0.1 },
-//         // --- SECCIÓN DE PESOS CON LOS DEFAULTS CORREGIDOS ---
-//         {
-//             name: 'score_ventas',
-//             label: 'Importancia de Ventas (1-10)',
-//             type: 'number',
-//             defaultValue: 8, // Corresponde al 40%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_ingreso',
-//             label: 'Importancia de Ingresos (1-10)',
-//             type: 'number',
-//             defaultValue: 6, // Corresponde al 30%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_margen',
-//             label: 'Importancia de Margen (1-10)',
-//             type: 'number',
-//             defaultValue: 4, // Corresponde al 20%
-//             min: 1, max: 10
-//         },
-//         {
-//             name: 'score_dias_venta',
-//             label: 'Importancia de Frecuencia de Venta (1-10)',
-//             type: 'number',
-//             defaultValue: 2, // Corresponde al 10%
-//             min: 1, max: 10
-//         }
-//       ]
-//     },
-//     { label: 'Lista sugerida para alcanzar monto mínimo', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Pedido optimizado por marcas o líneas específicas', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Reposición inteligente por categoría', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Sugerencia combinada por zona', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//   ],
-//   "📊 Simulación y ROI de Compra": [
-//     { label: 'Simulación de ahorro en compra grupal', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Comparativa de precios actuales vs históricos', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Estimación de margen bruto por sugerencia', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Rentabilidad mensual por línea o proveedor', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//   ],
-//   "🔄 Gestión de Inventario y Mermas": [
-//     { label: 'Revisión de productos a punto de vencer o sin rotar', endpoint: '/stock-critico', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Listado de productos con alta rotación que necesitan reposición', endpoint: '/sobrestock', insights: [], isPro: true, basic_parameters: [] },
-//     { label: 'Sugerencia de promociones para liquidar productos lentos', endpoint: '/rotacion', insights: [], isPro: true, basic_parameters: [] },
-//   ]
-// };
 
 // ===================================================================================
 // --- VISTA 1: El Nuevo Landing Page ---
@@ -488,7 +227,7 @@ const LandingView = ({ onStartSession }) => (
 // ===================================================================================
 // --- VISTA 2: El Modal de Onboarding ---
 // ===================================================================================
-const OnboardingModal = ({ onSubmit, onCancel, isLoading }) => {
+const OnboardingModal = ({ onSubmit, onSwitchToLogin, onCancel, isLoading }) => {
   const [rol, setRol] = useState('');
 
   const handleSubmit = (e) => {
@@ -526,18 +265,230 @@ const OnboardingModal = ({ onSubmit, onCancel, isLoading }) => {
             {isLoading ? "Creando sesión..." : "Comenzar a Analizar"}
           </button>
         </form>
+
+        <p className="text-gray-400">¿Ya tienes una cuenta?{' '}
+          <button onClick={onSwitchToLogin} className="font-semibold text-purple-400 hover:underline">Inicia sesión aquí</button>
+        </p>
       </div>
     </div>
   );
 };
 
 // ===================================================================================
+// --- VISTA LOGIN ---
+// ===================================================================================
+const LoginPage = ({ onLoginSuccess, onSwitchToRegister, onBackToAnalysis }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    // FastAPI con OAuth2PasswordRequestForm espera los datos en formato x-www-form-urlencoded.
+    // La forma más fácil de construir esto es con URLSearchParams.
+    const formData = new URLSearchParams();
+    formData.append('username', email); // FastAPI usa 'username' para el email
+    formData.append('password', password);
+
+    try {
+      const response = await axios.post(`${API_URL}/token`, formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+      
+      const accessToken = response.data.access_token;
+      
+      // Llamamos a la función del padre para que maneje el token y el estado de autenticación
+      onLoginSuccess(accessToken);
+
+    } catch (err) {
+      console.error("Error en el inicio de sesión:", err);
+      if (err.response && err.response.data && err.response.data.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError("No se pudo conectar con el servidor. Inténtalo más tarde.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
+          flex flex-col items-center justify-center text-center px-4 py-4 sm:px-8 md:px-12 lg:px-20 text-white">
+      <div className="bg-gray-800 bg-opacity-80 border border-gray-700 rounded-lg p-8">
+        <h2 className="text-3xl font-bold mb-6 text-center">Iniciar Sesión</h2>
+        <form onSubmit={handleLogin} className="space-y-4 text-left">
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="email-login">Correo Electrónico</label>
+            <div className="relative">
+              <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                id="email-login" 
+                type="email" 
+                placeholder="tu@correo.com" 
+                className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="password-login">Contraseña</label>
+            <div className="relative">
+              <FiKey className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                id="password-login" 
+                type="password" 
+                placeholder="••••••••" 
+                className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          
+          {error && <p className="text-sm text-red-400 bg-red-900 bg-opacity-50 p-2 rounded-md">{error}</p>}
+
+          <button
+            type="submit"
+            className="w-full flex justify-center items-center gap-2 bg-purple-600 font-bold py-3 px-4 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-500"
+            disabled={isLoading}
+          >
+            {isLoading ? "Ingresando..." : <><FiLogIn /> Ingresar</>}
+          </button>
+        </form>
+        <div className="mt-6 text-center text-sm">
+            <p className="text-gray-400">¿No tienes cuenta? <button onClick={onSwitchToRegister} className="font-semibold text-purple-400 hover:underline">Regístrate</button></p>
+            <button onClick={onBackToAnalysis} className="mt-4 text-xs text-gray-500 hover:text-white">&larr; Volver al análisis anónimo</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+const RegisterPage = ({ onRegisterSuccess, onSwitchToLogin, onBackToLanding, sessionId, onboardingData }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    if (!email || !password || !name) {
+      setError("Todos los campos son obligatorios.");
+      setIsLoading(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('rol', onboardingData?.rol || 'otro');
+
+    try {
+      await axios.post(`${API_URL}/register`, formData, {
+        headers: { 'X-Session-ID': sessionId }
+      });
+      
+      alert("¡Registro exitoso! Serás redirigido para que inicies sesión.");
+      
+      // Verificamos que onRegisterSuccess sea una función antes de llamarla
+      if (typeof onRegisterSuccess === 'function') {
+        onRegisterSuccess();
+      }
+
+    } catch (err) {
+      console.error("Error en el registro:", err);
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError("No se pudo completar el registro. Inténtalo más tarde.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
+          flex flex-col items-center justify-center text-center px-4 py-4 sm:px-8 md:px-12 lg:px-20 text-white">
+      <div className="bg-gray-800 bg-opacity-80 border border-gray-700 rounded-lg p-8">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-2">Crea tu Cuenta</h2>
+          <p className="text-gray-400 mb-6">Desbloquea el historial y los reportes Pro.</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          <div>
+            {/* --- ID CORREGIDO --- */}
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="name-register">Nombre</label>
+            <div className="relative">
+              <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input id="name-register" type="text" placeholder="Tu nombre" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500" required />
+            </div>
+          </div>
+          <div>
+            {/* --- ID CORREGIDO --- */}
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="email-register">Correo Electrónico</label>
+            <div className="relative">
+              <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input id="email-register" type="email" placeholder="tu@correo.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500" required />
+            </div>
+          </div>
+          <div>
+            {/* --- ID CORREGIDO --- */}
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="password-register">Contraseña</label>
+            <div className="relative">
+              <FiKey className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input id="password-register" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500" required />
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-400 bg-red-900 bg-opacity-50 p-2 rounded-md text-center">{error}</p>}
+          <button type="submit" className="w-full flex justify-center items-center gap-2 bg-purple-600 font-bold py-3 px-4 rounded-lg hover:bg-purple-700 disabled:opacity-50" disabled={isLoading}>
+            {isLoading ? <FiLoader className="animate-spin" /> : <FiUserPlus />}
+            {isLoading ? "Registrando..." : "Crear Cuenta"}
+          </button>
+        </form>
+        <div className="mt-6 text-center text-sm">
+          <p className="text-gray-400">¿Ya tienes una cuenta?{' '}
+            <button onClick={onSwitchToLogin} className="font-semibold text-purple-400 hover:underline">Inicia sesión aquí</button>
+          </p>
+          <button onClick={onBackToLanding} className="mt-4 text-xs text-gray-500 hover:text-white hover:underline">&larr; Volver</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===================================================================================
 // --- COMPONENTE PRINCIPAL: Ahora se llama App y orquesta las vistas ---
 // ===================================================================================
-function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar el import en App.jsx, etc.
-  const [appState, setAppState] = useState('landing'); // 'landing', 'onboarding', 'analysis', 'registering'
-  const { loadStrategy } = useStrategy();
+export default function LandingPage({ onLoginSuccess }) { // Mantenemos el nombre para que no tengas que cambiar el import en App.jsx, etc.
+  const [appState, setAppState] = useState('landing'); // 'landing', 'onboarding', 'analysis', 'registering', 'login'
+  
+  // Estados para la sesión anónima
   const [sessionId, setSessionId] = useState(null);
+  const [credits, setCredits] = useState({ used: 0, remaining: 0 });
+  const [creditHistory, setCreditHistory] = useState([]);
+
+  const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
+  const [uploadStatus, setUploadStatus] = useState({ ventas: 'idle', inventario: 'idle' });
+  const [showModal, setShowModal] = useState(false);
+  
+  const [authToken, setAuthToken] = useState(localStorage.getItem('accessToken'));
+
+  const { loadStrategy } = useStrategy();
 
   const [reportsConfig, setReportsConfig] = useState(null); // Para guardar la respuesta cruda de la API
   const [isConfigLoading, setIsConfigLoading] = useState(true);
@@ -547,8 +498,14 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false); // Estado para el modal
   const { strategy } = useStrategy();
 
-  const [credits, setCredits] = useState({ used: 0, remaining: 0 });
-  const [creditHistory, setCreditHistory] = useState([]);
+  const { 
+        workspaces, 
+        activeWorkspace, 
+        setActiveWorkspace, 
+        fetchWorkspaces,
+        createWorkspace 
+    } = useWorkspace();
+
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [showConversionModal, setShowConversionModal] = useState(false);
 
@@ -561,12 +518,9 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   const [analysisResult, setAnalysisResult] = useState(null); // Guardará { insight, data, report_key }
 
   // --- NUEVOS ESTADOS PARA GESTIONAR LA CARGA DE ARCHIVOS ---
-  const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
-  const [uploadStatus, setUploadStatus] = useState({ ventas: 'idle', inventario: 'idle' });
   
   const [ventasFile, setVentasFile] = useState(null);
   const [inventarioFile, setInventarioFile] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   // const [filesReady, setFilesReady] = useState(false);
   const filesReady = uploadedFileIds.ventas && uploadedFileIds.inventario;
@@ -607,6 +561,13 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     setShowConversionModal(false);
   };
 
+  const handleRegisterSuccess = () => {
+      // Después de un registro exitoso, llevamos al usuario a la vista de login
+      // para que inicie sesión con su nueva cuenta.
+      setAppState('login');
+  };
+
+
   const handleNewSessionClick = () => {
     // Simplemente recarga la página para empezar una nueva sesión anónima
     window.location.reload();
@@ -620,9 +581,16 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
 
   // --- NUEVA FUNCIÓN PARA MANEJAR LA CARGA Y LLAMADA A LA API ---
   const handleFileProcessed = async (file, fileType) => {
-    if (!sessionId) {
-      alert("Error: No se ha iniciado una sesión de análisis.");
-      return;
+    const isUserLoggedIn = !!authToken; // True si hay un token, false si no
+
+    // 2. Verificaciones iniciales
+    if (isUserLoggedIn && !activeWorkspace) {
+        alert("Por favor, selecciona o crea un espacio de trabajo antes de subir archivos.");
+        return;
+    }
+    if (!isUserLoggedIn && !sessionId) {
+        alert("Error: No se ha iniciado una sesión de análisis.");
+        return;
     }
 
     setUploadStatus(prev => ({ ...prev, [fileType]: 'uploading' }));
@@ -631,11 +599,20 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     formData.append("file", file);
     formData.append("tipo_archivo", fileType);
 
-    try {
-      const response = await axios.post(`${API_URL}/upload-file`, formData, {
-        headers: { 'X-Session-ID': sessionId }
-      });
+    const headers = {};
+    if (isUserLoggedIn) {
+        // --- LÓGICA PARA USUARIO REGISTRADO ---
+        headers['Authorization'] = `Bearer ${authToken}`;
+        formData.append("workspace_id", activeWorkspace.id);
+        console.log(`Enviando archivo al workspace: ${activeWorkspace.id}`);
+    } else {
+        // --- LÓGICA PARA USUARIO ANÓNIMO ---
+        headers['X-Session-ID'] = sessionId;
+        console.log(`Enviando archivo a la sesión anónima: ${sessionId}`);
+    }
 
+    try {
+      const response = await axios.post(`${API_URL}/upload-file`, formData, { headers });
       console.log('Respuesta del servidor:', response.data);
 
       setUploadedFileIds(prev => ({ ...prev, [fileType]: response.data.file_id }));
@@ -843,33 +820,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     setIsLoading(true);
     setAnalysisResult(null);
 
-    // // --- LÓGICA DE CACHÉ ---
-    // // 1. Crear una clave única para la solicitud actual
-    // const currentCacheKey = `${selectedReport.endpoint}-${uploadedFileIds.ventas}-${uploadedFileIds.inventario}-${JSON.stringify(modalParams)}`;
-
-    // // 2. Verificar si hay una respuesta en caché que coincida con la clave actual
-    // if (cachedResponse.key === currentCacheKey && cachedResponse.blob) {
-    //   console.log("Usando respuesta de caché para:", currentCacheKey);
-      
-    //   const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}_cached.xlsx`;
-      
-    //   // Reutilizamos el blob guardado para la descarga
-    //   const url = window.URL.createObjectURL(cachedResponse.blob);
-    //   const link = document.createElement('a');
-    //   link.href = url;
-    //   link.setAttribute('download', filename);
-    //   document.body.appendChild(link);
-    //   link.click();
-    //   link.remove();
-    //   window.URL.revokeObjectURL(url);
-
-    //   setIsLoading(false); // Detenemos la carga
-    //   return; // Salimos de la función para evitar la llamada a la API
-    // }
-    
-    // // --- SI NO HAY CACHÉ, CONTINUAMOS CON LA LLAMADA A LA API ---
-    // console.log("No hay caché válido. Realizando nueva petición al servidor.");
-
+  
     // 2. Crear el FormData (ahora con IDs en lugar de archivos)
     const formData = new FormData();
     
@@ -905,23 +856,10 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       
       const newBlob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      // 3. Guardar la nueva respuesta en el caché
-      // setCachedResponse({ key: currentCacheKey, blob: newBlob });
-
-      // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
+       // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
       setAnalysisResult(response.data);
 
-      // const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}.xlsx`;
-      // const url = window.URL.createObjectURL(newBlob);
-      // const link = document.createElement('a');
-      // link.href = url;
-      // link.setAttribute('download', filename);
-      // document.body.appendChild(link);
-      // link.click();
-      // link.remove();
-      // window.URL.revokeObjectURL(url);
-
-      // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
+       // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
       const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': sessionId } });
       setCredits(updatedState.data.credits);
       setCreditHistory(updatedState.data.history);
@@ -960,24 +898,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       } catch (stateError) {
           console.error("No se pudo actualizar el historial después de un error:", stateError);
       }
-      // // Tu manejo de errores no cambia
-      // console.error("Error al generar el reporte:", error);
-      // if (error.response?.status === 402) {
-      //     // Si es un error 402, mostramos el modal de conversión
-      //     setShowConversionModal(true);
-      // } else {
-      //     // Para cualquier otro error, mostramos una alerta genérica
-      //     let errorMessage = "Ocurrió un error al generar el reporte.";
-      //     if (error.response?.data && error.response.data instanceof Blob) {
-      //         try {
-      //             const errorText = await error.response.data.text();
-      //             const errorJson = JSON.parse(errorText);
-      //             errorMessage = errorJson.detail || errorMessage;
-      //         } catch (e) { /* Mantener mensaje genérico */ }
-      //     }
-      //     alert(errorMessage);
-      // }
-    } finally {
+   } finally {
       setIsLoading(false);
     }
   };
@@ -1042,6 +963,12 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     fetchSessionState();
   }, [appState, sessionId]);
 
+  // 2. Carga los espacios de trabajo cuando el usuario se autentica
+  // useEffect(() => {
+  //     if (authToken) {
+  //         fetchWorkspaces(authToken);
+  //     }
+  // }, [authToken, fetchWorkspaces]);
 
   // --- MODIFICACIÓN 3: Invalidar caché al cerrar modal ---
   // (usando useCallback para handleEsc si se añade como dependencia)
@@ -1099,68 +1026,37 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
           setAnalysisResult(null)
       }
   }, [showModal]);
+  
+  // Contenido de la vista de análisis
+  const analysisWorkspaceView = (
+    <div className="min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
+          flex flex-col items-center justify-center text-center py-4 sm:px-8 md:px-12 lg:px-20">
+      <header className="grid sm:grid-cols-2 md:grid-cols-2 items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900 sticky top-0 z-10">
+        <div className="flex inline gap-4">
+          <div className="flex gap-4 justify-center">
+            <h1 className="text-3xl md:text-5xl font-bold text-white">
+                <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
+            </h1>
+            {/* --- BOTÓN DE LOGIN EN EL HEADER --- */}
+            <button 
+              onClick={() => setAppState('login')} // Cambia al estado de login
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
+            >
+              <FiLogIn />
+              <span className="inline">Iniciar Sesión</span>
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 font-mono mt-2">Modo: Sesión Anónima<br/>{sessionId}</p>
+        </div>
+        <CreditsPanel 
+          used={credits.used} 
+          remaining={credits.remaining}
+          onHistoryClick={() => setIsHistoryModalOpen(true)}
+        />
+      </header>
 
-  if (isConfigLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-900 text-white">
-        <p>Cargando configuración de Ferretero.IA...</p>
-      </div>
-    );
-  }
-
-  return (
-    <>
-    <div className={`min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
-          flex flex-col items-center justify-center px-4 sm:px-8 md:px-12 lg:px-20
-          ${showModal ? 'overflow-hidden h-screen' : ''}`}>
-    {appState === 'landing' && <LandingView onStartSession={handleStartSession} />}
-      
-    {appState === 'onboarding' && <OnboardingModal onSubmit={handleOnboardingSubmit} onCancel={handleCancelOnboarding} isLoading={isLoading} />}
-
-    {appState === 'analysis' && (
-      <>
-        <div>
-          {/* --- ENCABEZADO AÑADIDO --- */}
-          <header className="flex flex-col items-center justify-between gap-4 py-4 text-white w-full max-w-7xl mx-auto border-b border-gray-700">
-            <div className='text-center'>
-              <h1 className="text-3xl md:text-5xl font-bold text-white">
-                  Sesión de <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
-              </h1>
-              {sessionId && (
-                   <p className="mt-1 text-xs md:text-md text-gray-400 font-mono">
-                      ID de Sesión Anónima: <br/>{sessionId}
-                   </p>
-              )}
-            </div>
-
-            {/* Contenedor de Botones de Acción */}
-            <div className="flex max-w-sm items-stretch justify-center gap-3 w-full sm:w-auto">
-                <button 
-                    onClick={() => setStrategyPanelOpen(true)} 
-                    // 2. Se añade flex-1 y justify-center a ambos botones
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 hover:bg-purple-700 rounded-lg transition-colors"
-                >
-                    <FiSettings />
-                    {/* Mantenemos la lógica responsiva para el texto */}
-                    <span className="inline">Mi Estrategia</span>
-                </button>
-                
-                <button className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-500 rounded-lg transition-colors">
-                    <FiLock /> 
-                    <span className="inline">Registrarse</span>
-                </button>
-            </div>
-
-            {/* Panel de Créditos y Botón de Estrategia */}
-            <div className="flex items-center gap-6 w-full">
-              <CreditsPanel 
-                used={credits.used} 
-                remaining={credits.remaining}
-                onHistoryClick={() => setIsHistoryModalOpen(true)}
-              />
-            </div>
-          </header>
-          {/* --- USO DEL NUEVO COMPONENTE REUTILIZABLE --- */}
+      <main className="flex-1 overflow-y-auto p-4 w-full">
+        {/* --- USO DEL NUEVO COMPONENTE REUTILIZABLE --- */}
           <div className='mt-10 w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
             <CsvImporterComponent 
               fileType="ventas"
@@ -1178,7 +1074,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
             />
           </div>
           {filesReady ? (
-            <div className="w-full max-w-4xl space-y-8 px-4 mb-4 mt-10">
+            <div className="w-full space-y-8 px-4 mb-4 mt-10">
               {Object.entries(reportData).map(([categoria, reportes]) => (
                 <div key={categoria} className="mb-6">
                   <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
@@ -1217,11 +1113,54 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
           <div className="flex items-stretch justify-center gap-3 w-full sm:w-auto">
             <a href="https://web.ferreteros.app" target="_blank" className="max-w-[200px] mt-4 mb-10 opacity-15 hover:opacity-25 text-white text-sm">Ferretero.IA por<br/><img src="ferreteros-app-white.png"/></a>
           </div>
-        </div>
-         
-        {showModal && selectedReport && (
-          <div className="w-full h-full fixed z-50 inset-0 flex items-end justify-center mb-10 overflow-y-auto">
-            <div className="w-full h-full bg-white absolute top-0 flex flex-col">
+      </main>
+    </div>
+  );
+
+  // Orquestador de vistas internas
+  const renderContent = () => {
+    switch (appState) {
+      case 'landing':
+        return <LandingView onStartSession={handleStartSession} />;
+      case 'onboarding':
+        return <OnboardingModal onSwitchToLogin={() => setAppState('login')} onSubmit={handleOnboardingSubmit} onCancel={() => setAppState('landing')} />;
+      case 'analysis':
+        return analysisWorkspaceView;
+      case 'login':
+        return <LoginPage 
+                  onLoginSuccess={onLoginSuccess} // <--- ¡Notifica al componente App!
+                  onSwitchToRegister={() => setAppState('registering')}
+                  onBackToAnalysis={() => setAppState('analysis')}
+               />;
+      case 'registering':
+        return <RegisterPage 
+                  // Pasamos las props que el componente necesita
+                  sessionId={sessionId}
+                  // onboardingData={onboardingData} // Asumiendo que guardas esto en el estado
+                  onRegisterSuccess={handleRegisterSuccess}
+                  onSwitchToLogin={() => setAppState('login')}
+                  onBackToLanding={() => setAppState('analysis')}
+               />;
+      default:
+        return <LandingView onStartSession={handleStartSession} />;
+    }
+  };
+  if (isConfigLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-900 text-white">
+        <p>Cargando configuración de Ferretero.IA...</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {renderContent()}
+
+      {showModal && selectedReport && (
+          <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
+            {/*<div className="h-full bg-white rounded-lg relative max-w-48 top-0 flex flex-col">*/}
+            <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-center">
               <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0">
                 <h2 className="text-xl font-bold text-gray-800 ">
                   {selectedReport.label}
@@ -1417,63 +1356,38 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
         )}
 
 
+      {/* Renderiza el modal de créditos insuficientes si está activo */}
+      {showCreditsModal && (
+        <InsufficientCreditsModal
+          required={creditsInfo.required}
+          remaining={creditsInfo.remaining}
+          onClose={() => setShowCreditsModal(false)}
+          onRegister={() => {
+              setShowCreditsModal(false);
+              handleGoToRegister(); // Reutilizamos la función que te lleva a la vista de registro
+          }}
+          onNewSession={() => window.location.reload()}
+        />
+      )}
 
- 
-        {/* Renderiza el modal de conversión si el estado es true */}
-        {showConversionModal && (
-          <ConversionModal
-            onClose={() => setShowConversionModal(false)}
-            onRegister={handleRegisterClick}
-            onNewSession={handleNewSessionClick}
-          />
-        )}
+      {showProModal && proReportClicked && (
+        <ProOfferModal
+          reportName={proReportClicked.label}
+          onClose={() => setShowProModal(false)}
+          onRegister={handleGoToRegister} // <-- ¡CAMBIO CLAVE AQUÍ!
+        />
+      )}
 
-        {showProModal && proReportClicked && (
-          <ProOfferModal
-            reportName={proReportClicked.label}
-            onClose={() => setShowProModal(false)}
-            onRegister={() => alert("Redirigiendo a la página de registro...")}
-          />
-        )}
+      {/* Renderiza el modal de estrategia si el estado es true */}
+      {isStrategyPanelOpen && (
+        <StrategyPanelModal 
+          sessionId={sessionId} 
+          onClose={() => setStrategyPanelOpen(false)} 
+        />
+      )}
+      {/* Renderiza el modal del historial si está abierto */}
+      {isHistoryModalOpen && <CreditHistoryModal history={creditHistory} reportData={reportData} onClose={() => setIsHistoryModalOpen(false)} />}
 
-      </>
-    )}
-
-    {appState === 'registering' && <RegisterPage onBackToLanding={() => setAppState('analysis')} />}
-
-    {/* Renderiza el modal de créditos insuficientes si está activo */}
-    {showCreditsModal && (
-      <InsufficientCreditsModal
-        required={creditsInfo.required}
-        remaining={creditsInfo.remaining}
-        onClose={() => setShowCreditsModal(false)}
-        onRegister={() => {
-            setShowCreditsModal(false);
-            handleGoToRegister(); // Reutilizamos la función que te lleva a la vista de registro
-        }}
-        onNewSession={() => window.location.reload()}
-      />
-    )}
-
-    {showProModal && proReportClicked && (
-      <ProOfferModal
-        reportName={proReportClicked.label}
-        onClose={() => setShowProModal(false)}
-        onRegister={handleGoToRegister} // <-- ¡CAMBIO CLAVE AQUÍ!
-      />
-    )}
-
-    {/* Renderiza el modal de estrategia si el estado es true */}
-    {isStrategyPanelOpen && (
-      <StrategyPanelModal 
-        sessionId={sessionId} 
-        onClose={() => setStrategyPanelOpen(false)} 
-      />
-    )}
-    {/* Renderiza el modal del historial si está abierto */}
-    {isHistoryModalOpen && <CreditHistoryModal history={creditHistory} reportData={reportData} onClose={() => setIsHistoryModalOpen(false)} />}
-
-    </div>
     </>
   );
 }
