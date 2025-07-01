@@ -72,7 +72,7 @@ export function CreditHistoryModal({ history, onClose, reportData }) {
               <thead className="text-xs text-gray-700 uppercase bg-gray-100 sticky top-0">
                 <tr>
                   <th scope="col" className="px-6 py-3">Reporte</th>
-                  <th scope="col" className="px-6 py-3">Parámetros Básicos</th>
+                  {/*<th scope="col" className="px-6 py-3">Parámetros Básicos</th>*/}
                   <th scope="col" className="px-6 py-3 text-center">Créditos</th>
                   <th scope="col" className="px-6 py-3">Estado</th>
                   <th scope="col" className="px-6 py-3">Fecha</th>
@@ -81,8 +81,8 @@ export function CreditHistoryModal({ history, onClose, reportData }) {
               <tbody>
                 {history.map((item, index) => (
                   <tr key={index} className="bg-white border-b hover:bg-gray-50">
-                    <td className="px-6 py-4 font-medium text-gray-900">{item.nombreReporte || 'N/A'}</td>
-                    <td className="px-6 py-4">{renderParameters(item.parametrosUsados, item.nombreReporte)}</td>
+                    <td className="flex flex-col px-6 py-4 font-medium text-gray-900 gap-1">{item.nombreReporte || 'N/A'}<br/>{renderParameters(item.parametrosUsados, item.nombreReporte)}</td>
+                    {/*<td className="px-6 py-4">{renderParameters(item.parametrosUsados, item.nombreReporte)}</td>*/}
                     <td className="px-6 py-4 font-bold text-center">
                       <span className={`px-2 py-1 rounded-full text-xs ${item.creditosConsumidos > 0 ? 'bg-purple-100 text-purple-800' : 'bg-gray-200 text-gray-700'}`}>
                         {item.creditosConsumidos}🪙

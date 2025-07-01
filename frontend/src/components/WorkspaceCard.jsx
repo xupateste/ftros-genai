@@ -66,7 +66,6 @@ export function WorkspaceCard({ workspace, onEnter, onPinToggle }) {
   
   return (
     <div className="p-4 bg-gray-800 rounded-lg border border-gray-700 flex flex-col justify-between transition-all hover:border-purple-500 min-h-[160px]">
-      {/* Encabezado con título o input de edición y menú */}
       <div className="flex justify-between items-start gap-2">
         {/* Título o Input de Edición */}
         {isEditing ? (
@@ -81,17 +80,14 @@ export function WorkspaceCard({ workspace, onEnter, onPinToggle }) {
                 if (e.key === 'Escape') handleCancelEdit();
             }}
             onBlur={handleRename} // Guardar al perder el foco es un patrón común y eficiente
-            className="w-full bg-gray-900 border-b-2 border-purple-500 text-lg font-bold text-purple-400 focus:outline-none disabled:opacity-50"
+            className="w-full bg-gray-900 border-b-2 border-purple-500 text-lg font-bold text-purple-400 focus:outline-none"
           />
         ) : (
           <h3 className="font-bold text-lg text-purple-400 break-words">{workspace.nombre}</h3>
         )}
         
         {/* SOLUCIÓN #3: Botones de edición mejorados */}
-        <div className="relative" ref={menuRef}>
-          <button onClick={() => onPinToggle(workspace.id)} title={workspace.isPinned ? "Desfijar" : "Fijar"}>
-            <FiStar className={`transition-colors ${workspace.isPinned ? 'text-yellow-400 fill-current' : 'text-gray-500 hover:text-yellow-400'}`} />
-          </button>
+        <div className="relative text-xl" ref={menuRef}>
           {isEditing ? (
             <div className="flex gap-2 items-center h-full">
               {isSaving ? (
@@ -105,7 +101,12 @@ export function WorkspaceCard({ workspace, onEnter, onPinToggle }) {
               )}
             </div>
           ) : (
+            <>
+            <button onClick={() => onPinToggle(workspace.id)} title={workspace.isPinned ? "Desfijar" : "Fijar"}>
+              <FiStar className={`transition-colors ${workspace.isPinned ? 'text-yellow-400 fill-current' : 'text-gray-500 hover:text-yellow-400'}`} />
+            </button>
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-400 hover:text-white p-1"><FiMoreVertical /></button>
+            </>
           )}
           {isMenuOpen && !isEditing && (
             <div className="absolute right-0 mt-2 w-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10 animate-fade-in-fast">

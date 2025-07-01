@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'; // useCallback añadido
 import { useNavigate, Link } from 'react-router-dom';
 import '../index.css';
-import { FiDownload, FiSend, FiRefreshCw, FiLock, FiBarChart2, FiChevronsRight, FiX, FiLoader, FiSettings} from 'react-icons/fi'
 
 import axios from 'axios';
 import Select from 'react-select';
-import CsvImporterComponent from '../assets/CsvImporterComponent';
+
 import * as XLSX from 'xlsx';
 
 import { v4 as uuidv4 } from 'uuid';
@@ -18,29 +17,17 @@ import { WorkspaceProvider } from '../context/WorkspaceProvider';
 import { useWorkspace } from '../context/WorkspaceProvider';
 import { WorkspaceSelector } from '../components/WorkspaceSelector';
 
-import { LoginPage } from '../components/LoginPage'; // Ajusta la ruta
-
 import { StrategyPanelModal } from '../components/StrategyPanelModal';
-import { ProOfferModal } from '../components/ProOfferModal'; // Ajusta la ruta
-import { RegisterPage } from '../components/RegisterPage'; // Ajusta la ruta si es necesario
-import { InsufficientCreditsModal } from '../components/InsufficientCreditsModal'; // Ajusta la ruta
-
-import { CreditsPanel } from '../components/CreditsPanel';
-import { CreditHistoryModal } from '../components/CreditHistoryModal';
 import { ConversionModal } from '../components/ConversionModal'; // Ajusta la ruta si es necesario
 
+import { FiLock, FiBarChart2, FiChevronsRight, FiSettings, FiLogIn, FiUser, FiMail, FiKey, FiUserPlus, FiX, FiLoader, FiRefreshCw, FiDownload, FiSend} from 'react-icons/fi';
+import { CreditsPanel } from '../components/CreditsPanel';
+import { CreditHistoryModal } from '../components/CreditHistoryModal';
+import { ProOfferModal } from '../components/ProOfferModal';
+import { InsufficientCreditsModal } from '../components/InsufficientCreditsModal';
+import CsvImporterComponent from '../assets/CsvImporterComponent';
 
-const API_URL = import.meta.env.VITE_API_URL;
-
-export default function App() {
-  return (
-    <StrategyProvider>
-      <WorkspaceProvider>
-        <LandingPage /> {/* O tu componente principal con las rutas */}
-      </WorkspaceProvider>
-    </StrategyProvider>
-  );
-}
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 const templateVentas = {
         columns: [
@@ -86,6 +73,7 @@ const templateVentas = {
           }
         ]
       };
+
 const templateStock = {
         columns: [
           {
@@ -155,9 +143,9 @@ const templateStock = {
       };
 // (diccionarioData y reportData permanecen igual que en tu última versión)
 const diccionarioData = {
-  'Análisis ABC de Productos ✓': `<table class="max-w-full border-collapse table-auto mb-10 text-xs"><thead><tr class="bg-gray-100"><th class="border border-gray-300 px-4 py-2 text-center">SKU /<br>Código de producto</th><th class="border border-gray-300 px-4 py-2 text-center">Nombre del<br>producto</th><th class="border border-gray-300 px-4 py-2 text-center">Categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Subcategoría</th><th class="border border-gray-300 px-4 py-2 text-center">Valor<br>Ponderado<br>(ABC)</th><th class="border border-gray-300 px-4 py-2 text-center">Venta<br>Total<br>(S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Cantidad<br>Vendida (Und)</th><th class="border border-gray-300 px-4 py-2 text-center">Margen Total<br>(S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">% Participación</th><th class="border border-gray-300 px-4 py-2 text-center">% Acumulado</th><th class="border border-gray-300 px-4 py-2 text-center">Clasificación<br>ABC</th></tr></thead><tbody><tr><td class="border border-gray-300 px-4 py-2 text-center">1234</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLO CURVO 16OZ TRUPER</td><td class="border border-gray-300 px-4 py-2 text-center">HERRAMIENTAS</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLOS</td><td class="border border-gray-300 px-4 py-2 text-center">0.82</td><td class="border border-gray-300 px-4 py-2 text-center">504</td><td class="border border-gray-300 px-4 py-2 text-center">24</td><td class="border border-gray-300 px-4 py-2 text-center">159</td><td class="border border-gray-300 px-4 py-2 text-center">0.42</td><td class="border border-gray-300 px-4 py-2 text-center">24.04</td><td class="border border-gray-300 px-4 py-2 text-center">A</td></tr></tbody></table>`,
-  // 'Análisis Rotación de Productos ✓': `<table class="max-w-full border-collapse table-auto mb-10 text-xs"><thead><tr class="bg-gray-100"><th class="border w-80 border-gray-300 px-4 py-2 text-center">SKU / Código de producto</th><th class="border border-gray-300 px-4 py-2 text-center">Nombre delproducto</th><th class="border border-gray-300 px-4 py-2 text-center">Categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Subcategoría</th><th class="border border-gray-300 px-4 py-2 text-center">Rol del producto</th><th class="border border-gray-300 px-4 py-2 text-center">Rol de categoría</th><th class="border border-gray-300 px-4 py-2 text-center">Marca</th><th class="border border-gray-300 px-4 py-2 text-center">Precio de compra actual (S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Stock Actual (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Valor stock (S/.)</th><th class="border border-gray-300 px-4 py-2 text-center">Ventas totales (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Ventas últimos 6m (Unds)</th><th class="border border-gray-300 px-4 py-2 text-center">Última venta</th><th class="border border-gray-300 px-4 py-2 text-center">Días sin venta</th><th class="border border-gray-300 px-4 py-2 text-center">Días para Agotar Stock (Est.6m)</th><th class="border border-gray-300 px-4 py-2 text-center">Clasificación Diagnóstica</th><th class="border border-gray-300 px-4 py-2 text-center">Prioridad y Acción (DAS 6m)</th></tr></thead><tbody><tr><td class="border border-gray-300 px-4 py-2 text-center">1234</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLO CURVO 16OZ TRUPER</td><td class="border border-gray-300 px-4 py-2 text-center">HERRAMIENTAS</td><td class="border border-gray-300 px-4 py-2 text-center">MARTILLOS</td><td class="border border-gray-300 px-4 py-2 text-center">0.82</td><td class="border border-gray-300 px-4 py-2 text-center">504</td><td class="border border-gray-300 px-4 py-2 text-center">24</td><td class="border border-gray-300 px-4 py-2 text-center">159</td><td class="border border-gray-300 px-4 py-2 text-center">0.42</td><td class="border border-gray-300 px-4 py-2 text-center">24.04</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td><td class="border border-gray-300 px-4 py-2 text-center">A</td></tr></tbody></table>`,
-  'Análisis Estratégico de Rotación ✓': `<div class="p-4 max-w-7xl mx-auto font-sans text-gray-800 space-y-8"><div><h3 class="text-xl font-semibold">📌 Ejemplo del resultado</h3><div class="overflow-x-auto rounded-lg border border-gray-300"><table class="min-w-full text-sm text-left text-gray-700"><thead class="bg-gray-100 text-xs uppercase text-gray-500"><tr><th class="px-4 py-3">SKU</th><th class="px-4 py-3">Producto</th><th class="px-4 py-3">Categoría</th><th class="px-4 py-3">Marca</th><th class="px-4 py-3">Stock Actual</th><th class="px-4 py-3">Precio Compra (S/.)</th><th class="px-4 py-3">Inversión Stock</th><th class="px-4 py-3">Ventas (30d)</th><th class="px-4 py-3">Cobertura (días)</th><th class="px-4 py-3">Alerta</th><th class="px-4 py-3">Importancia</th><th class="px-4 py-3">Clasificación</th></tr></thead><tbody class="bg-white"><tr class="border-t"><td class="px-4 py-2">12345</td><td class="px-4 py-2">Cable N°12 Vulcano</td><td class="px-4 py-2">Eléctricos</td><td class="px-4 py-2">Vulcano</td><td class="px-4 py-2">24</td><td class="px-4 py-2">1.80</td><td class="px-4 py-2">43.20</td><td class="px-4 py-2">12</td><td class="px-4 py-2">60.0</td><td class="px-4 py-2">Saludable</td><td class="px-4 py-2">0.842</td><td class="px-4 py-2">Clase A (Crítico)</td></tr></tbody></table></div></div><div><h3 class="text-xl font-semibold">📂 Descripción de columnas</h3><div class="overflow-x-auto"><table class="min-w-full text-sm text-left border border-gray-300"><thead class="bg-gray-100 text-gray-600 text-xs uppercase"><tr><th class="px-4 py-2">Columna</th><th class="px-4 py-2">Descripción</th><th class="px-4 py-2">Uso estratégico</th></tr></thead><tbody class="bg-white"><tr class="border-t"><td class="px-4 py-2 font-medium">SKU / Producto</td><td class="px-4 py-2">Identificador y nombre del producto</td><td class="px-4 py-2">Permite accionar decisiones específicas</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Categoría / Marca</td><td class="px-4 py-2">Clasificación comercial y proveedor</td><td class="px-4 py-2">Segmentar por rubros o acuerdos</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Stock Actual</td><td class="px-4 py-2">Unidades disponibles en inventario</td><td class="px-4 py-2">Identificar quiebres o excesos</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Precio Compra (S/.)</td><td class="px-4 py-2">Costo por unidad</td><td class="px-4 py-2">Cálculo de inversión y rentabilidad</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Inversión Stock</td><td class="px-4 py-2">Stock x Precio Compra</td><td class="px-4 py-2">Visualizar capital inmovilizado</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Ventas (30d)</td><td class="px-4 py-2">Unidades vendidas en últimos 30 días</td><td class="px-4 py-2">Detectar rotación reciente</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Cobertura (días)</td><td class="px-4 py-2">Días estimados de duración del stock</td><td class="px-4 py-2">Anticipar faltantes o sobre-stocks</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Alerta</td><td class="px-4 py-2">Diagnóstico automático del stock</td><td class="px-4 py-2">Facilita decisiones inmediatas</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Importancia</td><td class="px-4 py-2">Puntaje basado en ventas, margen e ingresos</td><td class="px-4 py-2">Priorizar productos clave</td></tr><tr class="border-t"><td class="px-4 py-2 font-medium">Clasificación</td><td class="px-4 py-2">Etiqueta ABC según la importancia</td><td class="px-4 py-2">Determinar foco comercial o estratégico</td></tr></tbody></table></div></div><div><h3 class="text-xl font-semibold">🧠 ¿Cómo usarlo estratégicamente?</h3><ul class="list-disc list-inside space-y-4"><li>🔍<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Detecta productos con bajo movimiento:</strong>Filtra por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">min_importancia=0.0</code>y<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">max_dias_cobertura=9999</code>.</li><li>📈<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Prioriza productos de alto valor:</strong>Ordena por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">sort_by='Importancia_Dinamica'</code>y filtra por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">min_importancia=0.7</code>.</li><li>🚨<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Atiende quiebres de stock:</strong>Filtra por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">Alerta_Stock = 'Agotado'</code>o cobertura &lt; 15 días.</li><li>💰<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Reduce sobre-stock:</strong>Filtra por<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">Alerta_Stock = 'Sobre-stock'</code>y<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">Importancia &lt; 0.4</code>.</li><li>📦<strong class="mx-2 font-semibold text-gray-900 dark:text-white">Optimiza por categoría o marca:</strong>Usa<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">filtro_categorias</code>o<code class="px-2 mx-2 py-0.5 bg-gray-100 text-pink-600 font-mono text-sm rounded dark:bg-gray-800 dark:text-pink-400">filtro_marcas</code>según tu enfoque.</li></ul></div></div>`,
+  'Análisis ABC de Productos ✓': ``,
+  // 'Análisis Rotación de Productos ✓': ``,
+  'Análisis Estratégico de Rotación ✓': ``,
   'Diagnóstico de Stock Muerto ✓': `done`,
   'Puntos de Alerta de Stock ✓' : 'done',
   'Lista básica de reposición según histórico ✓' : 'dancer2'
@@ -215,7 +203,7 @@ const LandingView = ({ onStartSession }) => (
 // ===================================================================================
 // --- VISTA 2: El Modal de Onboarding ---
 // ===================================================================================
-const OnboardingModal = ({ onSubmit, onCancel, isLoading }) => {
+const OnboardingModal = ({ onSubmit, onSwitchToLogin, onCancel, isLoading }) => {
   const [rol, setRol] = useState('');
 
   const handleSubmit = (e) => {
@@ -253,21 +241,230 @@ const OnboardingModal = ({ onSubmit, onCancel, isLoading }) => {
             {isLoading ? "Creando sesión..." : "Comenzar a Analizar"}
           </button>
         </form>
+
+        <p className="text-gray-400">¿Ya tienes una cuenta?{' '}
+          <button onClick={onSwitchToLogin} className="font-semibold text-purple-400 hover:underline">Inicia sesión aquí</button>
+        </p>
       </div>
     </div>
   );
 };
 
 // ===================================================================================
+// --- VISTA LOGIN ---
+// ===================================================================================
+const LoginPage = ({ onLoginSuccess, onSwitchToRegister, onBackToAnalysis }) => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    // FastAPI con OAuth2PasswordRequestForm espera los datos en formato x-www-form-urlencoded.
+    // La forma más fácil de construir esto es con URLSearchParams.
+    const formData = new URLSearchParams();
+    formData.append('username', email); // FastAPI usa 'username' para el email
+    formData.append('password', password);
+
+    try {
+      const response = await axios.post(`${API_URL}/token`, formData, {
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      });
+      
+      const accessToken = response.data.access_token;
+      
+      // Llamamos a la función del padre para que maneje el token y el estado de autenticación
+      onLoginSuccess(accessToken);
+
+    } catch (err) {
+      console.error("Error en el inicio de sesión:", err);
+      if (err.response && err.response.data && err.response.data.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError("No se pudo conectar con el servidor. Inténtalo más tarde.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
+          flex flex-col items-center justify-center text-center px-4 py-4 sm:px-8 md:px-12 lg:px-20 text-white">
+      <div className="bg-gray-800 bg-opacity-80 border border-gray-700 rounded-lg p-8">
+        <h2 className="text-3xl font-bold mb-6 text-center">Iniciar Sesión</h2>
+        <form onSubmit={handleLogin} className="space-y-4 text-left">
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="email-login">Correo Electrónico</label>
+            <div className="relative">
+              <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                id="email-login" 
+                type="email" 
+                placeholder="tu@correo.com" 
+                className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="password-login">Contraseña</label>
+            <div className="relative">
+              <FiKey className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input 
+                id="password-login" 
+                type="password" 
+                placeholder="••••••••" 
+                className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+          </div>
+          
+          {error && <p className="text-sm text-red-400 bg-red-900 bg-opacity-50 p-2 rounded-md">{error}</p>}
+
+          <button
+            type="submit"
+            className="w-full flex justify-center items-center gap-2 bg-purple-600 font-bold py-3 px-4 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-500"
+            disabled={isLoading}
+          >
+            {isLoading ? "Ingresando..." : <><FiLogIn /> Ingresar</>}
+          </button>
+        </form>
+        <div className="mt-6 text-center text-sm">
+            <p className="text-gray-400">¿No tienes cuenta? <button onClick={onSwitchToRegister} className="font-semibold text-purple-400 hover:underline">Regístrate</button></p>
+            <button onClick={onBackToAnalysis} className="mt-4 text-xs text-gray-500 hover:text-white">&larr; Volver al análisis anónimo</button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+const RegisterPage = ({ onRegisterSuccess, onSwitchToLogin, onBackToLanding, sessionId, onboardingData }) => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setIsLoading(true);
+
+    if (!email || !password || !name) {
+      setError("Todos los campos son obligatorios.");
+      setIsLoading(false);
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('email', email);
+    formData.append('password', password);
+    formData.append('rol', onboardingData?.rol || 'otro');
+
+    try {
+      await axios.post(`${API_URL}/register`, formData, {
+        headers: { 'X-Session-ID': sessionId }
+      });
+      
+      alert("¡Registro exitoso! Serás redirigido para que inicies sesión.");
+      
+      // Verificamos que onRegisterSuccess sea una función antes de llamarla
+      if (typeof onRegisterSuccess === 'function') {
+        onRegisterSuccess();
+      }
+
+    } catch (err) {
+      console.error("Error en el registro:", err);
+      if (err.response?.data?.detail) {
+        setError(err.response.data.detail);
+      } else {
+        setError("No se pudo completar el registro. Inténtalo más tarde.");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
+          flex flex-col items-center justify-center text-center px-4 py-4 sm:px-8 md:px-12 lg:px-20 text-white">
+      <div className="bg-gray-800 bg-opacity-80 border border-gray-700 rounded-lg p-8">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold mb-2">Crea tu Cuenta</h2>
+          <p className="text-gray-400 mb-6">Desbloquea el historial y los reportes Pro.</p>
+        </div>
+        <form onSubmit={handleSubmit} className="space-y-4 text-left">
+          <div>
+            {/* --- ID CORREGIDO --- */}
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="name-register">Nombre</label>
+            <div className="relative">
+              <FiUser className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input id="name-register" type="text" placeholder="Tu nombre" value={name} onChange={e => setName(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500" required />
+            </div>
+          </div>
+          <div>
+            {/* --- ID CORREGIDO --- */}
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="email-register">Correo Electrónico</label>
+            <div className="relative">
+              <FiMail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input id="email-register" type="email" placeholder="tu@correo.com" value={email} onChange={e => setEmail(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500" required />
+            </div>
+          </div>
+          <div>
+            {/* --- ID CORREGIDO --- */}
+            <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="password-register">Contraseña</label>
+            <div className="relative">
+              <FiKey className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input id="password-register" type="password" placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="w-full bg-gray-900 border border-gray-600 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500" required />
+            </div>
+          </div>
+          {error && <p className="text-sm text-red-400 bg-red-900 bg-opacity-50 p-2 rounded-md text-center">{error}</p>}
+          <button type="submit" className="w-full flex justify-center items-center gap-2 bg-purple-600 font-bold py-3 px-4 rounded-lg hover:bg-purple-700 disabled:opacity-50" disabled={isLoading}>
+            {isLoading ? <FiLoader className="animate-spin" /> : <FiUserPlus />}
+            {isLoading ? "Registrando..." : "Crear Cuenta"}
+          </button>
+        </form>
+        <div className="mt-6 text-center text-sm">
+          <p className="text-gray-400">¿Ya tienes una cuenta?{' '}
+            <button onClick={onSwitchToLogin} className="font-semibold text-purple-400 hover:underline">Inicia sesión aquí</button>
+          </p>
+          <button onClick={onBackToLanding} className="mt-4 text-xs text-gray-500 hover:text-white hover:underline">&larr; Volver</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ===================================================================================
 // --- COMPONENTE PRINCIPAL: Ahora se llama App y orquesta las vistas ---
 // ===================================================================================
-function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar el import en App.jsx, etc.
+export default function LandingPage({ onLoginSuccess }) { // Mantenemos el nombre para que no tengas que cambiar el import en App.jsx, etc.
   const [appState, setAppState] = useState('landing'); // 'landing', 'onboarding', 'analysis', 'registering', 'login'
+  
+  // Estados para la sesión anónima
+  const [sessionId, setSessionId] = useState(null);
+  const [credits, setCredits] = useState({ used: 0, remaining: 0 });
+  const [creditHistory, setCreditHistory] = useState([]);
+
+  const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
+  const [uploadStatus, setUploadStatus] = useState({ ventas: 'idle', inventario: 'idle' });
+  const [showModal, setShowModal] = useState(false);
   
   const [authToken, setAuthToken] = useState(localStorage.getItem('accessToken'));
 
   const { loadStrategy } = useStrategy();
-  const [sessionId, setSessionId] = useState(null);
 
   const [reportsConfig, setReportsConfig] = useState(null); // Para guardar la respuesta cruda de la API
   const [isConfigLoading, setIsConfigLoading] = useState(true);
@@ -285,8 +482,6 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
         createWorkspace 
     } = useWorkspace();
 
-  const [credits, setCredits] = useState({ used: 0, remaining: 0 });
-  const [creditHistory, setCreditHistory] = useState([]);
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [showConversionModal, setShowConversionModal] = useState(false);
 
@@ -299,12 +494,9 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
   const [analysisResult, setAnalysisResult] = useState(null); // Guardará { insight, data, report_key }
 
   // --- NUEVOS ESTADOS PARA GESTIONAR LA CARGA DE ARCHIVOS ---
-  const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
-  const [uploadStatus, setUploadStatus] = useState({ ventas: 'idle', inventario: 'idle' });
   
   const [ventasFile, setVentasFile] = useState(null);
   const [inventarioFile, setInventarioFile] = useState(null);
-  const [showModal, setShowModal] = useState(false);
   const [selectedReport, setSelectedReport] = useState(null);
   // const [filesReady, setFilesReady] = useState(false);
   const filesReady = uploadedFileIds.ventas && uploadedFileIds.inventario;
@@ -337,32 +529,6 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleGoToLogin = () => {
-        // Cierra cualquier modal abierto y muestra la página de login
-        setShowProModal(false);
-        setShowCreditsModal(false);
-        setAppState('login');
-    };
-
-  const handleLoginSuccess = (token) => {
-      // Guardamos el token en localStorage para persistir la sesión
-      localStorage.setItem('accessToken', token);
-      setAuthToken(token);
-      // Aquí podrías guardar el perfil del usuario en el estado
-      // Por ahora, lo redirigimos al landing para que inicie una sesión autenticada
-      setAppState('analysis'); 
-      alert("¡Inicio de sesión exitoso!");
-  };
-
-
-  
-  const handleLogout = () => {
-      localStorage.removeItem('accessToken');
-      setAuthToken(null);
-      // Recargamos la página para asegurar una sesión limpia
-      window.location.reload();
   };
 
   const handleRegisterClick = () => {
@@ -630,33 +796,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     setIsLoading(true);
     setAnalysisResult(null);
 
-    // // --- LÓGICA DE CACHÉ ---
-    // // 1. Crear una clave única para la solicitud actual
-    // const currentCacheKey = `${selectedReport.endpoint}-${uploadedFileIds.ventas}-${uploadedFileIds.inventario}-${JSON.stringify(modalParams)}`;
-
-    // // 2. Verificar si hay una respuesta en caché que coincida con la clave actual
-    // if (cachedResponse.key === currentCacheKey && cachedResponse.blob) {
-    //   console.log("Usando respuesta de caché para:", currentCacheKey);
-      
-    //   const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}_cached.xlsx`;
-      
-    //   // Reutilizamos el blob guardado para la descarga
-    //   const url = window.URL.createObjectURL(cachedResponse.blob);
-    //   const link = document.createElement('a');
-    //   link.href = url;
-    //   link.setAttribute('download', filename);
-    //   document.body.appendChild(link);
-    //   link.click();
-    //   link.remove();
-    //   window.URL.revokeObjectURL(url);
-
-    //   setIsLoading(false); // Detenemos la carga
-    //   return; // Salimos de la función para evitar la llamada a la API
-    // }
-    
-    // // --- SI NO HAY CACHÉ, CONTINUAMOS CON LA LLAMADA A LA API ---
-    // console.log("No hay caché válido. Realizando nueva petición al servidor.");
-
+  
     // 2. Crear el FormData (ahora con IDs en lugar de archivos)
     const formData = new FormData();
     
@@ -692,23 +832,10 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       
       const newBlob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      // 3. Guardar la nueva respuesta en el caché
-      // setCachedResponse({ key: currentCacheKey, blob: newBlob });
-
-      // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
+       // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
       setAnalysisResult(response.data);
 
-      // const filename = `FerreteroIA_${selectedReport.label.replace(/[✓\s]/g, '')}.xlsx`;
-      // const url = window.URL.createObjectURL(newBlob);
-      // const link = document.createElement('a');
-      // link.href = url;
-      // link.setAttribute('download', filename);
-      // document.body.appendChild(link);
-      // link.click();
-      // link.remove();
-      // window.URL.revokeObjectURL(url);
-
-      // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
+       // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
       const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': sessionId } });
       setCredits(updatedState.data.credits);
       setCreditHistory(updatedState.data.history);
@@ -747,24 +874,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
       } catch (stateError) {
           console.error("No se pudo actualizar el historial después de un error:", stateError);
       }
-      // // Tu manejo de errores no cambia
-      // console.error("Error al generar el reporte:", error);
-      // if (error.response?.status === 402) {
-      //     // Si es un error 402, mostramos el modal de conversión
-      //     setShowConversionModal(true);
-      // } else {
-      //     // Para cualquier otro error, mostramos una alerta genérica
-      //     let errorMessage = "Ocurrió un error al generar el reporte.";
-      //     if (error.response?.data && error.response.data instanceof Blob) {
-      //         try {
-      //             const errorText = await error.response.data.text();
-      //             const errorJson = JSON.parse(errorText);
-      //             errorMessage = errorJson.detail || errorMessage;
-      //         } catch (e) { /* Mantener mensaje genérico */ }
-      //     }
-      //     alert(errorMessage);
-      // }
-    } finally {
+   } finally {
       setIsLoading(false);
     }
   };
@@ -829,15 +939,6 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
     fetchSessionState();
   }, [appState, sessionId]);
 
-  // 2. Carga los espacios de trabajo cuando el usuario se autentica
-  useEffect(() => {
-      if (authToken) {
-          fetchWorkspaces(authToken);
-      }
-  }, [authToken, fetchWorkspaces]);
-
-  // --- MODIFICACIÓN 3: Invalidar caché al cerrar modal ---
-  // (usando useCallback para handleEsc si se añade como dependencia)
   const handleEsc = useCallback((event) => {
     if (event.key === "Escape") {
       setShowModal(false);
@@ -892,85 +993,37 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
           setAnalysisResult(null)
       }
   }, [showModal]);
+  
+  // Contenido de la vista de análisis
+  const analysisWorkspaceView = (
+    <div className="min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
+          flex flex-col items-center justify-center text-center py-4 sm:px-8 md:px-12 lg:px-20">
+      <header className="grid sm:grid-cols-2 md:grid-cols-2 items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900 sticky top-0 z-10">
+        <div className="flex inline gap-4">
+          <div className="flex gap-4 justify-center">
+            <h1 className="text-3xl md:text-5xl font-bold text-white">
+                <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
+            </h1>
+            {/* --- BOTÓN DE LOGIN EN EL HEADER --- */}
+            <button 
+              onClick={() => setAppState('login')} // Cambia al estado de login
+              className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"
+            >
+              <FiLogIn />
+              <span className="inline">Iniciar Sesión</span>
+            </button>
+          </div>
+          <p className="text-xs text-gray-400 font-mono mt-2">Modo: Sesión Anónima<br/>{sessionId}</p>
+        </div>
+        <CreditsPanel 
+          used={credits.used} 
+          remaining={credits.remaining}
+          onHistoryClick={() => setIsHistoryModalOpen(true)}
+        />
+      </header>
 
-  if (isConfigLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-neutral-900 text-white">
-        <p>Cargando configuración de Ferretero.IA...</p>
-      </div>
-    );
-  }
-
-  return (
-    <>
-    <div className={`min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
-          flex flex-col items-center justify-center px-4 sm:px-8 md:px-12 lg:px-20
-          ${showModal ? 'overflow-hidden h-screen' : ''}`}>
-    {appState === 'landing' && <LandingView onStartSession={handleStartSession} />}
-      
-    {appState === 'onboarding' && <OnboardingModal onSubmit={handleOnboardingSubmit} onCancel={handleCancelOnboarding} isLoading={isLoading} />}
-
-    {appState === 'analysis' && (
-      <>
-        <div>
-          {/* --- ENCABEZADO AÑADIDO --- */}
-          <header className="flex flex-col items-center justify-between gap-4 py-4 text-white w-full max-w-7xl mx-auto border-b border-gray-700">
-            <div className='text-center'>
-              <h1 className="text-3xl md:text-5xl font-bold text-white">
-                  Sesión de <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
-              </h1>
-              {sessionId && (
-                   <p className="mt-1 text-xs md:text-md text-gray-400 font-mono">
-                      ID de Sesión Anónima: <br/>{sessionId}
-                   </p>
-              )}
-            </div>
-
-            {/* Contenedor de Botones de Acción */}
-            <div className="flex max-w-sm items-stretch justify-center gap-3 w-full sm:w-auto">
-              <div className="flex items-center gap-4">
-                    {authToken ? (
-                        <button onClick={handleLogout} className="...">Desconectar</button>
-                    ) : (
-                      <>
-                        <button onClick={handleGoToLogin} className="...">Iniciar Sesión</button>
-                        <button onClick={handleGoToRegister} className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-500 rounded-lg transition-colors">
-                            <FiLock /> 
-                            <span className="inline">Registrarse</span>
-                        </button>
-                      </>
-                    )}
-                    {/* El resto de tus botones */}
-                </div>
-            </div>
-            <div className="flex max-w-sm items-stretch justify-between gap-3 w-full sm:w-auto">
-                <WorkspaceSelector
-                    workspaces={workspaces}
-                    activeWorkspace={activeWorkspace}
-                    onWorkspaceChange={setActiveWorkspace}
-                    onCreateNew={() => { /* Lógica para abrir un modal de creación */ }}
-                />
-                <button 
-                    onClick={() => setStrategyPanelOpen(true)} 
-                    // 2. Se añade flex-1 y justify-center a ambos botones
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 hover:bg-purple-700 rounded-lg transition-colors"
-                >
-                    <FiSettings />
-                    {/* Mantenemos la lógica responsiva para el texto */}
-                    <span className="inline">Mi Estrategia</span>
-                </button>
-            </div>
-
-            {/* Panel de Créditos y Botón de Estrategia */}
-            <div className="flex items-center gap-6 w-full">
-              <CreditsPanel 
-                used={credits.used} 
-                remaining={credits.remaining}
-                onHistoryClick={() => setIsHistoryModalOpen(true)}
-              />
-            </div>
-          </header>
-          {/* --- USO DEL NUEVO COMPONENTE REUTILIZABLE --- */}
+      <main className="flex-1 overflow-y-auto p-4 w-full">
+        {/* --- USO DEL NUEVO COMPONENTE REUTILIZABLE --- */}
           <div className='mt-10 w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
             <CsvImporterComponent 
               fileType="ventas"
@@ -988,7 +1041,7 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
             />
           </div>
           {filesReady ? (
-            <div className="w-full max-w-4xl space-y-8 px-4 mb-4 mt-10">
+            <div className="w-full space-y-8 px-4 mb-4 mt-10">
               {Object.entries(reportData).map(([categoria, reportes]) => (
                 <div key={categoria} className="mb-6">
                   <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
@@ -1027,11 +1080,54 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
           <div className="flex items-stretch justify-center gap-3 w-full sm:w-auto">
             <a href="https://web.ferreteros.app" target="_blank" className="max-w-[200px] mt-4 mb-10 opacity-15 hover:opacity-25 text-white text-sm">Ferretero.IA por<br/><img src="ferreteros-app-white.png"/></a>
           </div>
-        </div>
-         
-        {showModal && selectedReport && (
-          <div className="w-full h-full fixed z-50 inset-0 flex items-end justify-center mb-10 overflow-y-auto">
-            <div className="w-full h-full bg-white absolute top-0 flex flex-col">
+      </main>
+    </div>
+  );
+
+  // Orquestador de vistas internas
+  const renderContent = () => {
+    switch (appState) {
+      case 'landing':
+        return <LandingView onStartSession={handleStartSession} />;
+      case 'onboarding':
+        return <OnboardingModal onSwitchToLogin={() => setAppState('login')} onSubmit={handleOnboardingSubmit} onCancel={() => setAppState('landing')} />;
+      case 'analysis':
+        return analysisWorkspaceView;
+      case 'login':
+        return <LoginPage 
+                  onLoginSuccess={onLoginSuccess} // <--- ¡Notifica al componente App!
+                  onSwitchToRegister={() => setAppState('registering')}
+                  onBackToAnalysis={() => setAppState('analysis')}
+               />;
+      case 'registering':
+        return <RegisterPage 
+                  // Pasamos las props que el componente necesita
+                  sessionId={sessionId}
+                  // onboardingData={onboardingData} // Asumiendo que guardas esto en el estado
+                  onRegisterSuccess={handleRegisterSuccess}
+                  onSwitchToLogin={() => setAppState('login')}
+                  onBackToLanding={() => setAppState('analysis')}
+               />;
+      default:
+        return <LandingView onStartSession={handleStartSession} />;
+    }
+  };
+  if (isConfigLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-neutral-900 text-white">
+        <p>Cargando configuración de Ferretero.IA...</p>
+      </div>
+    );
+  }
+
+  return (
+    <>
+      {renderContent()}
+
+      {showModal && selectedReport && (
+          <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
+            {/*<div className="h-full bg-white rounded-lg relative max-w-48 top-0 flex flex-col">*/}
+            <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-center">
               <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0">
                 <h2 className="text-xl font-bold text-gray-800 ">
                   {selectedReport.label}
@@ -1167,11 +1263,6 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
                         ‹ Volver a Parámetros
                     </button>
                   </div>
-                // <div
-                //   className="w-full max-w-full overflow-x-auto text-gray-700 space-y-2 mt-1 text-left text-sm"
-                //   dangerouslySetInnerHTML={{ __html: insightHtml }}
-                // >
-                // </div>
                 )}
               </div>
               <div className="p-4 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
@@ -1227,84 +1318,39 @@ function LandingPage() { // Mantenemos el nombre para que no tengas que cambiar 
         )}
 
 
-
- 
-        {/* Renderiza el modal de conversión si el estado es true */}
-        {showConversionModal && (
-          <ConversionModal
-            onClose={() => setShowConversionModal(false)}
-            onRegister={handleRegisterClick}
-            onNewSession={handleNewSessionClick}
-          />
-        )}
-
-        {showProModal && proReportClicked && (
-          <ProOfferModal
-            reportName={proReportClicked.label}
-            onClose={() => setShowProModal(false)}
-            onRegister={() => alert("Redirigiendo a la página de registro...")}
-          />
-        )}
-
-      </>
-    )}
-
-    {appState === 'login' && (
-      <LoginPage 
-        onLoginSuccess={handleLoginSuccess}
-        onSwitchToRegister={handleGoToRegister}
-        onBackToLanding={() => setAppState('analysis')}
-      />
-    )}
-
-    {/*{appState === 'registering' && <RegisterPage onBackToLanding={() => setAppState('analysis')} />}*/}
-
-    {appState === 'registering' && (
-        <RegisterPage 
-            // Pasamos las props que el componente necesita
-            sessionId={sessionId}
-            // onboardingData={onboardingData} // Asumiendo que guardas esto en el estado
-            onRegisterSuccess={handleRegisterSuccess}
-            onSwitchToLogin={() => setAppState('login')}
-            onBackToLanding={() => setAppState('analysis')}
+      {/* Renderiza el modal de créditos insuficientes si está activo */}
+      {showCreditsModal && (
+        <InsufficientCreditsModal
+          required={creditsInfo.required}
+          remaining={creditsInfo.remaining}
+          onClose={() => setShowCreditsModal(false)}
+          onRegister={() => {
+              setShowCreditsModal(false);
+              handleGoToRegister(); // Reutilizamos la función que te lleva a la vista de registro
+          }}
+          onNewSession={() => window.location.reload()}
         />
-    )}
+      )}
 
-    {/* Renderiza el modal de créditos insuficientes si está activo */}
-    {showCreditsModal && (
-      <InsufficientCreditsModal
-        required={creditsInfo.required}
-        remaining={creditsInfo.remaining}
-        onClose={() => setShowCreditsModal(false)}
-        onRegister={() => {
-            setShowCreditsModal(false);
-            handleGoToRegister(); // Reutilizamos la función que te lleva a la vista de registro
-        }}
-        onNewSession={() => window.location.reload()}
-      />
-    )}
+      {showProModal && proReportClicked && (
+        <ProOfferModal
+          reportName={proReportClicked.label}
+          onClose={() => setShowProModal(false)}
+          onRegister={handleGoToRegister} // <-- ¡CAMBIO CLAVE AQUÍ!
+        />
+      )}
 
-    {showProModal && proReportClicked && (
-      <ProOfferModal
-        reportName={proReportClicked.label}
-        onClose={() => setShowProModal(false)}
-        onRegister={handleGoToRegister} // <-- ¡CAMBIO CLAVE AQUÍ!
-      />
-    )}
+      {/* Renderiza el modal de estrategia si el estado es true */}
+      {isStrategyPanelOpen && (
+        <StrategyPanelModal 
+          sessionId={sessionId} 
+          onClose={() => setStrategyPanelOpen(false)} 
+        />
+      )}
+      {/* Renderiza el modal del historial si está abierto */}
+      {isHistoryModalOpen && <CreditHistoryModal history={creditHistory} reportData={reportData} onClose={() => setIsHistoryModalOpen(false)} />}
 
-    {/* Renderiza el modal de estrategia si el estado es true */}
-    {isStrategyPanelOpen && (
-      <StrategyPanelModal 
-        sessionId={sessionId} 
-        onClose={() => setStrategyPanelOpen(false)} 
-      />
-    )}
-    {/* Renderiza el modal del historial si está abierto */}
-    {isHistoryModalOpen && <CreditHistoryModal history={creditHistory} reportData={reportData} onClose={() => setIsHistoryModalOpen(false)} />}
-
-    </div>
     </>
   );
 }
 
-// export default LandingPage;

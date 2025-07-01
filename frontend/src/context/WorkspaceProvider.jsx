@@ -30,7 +30,7 @@ export function WorkspaceProvider({ children }) {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [activeWorkspace]);
 
   // Función para crear un nuevo espacio de trabajo
   const createWorkspace = useCallback(async (name) => {
@@ -62,35 +62,80 @@ export function WorkspaceProvider({ children }) {
   }, [activeWorkspace]);
 
   const deleteWorkspace = useCallback(async (workspaceId) => {
+    // 1. Guardamos una copia del estado actual para poder revertir en caso de error.
+    const originalWorkspaces = [...workspaces];
+    
+    // 2. **LA ACTUALIZACIÓN OPTIMISTA:**
+    // Eliminamos el espacio de trabajo del estado local INMEDIATAMENTE.
+    // La tarjeta desaparecerá de la interfaz al instante.
+    setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
+    
+    // Si el workspace eliminado era el activo, lo limpiamos.
+    if (activeWorkspace?.id === workspaceId) {
+      setActiveWorkspace(null);
+    }
+
     try {
+      // 3. Enviamos la petición a la API en segundo plano.
       await api.delete(`/workspaces/${workspaceId}`);
-      // Actualizamos el estado local para que la UI reaccione al instante
-      setWorkspaces(prev => prev.filter(ws => ws.id !== workspaceId));
-      if (activeWorkspace?.id === workspaceId) {
-        setActiveWorkspace(null); // Si se borra el activo, lo deseleccionamos
-      }
+      // Si la API responde con éxito, no necesitamos hacer nada más.
+      // La UI ya está actualizada y ahora la base de datos también.
+      console.log(`✅ Espacio de trabajo ${workspaceId} eliminado exitosamente del servidor.`);
+      
     } catch (error) {
       console.error("Error al eliminar el espacio de trabajo:", error);
-      throw error;
+      alert(error.response?.data?.detail || "No se pudo eliminar el espacio de trabajo. Se restaurará la vista.");
+      
+      // 4. **LA REVERSIÓN:**
+      // Si la API falla, restauramos la UI a su estado original.
+      // El espacio de trabajo que "desapareció" volverá a aparecer.
+      setWorkspaces(originalWorkspaces);
+      
+      // Opcional: si el activo fue el que falló, lo restauramos también.
+      if (activeWorkspace?.id === workspaceId) {
+        const originalWorkspace = originalWorkspaces.find(ws => ws.id === workspaceId);
+        setActiveWorkspace(originalWorkspace || null);
+      }
     }
-  }, [activeWorkspace]);
+  }, [workspaces, activeWorkspace]); // La dependencia ahora es la lista completa y el activo
+
 
   const togglePinWorkspace = useCallback(async (workspaceId) => {
+    // 1. Guardamos el estado original por si necesitamos revertir
+    const originalWorkspaces = workspaces;
+
+    // 2. **LA ACTUALIZACIÓN OPTIMISTA:**
+    // Modificamos el estado local INMEDIATAMENTE, sin esperar a la API.
+    setWorkspaces(prev => 
+      prev.map(ws => 
+        ws.id === workspaceId ? { ...ws, isPinned: !ws.isPinned } : ws
+      )
+    );
+
     try {
-      // Llamamos al nuevo endpoint del backend
-      const response = await api.put(`/workspaces/${workspaceId}/pin`);
-      
-      // Actualizamos el estado local para que la UI reaccione instantáneamente
-      setWorkspaces(prev => 
-        prev.map(ws => 
-          ws.id === workspaceId ? { ...ws, isPinned: response.data.isPinned } : ws
-        )
-      );
+      // 3. Enviamos la petición a la API en segundo plano
+      await api.put(`/workspaces/${workspaceId}/pin`);
+      // Si la API responde con éxito, no necesitamos hacer nada más. La UI ya está actualizada.
+      console.log(`✅ Estado de pin para ${workspaceId} actualizado en el servidor.`);
+
     } catch (error) {
       console.error("Error al fijar el espacio de trabajo:", error);
-      alert(error.response?.data?.detail || "No se pudo realizar la acción.");
-      // Opcional: revertir el cambio en la UI si la API falla
+      alert(error.response?.data?.detail || "No se pudo actualizar el estado. Reintentando.");
+      
+      // 4. **LA REVERSIÓN:**
+      // Si la API falla, revertimos la UI a su estado original.
+      setWorkspaces(originalWorkspaces);
     }
+  }, [workspaces]); ;
+
+  const touchWorkspace = useCallback(async (workspaceId) => {
+      try {
+          // Llamada "fire-and-forget". No esperamos una respuesta ni bloqueamos la UI.
+          api.put(`/workspaces/${workspaceId}/touch`);
+      } catch (error) {
+          // Como es una operación en segundo plano, solo la registramos en la consola.
+          console.warn("No se pudo actualizar la fecha de último acceso:", error);
+      }
   }, []);
 
   const value = {
@@ -102,7 +147,8 @@ export function WorkspaceProvider({ children }) {
     createWorkspace,
     renameWorkspace, // Exponemos las nuevas funciones
     deleteWorkspace,
-    togglePinWorkspace
+    togglePinWorkspace,
+    touchWorkspace
   };
 
   return (

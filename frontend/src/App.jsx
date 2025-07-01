@@ -3,7 +3,7 @@ import { WorkspaceProvider, useWorkspace } from './context/WorkspaceProvider';
 import { StrategyProvider } from './context/StrategyProvider';
 import LandingPage from './pages/LandingPage'; // Tu componente existente
 import { Dashboard } from './components/Dashboard'; // El nuevo componente
-import { LoginPage } from './components/LoginPage'; // Asumiendo que tienes un componente de Login
+import { LoginPage } from './components/_LoginPage'; // Asumiendo que tienes un componente de Login
 
 // Componente de Carga para una mejor UX
 const LoadingScreen = () => (
@@ -20,13 +20,10 @@ function AppContent() {
 
   // Obtenemos la función para cargar los workspaces desde el contexto
   const { fetchWorkspaces } = useWorkspace();
-
-  // useEffect para cargar los datos del usuario al iniciar la app si hay un token
   useEffect(() => {
     const initializeUserSession = async () => {
       if (authToken) {
-        // Si hay un token, cargamos los espacios de trabajo
-        await fetchWorkspaces(authToken);
+        await fetchWorkspaces();
       }
       setIsInitializing(false);
     };
@@ -45,6 +42,12 @@ function AppContent() {
     // No necesitamos recargar, el cambio de estado se encargará de todo
   };
 
+  const handleEnterWorkspace = (workspace) => {
+    // Establece el workspace activo y cambia la vista a la de análisis
+    setActiveWorkspace(workspace);
+    setCurrentView('analysis');
+  };
+
   // --- Renderizado Condicional ---
   if (isInitializing) {
     return <LoadingScreen />;
@@ -52,7 +55,7 @@ function AppContent() {
   
   return authToken ? (
     // Si hay un token, mostramos el Dashboard
-    <Dashboard onLogout={handleLogout} />
+    <Dashboard onLogout={handleLogout} onEnterWorkspace={handleEnterWorkspace} />
   ) : (
     // Si no, mostramos el flujo para usuarios anónimos/nuevos
     <LandingPage onLoginSuccess={handleLoginSuccess} />

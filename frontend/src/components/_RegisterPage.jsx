@@ -1,11 +1,18 @@
+// src/components/RegisterPage.jsx (Corregido)
+
 import React, { useState } from 'react';
 import axios from 'axios';
-import { FiUser, FiMail, FiKey, FiX, FiUserPlus, FiLoader } from 'react-icons/fi';
+import { FiUser, FiMail, FiKey, FiUserPlus, FiLoader } from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-
-export default function RegisterPage ({ onRegisterSuccess, onSwitchToLogin, onClose, onBackToLanding, sessionId, onboardingData }) {
+export function RegisterPage({ 
+    onRegisterSuccess, 
+    onSwitchToLogin, 
+    onBackToLanding, 
+    sessionId, 
+    onboardingData 
+}) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -53,13 +60,9 @@ export default function RegisterPage ({ onRegisterSuccess, onSwitchToLogin, onCl
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fade-in">
-    <div className="w-full max-w-md mx-auto animate-fade-in text-white">
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 shadow-2xl">
+    <div className="w-full max-w-md animate-fade-in text-white">
+      <div className="bg-gray-800 bg-opacity-70 border border-gray-700 rounded-lg p-8 shadow-2xl">
         <div className="text-center">
-          <button onClick={onClose} className="relative float-right text-gray-400 hover:text-gray-600">
-             <FiX size={24}/>
-          </button>
           <h2 className="text-3xl font-bold mb-2">Crea tu Cuenta</h2>
           <p className="text-gray-400 mb-6">Desbloquea el historial y los reportes Pro.</p>
         </div>
@@ -101,7 +104,6 @@ export default function RegisterPage ({ onRegisterSuccess, onSwitchToLogin, onCl
           <button onClick={onBackToLanding} className="mt-4 text-xs text-gray-500 hover:text-white hover:underline">&larr; Volver</button>
         </div>
       </div>
-    </div>
     </div>
   );
 }

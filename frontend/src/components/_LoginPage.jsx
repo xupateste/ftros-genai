@@ -1,13 +1,13 @@
+// src/components/LoginPage.jsx
+
 import React, { useState } from 'react';
 import axios from 'axios';
-import { FiLogIn, FiUser, FiMail, FiX, FiKey, FiUserPlus, FiLoader } from 'react-icons/fi';
+import { FiMail, FiKey, FiLogIn } from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-// ===================================================================================
-// --- VISTA LOGIN ---
-// ===================================================================================
-export default function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister, onBackToAnalysis }) {
+// Esta función se pasa desde el componente padre para manejar el éxito del login
+export function LoginPage({ onLoginSuccess, onSwitchToRegister, onBackToLanding }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -47,13 +47,17 @@ export default function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fade-in">
     <div className="w-full max-w-md mx-auto animate-fade-in text-white">
-      <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 shadow-2xl">
-        <button onClick={onClose} className="relative float-right text-gray-400 hover:text-gray-600">
-           <FiX size={24}/>
-        </button>
-       <h2 className="text-3xl font-bold mb-6 text-center">Iniciar Sesión</h2>
+      <div className="bg-gray-800 bg-opacity-70 border border-gray-700 rounded-lg p-8 shadow-2xl">
+        <div className="text-center">
+            <h2 className="text-3xl font-bold mb-2">
+                Iniciar Sesión
+            </h2>
+            <p className="text-gray-400 mb-6">
+                Accede a tu cuenta para ver tu historial y reportes Pro.
+            </p>
+        </div>
+
         <form onSubmit={handleLogin} className="space-y-4 text-left">
           <div>
             <label className="block text-sm font-semibold text-gray-300 mb-1" htmlFor="email-login">Correo Electrónico</label>
@@ -97,12 +101,19 @@ export default function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister
             {isLoading ? "Ingresando..." : <><FiLogIn /> Ingresar</>}
           </button>
         </form>
+
         <div className="mt-6 text-center text-sm">
-            <p className="text-gray-400">¿No tienes cuenta? <button onClick={onSwitchToRegister} className="font-semibold text-purple-400 hover:underline">Regístrate</button></p>
-            <button onClick={onBackToAnalysis} className="mt-4 text-xs text-gray-500 hover:text-white">&larr; Volver</button>
+            <p className="text-gray-400">
+                ¿No tienes una cuenta?{' '}
+                <button onClick={onSwitchToRegister} className="font-semibold text-purple-400 hover:underline">
+                    Regístrate aquí
+                </button>
+            </p>
+            <button onClick={onBackToLanding} className="mt-4 text-xs text-gray-500 hover:text-white hover:underline">
+                &larr; O vuelve a la página principal
+            </button>
         </div>
       </div>
     </div>
-    </div>
   );
-};
+}

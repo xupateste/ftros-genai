@@ -430,8 +430,9 @@ async def get_workspaces(current_user: dict = Depends(get_current_user)):
         # Apuntamos a la sub-colección 'espacios_trabajo' del usuario logueado
         workspaces_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo')
         
-        query = workspaces_ref.order_by("fechaModificacion", direction=firestore.Query.DESCENDING)
-
+        # Le pedimos a Firestore que ordene por el timestamp
+        query = workspaces_ref.order_by("fechaUltimoAcceso", direction=firestore.Query.DESCENDING)
+        
         workspaces = []
         for doc in workspaces_ref.stream():
             workspace_data = doc.to_dict()
@@ -474,7 +475,8 @@ async def create_workspace(
         new_workspace_data = {
             "nombre": workspace.nombre,
             "fechaCreacion": now_utc,
-            "fechaModificacion": now_utc
+            "fechaModificacion": now_utc,
+            "fechaUltimoAcceso": now_utc
         }
 
         update_time, new_workspace_ref = workspaces_ref.add(new_workspace_data)
@@ -596,6 +598,35 @@ async def pin_workspace(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"No se pudo actualizar el estado: {e}")
+
+
+# --- NUEVO ENDPOINT PARA REGISTRAR EL ACCESO A UN WORKSPACE ---
+@app.put("/workspaces/{workspace_id}/touch", summary="Actualiza la fecha de último acceso de un workspace", tags=["Espacios de Trabajo"])
+async def touch_workspace(
+    workspace_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Actualiza el timestamp 'fechaUltimoAcceso' de un espacio de trabajo.
+    Esta acción se llama cada vez que un usuario entra a un espacio,
+    para que la lista se pueda ordenar por "abiertos recientemente".
+    """
+    try:
+        user_email = current_user.get("email")
+        workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+        
+        # Usamos .update() para establecer o actualizar el campo
+        workspace_ref.update({"fechaUltimoAcceso": datetime.now(timezone.utc)})
+        
+        return {"message": f"Timestamp de acceso actualizado para {workspace_id}."}
+
+    except Exception as e:
+        # No queremos que un fallo aquí rompa la experiencia del usuario,
+        # así que en lugar de un error 500, podríamos solo registrarlo.
+        print(f"🔥 Advertencia: No se pudo actualizar el timestamp de acceso para el workspace {workspace_id}: {e}")
+        # Devolvemos una respuesta exitosa de todas formas para no bloquear al frontend.
+        return {"message": "La operación continuó aunque no se pudo actualizar el timestamp."}
+
 
 
 # ===================================================================================
@@ -885,7 +916,10 @@ async def upload_csvs_abc_analysis(
     # Inyectamos el request para el logging
     request: Request, 
     # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
     X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
     criterio_abc: str = Form(..., description="Criterio para el análisis ABC: 'ingresos', 'unidades', 'margen', 'combinado'.", examples=["ingresos"]),
@@ -894,6 +928,26 @@ async def upload_csvs_abc_analysis(
     peso_margen: Optional[float] = Form(0.3),
     peso_unidades: Optional[float] = Form(0.2)
 ):
+    user_id = None
+    
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    if current_user:
+        # CASO 1: Usuario Registrado
+        if not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        user_id = current_user['email']
+        print(f"Petición de usuario registrado: {user_id} para workspace: {workspace_id}")
+        # Para el logging y descarga, pasamos el contexto del usuario
+        log_session_id = None # No usamos el ID de sesión anónima
+    
+    elif X_Session_ID:
+        # CASO 2: Usuario Anónimo
+        print(f"Petición de usuario anónimo: {X_Session_ID}")
+        log_session_id = X_Session_ID
+    else:
+        # CASO 3: No hay identificador, denegamos el acceso
+        raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
+
     pesos_combinado_dict = None
     if criterio_abc.lower() == "combinado":
         pesos_combinado_dict = {
@@ -914,14 +968,15 @@ async def upload_csvs_abc_analysis(
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
         full_params_for_logging=full_params_for_logging,
-        session_id=X_Session_ID,
-        user_id=None, # Para sesiones anónimas, siempre es None
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
         report_key="ReporteABC",
         processing_function=process_csv_abc, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="reporte_abc.xlsx"
+        output_filename="reporte_abc.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=log_session_id
     )
 
 
@@ -930,7 +985,10 @@ async def run_analisis_estrategico_rotacion(
     # Inyectamos el request para el logging
     request: Request, 
     # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
     X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+    
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
 
@@ -950,6 +1008,26 @@ async def run_analisis_estrategico_rotacion(
     umbral_stock_bajo_dias: int = Form(15, description="Días por debajo de los cuales un producto se considera con 'Stock Bajo'."),
     pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
 ):
+    user_id = None
+    
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    if current_user:
+        # CASO 1: Usuario Registrado
+        if not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        user_id = current_user['email']
+        print(f"Petición de usuario registrado: {user_id} para workspace: {workspace_id}")
+        # Para el logging y descarga, pasamos el contexto del usuario
+        log_session_id = None # No usamos el ID de sesión anónima
+    
+    elif X_Session_ID:
+        # CASO 2: Usuario Anónimo
+        print(f"Petición de usuario anónimo: {X_Session_ID}")
+        log_session_id = X_Session_ID
+    else:
+        # CASO 3: No hay identificador, denegamos el acceso
+        raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
+
     # --- 2. Procesar Parámetros Complejos desde JSON ---
     pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
     filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
@@ -977,13 +1055,15 @@ async def run_analisis_estrategico_rotacion(
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
         full_params_for_logging=full_params_for_logging,
-        session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
         report_key="ReporteAnalisisEstrategicoRotacion",
         processing_function=process_csv_analisis_estrategico_rotacion, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="ReporteAnalisisEstrategicoRotacion.xlsx"
+        output_filename="ReporteAnalisisEstrategicoRotacion.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=log_session_id
     )
 
 
@@ -1046,7 +1126,10 @@ async def generar_reporte_maestro_endpoint(
     # Inyectamos el request para el logging
     request: Request, 
     # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
     X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
     
@@ -1063,6 +1146,26 @@ async def generar_reporte_maestro_endpoint(
     meses_analisis_salud: Optional[int] = Form(None, description="Meses para analizar ventas recientes en el diagnóstico de salud."),
     dias_sin_venta_muerto: Optional[int] = Form(None, description="Umbral de días para clasificar un producto como 'Stock Muerto'.")
 ):
+    user_id = None
+    
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    if current_user:
+        # CASO 1: Usuario Registrado
+        if not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        user_id = current_user['email']
+        print(f"Petición de usuario registrado: {user_id} para workspace: {workspace_id}")
+        # Para el logging y descarga, pasamos el contexto del usuario
+        log_session_id = None # No usamos el ID de sesión anónima
+    
+    elif X_Session_ID:
+        # CASO 2: Usuario Anónimo
+        print(f"Petición de usuario anónimo: {X_Session_ID}")
+        log_session_id = X_Session_ID
+    else:
+        # CASO 3: No hay identificador, denegamos el acceso
+        raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
+
     # --- Validación de Parámetros ---
     pesos_combinado = None
     if criterio_abc == 'combinado':
@@ -1094,15 +1197,16 @@ async def generar_reporte_maestro_endpoint(
     # 2. Llamamos a la función manejadora central con toda la información
     return await _handle_report_generation(
         full_params_for_logging=full_params_for_logging,
-        session_id=X_Session_ID,
-        user_id=None, # Para sesiones anónimas, siempre es None
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
         report_key="ReporteMaestro", # La clave única que definimos en la configuración
         processing_function=generar_reporte_maestro_inventario, # Tu función de lógica real
         # processing_function=lambda df_v, df_i, **kwargs: df_i.head(10), # Simulación
         processing_params=processing_params,
-        output_filename="ReporteMaestro.xlsx"
+        output_filename="ReporteMaestro.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=log_session_id
     )
 
 
@@ -1111,12 +1215,36 @@ async def reporte_puntos_alerta_stock(
     # Inyectamos el request para el logging
     request: Request, 
     # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
     X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+    
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
     lead_time_dias: int = Form(...),
     dias_seguridad_base: int = Form(...)
 ):
+    user_id = None
+    
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    if current_user:
+        # CASO 1: Usuario Registrado
+        if not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        user_id = current_user['email']
+        print(f"Petición de usuario registrado: {user_id} para workspace: {workspace_id}")
+        # Para el logging y descarga, pasamos el contexto del usuario
+        log_session_id = None # No usamos el ID de sesión anónima
+    
+    elif X_Session_ID:
+        # CASO 2: Usuario Anónimo
+        print(f"Petición de usuario anónimo: {X_Session_ID}")
+        log_session_id = X_Session_ID
+    else:
+        # CASO 3: No hay identificador, denegamos el acceso
+        raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
+
+
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
         # Parámetros de periodos para análisis de ventas
@@ -1147,13 +1275,15 @@ async def reporte_puntos_alerta_stock(
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
         full_params_for_logging=full_params_for_logging,
-        session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
         report_key="ReportePuntosAlertaStock",
         processing_function=process_csv_puntos_alerta_stock, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="ReportePuntosAlertaStock.xlsx"
+        output_filename="ReportePuntosAlertaStock.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=log_session_id
     )
 
 
@@ -1162,7 +1292,10 @@ async def lista_basica_reposicion_historico(
     # Inyectamos el request para el logging
     request: Request, 
     # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
     X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
 
@@ -1184,6 +1317,27 @@ async def lista_basica_reposicion_historico(
     peso_ventas_historicas: float = Form(0.6),
     pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
 ):
+    user_id = None
+    
+    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    if current_user:
+        # CASO 1: Usuario Registrado
+        if not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        user_id = current_user['email']
+        print(f"Petición de usuario registrado: {user_id} para workspace: {workspace_id}")
+        # Para el logging y descarga, pasamos el contexto del usuario
+        log_session_id = None # No usamos el ID de sesión anónima
+    
+    elif X_Session_ID:
+        # CASO 2: Usuario Anónimo
+        print(f"Petición de usuario anónimo: {X_Session_ID}")
+        log_session_id = X_Session_ID
+    else:
+        # CASO 3: No hay identificador, denegamos el acceso
+        raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
+
+
     try:
         excluir_bool = excluir_sin_ventas.lower() == 'true'
         
@@ -1213,13 +1367,15 @@ async def lista_basica_reposicion_historico(
     # Llamamos a la función manejadora central
     return await _handle_report_generation(
         full_params_for_logging=full_params_for_logging,
-        session_id=X_Session_ID,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
         report_key="ReporteListaBasicaReposicionHistorica",
         processing_function=process_csv_lista_basica_reposicion_historico, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="ReporteListaBasicaReposicionHistorica.xlsx"
+        output_filename="ReporteListaBasicaReposicionHistorica.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=log_session_id
     )
 
 

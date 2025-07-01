@@ -7,6 +7,7 @@ import { FiPlusCircle, FiLogOut, FiLoader, FiStar, FiArrowRight, FiSettings} fro
 // import api from '../utils/api'; // Usaremos nuestro cliente API centralizado
 import { WorkspaceCard } from './WorkspaceCard';
 import { ConfirmationModal } from './ConfirmationModal';
+import AnalysisWorkspace from './AnalysisWorkspace'; // Importa el nuevo componente
 
 
 // Este es el placeholder de tu vista de análisis. En el futuro, aquí
@@ -24,20 +25,25 @@ const AnalysisView = ({ workspace, onBack }) => (
 );
 
 
-export function Dashboard({ onLogout }) {
-  const { workspaces, togglePinWorkspace, activeWorkspace, setActiveWorkspace, createWorkspace, fetchWorkspaces, isLoading } = useWorkspace();
+export function Dashboard({ onLogout, onEnterWorkspace }) {
+  const { workspaces, togglePinWorkspace, activeWorkspace, setActiveWorkspace, createWorkspace, fetchWorkspaces, isLoading, touchWorkspace } = useWorkspace();
   const [view, setView] = useState('dashboard'); // 'dashboard' o 'workspace'
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
 
-  // // Al montar el dashboard, cargamos los espacios de trabajo
-  // useEffect(() => {
-  //   fetchWorkspaces();
-  // }, [fetchWorkspaces]);
-
   const { pinnedWorkspaces, regularWorkspaces } = useMemo(() => {
-    const pinned = workspaces.filter(ws => ws.isPinned);
-    const regular = workspaces.filter(ws => !ws.isPinned);
+    if (!workspaces) return { pinnedWorkspaces: [], recentWorkspaces: [] };
+
+    // Ordenamos toda la lista por fecha de último acceso, del más reciente al más antiguo
+    const sortedByDate = [...workspaces].sort((a, b) => {
+      const dateA = a.fechaUltimoAcceso ? new Date(a.fechaUltimoAcceso) : new Date(0);
+      const dateB = b.fechaUltimoAcceso ? new Date(b.fechaUltimoAcceso) : new Date(0);
+      return dateB - dateA;
+    });
+
+    const pinned = sortedByDate.filter(ws => ws.isPinned);
+    const regular = sortedByDate.filter(ws => !ws.isPinned);
+    
     return { pinnedWorkspaces: pinned, regularWorkspaces: regular };
   }, [workspaces]);
   
@@ -59,22 +65,36 @@ export function Dashboard({ onLogout }) {
 
   
   const handleEnterWorkspace = (workspace) => {
+    touchWorkspace(workspace.id); 
     setActiveWorkspace(workspace);
     setView('workspace');
   };
 
+  const handleEnterClick = (workspace) => {
+    // Cuando el usuario hace clic en "Entrar", notifica al componente App
+    onEnterWorkspace(workspace);
+  };
+
+
   // Si el usuario ha entrado a un espacio de trabajo, mostramos la vista de análisis
   if (view === 'workspace' && activeWorkspace) {
-    return <AnalysisView workspace={activeWorkspace} onBack={() => setView('dashboard')} />;
+    return (
+        <AnalysisWorkspace 
+            // Le pasamos el contexto de usuario registrado
+            context={{ type: 'user', workspace: activeWorkspace }} 
+            onBack={() => setView('dashboard')}
+            onLogout={onLogout}
+        />
+    );
   }
 
 
   // Si no, mostramos el dashboard principal
   return (
     <div className="w-full max-w-5xl mx-auto p-4 md:p-8 text-white animate-fade-in">
-      <header className="flex justify-between items-center mb-10">
-        <h1 className="text-3xl font-bold">Mis Espacios de Trabajo</h1>
-        <div className="flex items-center gap-4">
+      <header className="grid sm:grid-cols-1 md:grid-cols-2 justify-center items-center my-6 gap-2">
+        <h1 className="flex text-3xl font-bold">Mis Espacios de Trabajo</h1>
+        <div className="flex gap-6 justify-center">
           <button onClick={() => alert("Abriendo panel de estrategia...")} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"><FiSettings /> Mi Estrategia</button>
           <button onClick={onLogout} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"><FiLogOut /> Cerrar Sesión</button>
         </div>
@@ -100,7 +120,7 @@ export function Dashboard({ onLogout }) {
         {pinnedWorkspaces.length > 0 && (
           <div className="mb-10">
             <h2 className="text-xl font-semibold mb-4 flex items-center gap-2"><FiStar className="text-yellow-400"/> Espacios Fijados</h2>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
               {pinnedWorkspaces.map(ws => (
                 <WorkspaceCard key={ws.id} workspace={ws} onEnter={handleEnterWorkspace} onPinToggle={togglePinWorkspace} />
               ))}
