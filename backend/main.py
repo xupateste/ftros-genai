@@ -447,63 +447,73 @@ async def get_workspaces(current_user: dict = Depends(get_current_user)):
         print(f"🔥 Error al obtener workspaces para el usuario {user_email}: {e}")
         raise HTTPException(status_code=500, detail="No se pudieron obtener los espacios de trabajo.")
 
-@app.post("/workspaces", summary="Crea un nuevo espacio de trabajo", tags=["Espacios de Trabajo"])
+@app.post("/workspaces", summary="Crea un nuevo espacio de trabajo (con validación de plan)", tags=["Espacios de Trabajo"])
 async def create_workspace(
     workspace: WorkspaceCreate,
     current_user: dict = Depends(get_current_user)
 ):
-    """
-    Crea un nuevo documento en la sub-colección 'espacios_trabajo'
-    para el usuario autenticado.
-    """
+    user_email = current_user.get("email")
+    if not user_email:
+        raise HTTPException(status_code=403, detail="No se pudo identificar al usuario desde el token.")
+
     try:
-        user_email = current_user.get("email")
-        user_plan = current_user.get("plan", "gratis") # Obtenemos el plan del usuario
-        
-        # --- LÓGICA DE VALIDACIÓN DE LÍMITES ---
+        user_plan = current_user.get("plan", "gratis")
         plan_config = PLANS_CONFIG.get(user_plan, PLANS_CONFIG["gratis"])
         limit = plan_config["workspace_limit"]
-
+        
         workspaces_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo')
         
-        # Lógica futura: podrías limitar el número de workspaces según el plan del usuario
-        # workspaces_count = len(list(workspaces_ref.stream()))
-        # if workspaces_count >= 3 and current_user.get("plan") == "gratis":
-        #     raise HTTPException(status_code=403, detail="Has alcanzado el límite de 3 espacios de trabajo para cuentas gratuitas.")
-        
-        now_utc = datetime.now(timezone.utc)
-        new_workspace_data = {
-            "nombre": workspace.nombre,
-            "fechaCreacion": now_utc,
-            "fechaModificacion": now_utc,
-            "fechaUltimoAcceso": now_utc
-        }
-
-        update_time, new_workspace_ref = workspaces_ref.add(new_workspace_data)
-
-        # Verificamos si hay un límite (-1 significa ilimitado)
-        if limit != -1:
+        # --- LÓGICA DE VALIDACIÓN DE LÍMITES (CON DEPURACIÓN) ---
+        if limit != -1: # -1 significa ilimitado
             # Contamos los workspaces existentes
-            workspaces_count = len(list(workspaces_ref.stream()))
+            existing_workspaces = list(workspaces_ref.stream())
+            workspaces_count = len(existing_workspaces)
+            
+            # --- DEBUGGING LOGS ---
+            print("\n--- DEBUG: Verificación de Límite de Workspaces ---")
+            print(f"Usuario: {user_email}, Plan: {user_plan}")
+            print(f"Límite del plan: {limit}")
+            print(f"Workspaces existentes encontrados: {workspaces_count}")
+            # --- FIN DEBUGGING ---
+
             if workspaces_count >= limit:
+                # Si se alcanza el límite, lanzamos el error 403 y la función debe detenerse aquí.
+                print(f"🚫 Límite alcanzado para {user_email}. Lanzando error 403.")
                 raise HTTPException(
-                    status_code=403, # 403 Forbidden es el código correcto
+                    status_code=403, 
                     detail=f"Has alcanzado el límite de {limit} espacios de trabajo para el plan '{plan_config['plan_name']}'. Considera mejorar tu plan."
                 )
-            
+        
+        # --- La creación solo ocurre si la validación anterior no lanzó un error ---
+        print(f"✅ Límite verificado. Procediendo a crear workspace para {user_email}.")
         new_workspace_data = {
-            "id": new_workspace_ref.id,
             "nombre": workspace.nombre,
-            "fechaCreacion": new_workspace_data["fechaCreacion"].isoformat() 
+            "fechaCreacion": datetime.now(timezone.utc),
+            "fechaUltimoAcceso": datetime.now(timezone.utc), # Inicializamos el campo de ordenamiento
+            "isPinned": False # Inicializamos el campo de fijado
         }
         
+        update_time, new_workspace_ref = workspaces_ref.add(new_workspace_data)
+        
+        # Preparamos la respuesta para que sea compatible con JSON
+        response_data = new_workspace_data.copy()
+        response_data['id'] = new_workspace_ref.id
+        response_data['fechaCreacion'] = response_data['fechaCreacion'].isoformat()
+        response_data['fechaUltimoAcceso'] = response_data['fechaUltimoAcceso'].isoformat()
+        
         return JSONResponse(
-            status_code=201, # 201 Created es el código correcto para una creación exitosa
-            content={"message": "Espacio de trabajo creado exitosamente.", "workspace": new_workspace_data}
+            status_code=201,
+            content={"message": "Espacio de trabajo creado exitosamente.", "workspace": response_data}
         )
+
+    # --- MANEJO DE ERRORES CORREGIDO ---
+    # 1. Capturamos nuestra propia excepción HTTP primero y la relanzamos.
+    except HTTPException as http_exc:
+        raise http_exc
+    # 2. Capturamos cualquier otro error inesperado después.
     except Exception as e:
-        print(f"🔥 Error al crear workspace para el usuario {user_email}: {e}")
-        raise HTTPException(status_code=500, detail="No se pudo crear el espacio de trabajo.")
+        print(f"🔥 Error inesperado al crear workspace para el usuario {user_email}: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo crear el espacio de trabajo debido a un error interno.")
 
 @app.put("/workspaces/{workspace_id}", summary="Actualiza el nombre de un espacio de trabajo", tags=["Espacios de Trabajo"])
 async def update_workspace(
@@ -577,9 +587,9 @@ async def pin_workspace(
     """
     user_email = current_user.get("email")
     
-    # Lógica de Permisos (Ejemplo)
-    if current_user.get("plan") not in ["pro", "diamond"]:
-        raise HTTPException(status_code=403, detail="Fijar espacios de trabajo es una funcionalidad Pro.")
+    # # Lógica de Permisos (Ejemplo)
+    # if current_user.get("plan") not in ["pro", "diamond"]:
+    #     raise HTTPException(status_code=403, detail="Fijar espacios de trabajo es una funcionalidad Pro.")
         
     try:
         workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)

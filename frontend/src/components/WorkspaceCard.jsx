@@ -1,6 +1,6 @@
 // src/components/WorkspaceCard.jsx
 import React, { useState, useRef, useEffect } from 'react';
-import { FiEdit, FiTrash2, FiMoreVertical, FiCheck, FiStar, FiX, FiInfo, FiArrowRight, FiLoader } from 'react-icons/fi';
+import { FiEdit, FiTrash2, FiMoreVertical, FiCheck, FiZap, FiX, FiInfo, FiArrowRight, FiLoader } from 'react-icons/fi';
 import { useWorkspace } from '../context/WorkspaceProvider';
 import { ConfirmationModal } from './ConfirmationModal';
 
@@ -103,7 +103,7 @@ export function WorkspaceCard({ workspace, onEnter, onPinToggle }) {
           ) : (
             <>
             <button onClick={() => onPinToggle(workspace.id)} title={workspace.isPinned ? "Desfijar" : "Fijar"}>
-              <FiStar className={`transition-colors ${workspace.isPinned ? 'text-yellow-400 fill-current' : 'text-gray-500 hover:text-yellow-400'}`} />
+              <FiZap className={`transition-colors ${workspace.isPinned ? 'text-yellow-400 fill-current' : 'text-gray-500 hover:text-yellow-400'}`} />
             </button>
             <button onClick={() => setIsMenuOpen(!isMenuOpen)} className="text-gray-400 hover:text-white p-1"><FiMoreVertical /></button>
             </>

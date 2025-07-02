@@ -3,11 +3,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useWorkspace } from '../context/WorkspaceProvider'; // Asumimos que WorkspaceProvider ya existe
 import { WorkspaceSelector } from './WorkspaceSelector'; // Y que WorkspaceSelector ya existe
-import { FiPlusCircle, FiLogOut, FiLoader, FiStar, FiArrowRight, FiSettings} from 'react-icons/fi';
+import { FiPlusCircle, FiLogOut, FiLoader, FiArrowRight, FiSettings} from 'react-icons/fi';
 // import api from '../utils/api'; // Usaremos nuestro cliente API centralizado
 import { WorkspaceCard } from './WorkspaceCard';
 import { ConfirmationModal } from './ConfirmationModal';
 import AnalysisWorkspace from './AnalysisWorkspace'; // Importa el nuevo componente
+import CreateWorkspaceModal from './CreateWorkspaceModal'; // Importa el nuevo modal
 
 
 // Este es el placeholder de tu vista de análisis. En el futuro, aquí
@@ -30,6 +31,7 @@ export function Dashboard({ onLogout, onEnterWorkspace }) {
   const [view, setView] = useState('dashboard'); // 'dashboard' o 'workspace'
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   const { pinnedWorkspaces, regularWorkspaces } = useMemo(() => {
     if (!workspaces) return { pinnedWorkspaces: [], recentWorkspaces: [] };
@@ -47,6 +49,11 @@ export function Dashboard({ onLogout, onEnterWorkspace }) {
     return { pinnedWorkspaces: pinned, regularWorkspaces: regular };
   }, [workspaces]);
   
+  const handleCreationSuccess = (newWorkspace) => {
+    console.log(`Espacio '${newWorkspace.nombre}' creado, permaneciendo en el Dashboard.`);
+    setIsCreateModalOpen(false); // Simplemente cierra el modal
+  };
+
   const handleCreateWorkspace = async (e) => {
     e.preventDefault();
     if (!newWorkspaceName.trim()) return;
@@ -106,7 +113,7 @@ export function Dashboard({ onLogout, onEnterWorkspace }) {
         </div>
       </header>
 
-      <div className="mb-10 p-6 m-4 bg-gray-800 bg-opacity-50 rounded-lg border border-gray-700">
+      {/*<div className="mb-10 p-6 m-4 bg-gray-800 bg-opacity-50 rounded-lg border border-gray-700">
         <h2 className="text-xl font-semibold mb-4">Crear Nuevo Espacio</h2>
         <form onSubmit={handleCreateWorkspace} className="flex flex-col sm:flex-row gap-4">
           <input 
@@ -119,13 +126,21 @@ export function Dashboard({ onLogout, onEnterWorkspace }) {
             {isCreating ? "Creando..." : "Crear Espacio"}
           </button>
         </form>
+      </div>*/}
+
+      <div className="mb-10 p-6 bg-gray-800 ...">
+          <button 
+              onClick={() => setIsCreateModalOpen(true)}
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 font-bold bg-purple-600 ...">
+              <FiPlusCircle /> Crear Nuevo Espacio de Trabajo
+          </button>
       </div>
 
       <div>
         {/* SECCIÓN DE ESPACIOS FIJADOS */}
         {pinnedWorkspaces.length > 0 && (
           <div className="mb-10 mx-4">
-            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2"><FiStar className="text-yellow-400"/> Espacios Fijados</h2>
+            <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">Espacios Fijados</h2>
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 items-start">
               {pinnedWorkspaces.map(ws => (
                 <WorkspaceCard key={ws.id} workspace={ws} onEnter={handleEnterWorkspace} onPinToggle={togglePinWorkspace} />
@@ -148,6 +163,13 @@ export function Dashboard({ onLogout, onEnterWorkspace }) {
             <p className="text-center text-gray-400 p-8 ...">¡Bienvenido! Crea tu primer espacio para empezar.</p>
         )}
       </div>
+      {/* --- RENDERIZADO DEL NUEVO MODAL --- */}
+      {isCreateModalOpen && (
+          <CreateWorkspaceModal 
+              onClose={() => setIsCreateModalOpen(false)}
+              onSuccess={handleCreationSuccess}
+          />
+      )}
     </div>
   );
 }

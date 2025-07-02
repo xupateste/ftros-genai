@@ -94,7 +94,7 @@ export default function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister
             className="w-full flex justify-center items-center gap-2 bg-purple-600 font-bold py-3 px-4 rounded-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:bg-gray-500"
             disabled={isLoading}
           >
-            {isLoading ? "Ingresando..." : <><FiLogIn /> Ingresar</>}
+            {isLoading ? <><FiLoader className="animate-spin" /> Ingresando...</> : <><FiLogIn /> Ingresar</>}
           </button>
         </form>
         <div className="mt-6 text-center text-sm">

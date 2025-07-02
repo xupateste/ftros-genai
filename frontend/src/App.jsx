@@ -4,6 +4,7 @@ import { StrategyProvider } from './context/StrategyProvider';
 import LandingPage from './pages/LandingPage'; // Tu componente existente
 import { Dashboard } from './components/Dashboard'; // El nuevo componente
 import { LoginPage } from './components/_LoginPage'; // Asumiendo que tienes un componente de Login
+import { AppHeader } from './components/AppHeader'; // Importa el nuevo encabezado
 
 // Componente de Carga para una mejor UX
 const LoadingScreen = () => (

@@ -697,6 +697,10 @@ video {
   z-index: 50;
 }
 
+.z-30 {
+  z-index: 30;
+}
+
 .col-span-1 {
   grid-column: span 1 / span 1;
 }
@@ -2785,8 +2789,16 @@ animation: var(--animate-spin);
     grid-template-columns: repeat(1, minmax(0, 1fr));
   }
 
+  .md\:flex-row {
+    flex-direction: row;
+  }
+
   .md\:justify-end {
     justify-content: flex-end;
+  }
+
+  .md\:gap-6 {
+    gap: 1.5rem;
   }
 
   .md\:p-4 {
@@ -2802,6 +2814,10 @@ animation: var(--animate-spin);
     padding-right: 3rem;
   }
 
+  .md\:text-left {
+    text-align: left;
+  }
+
   .md\:text-5xl {
     font-size: 3rem;
     line-height: 1;
@@ -2814,6 +2830,10 @@ animation: var(--animate-spin);
 }
 
 @media (min-width: 1024px) {
+  .lg\:inline {
+    display: inline;
+  }
+
   .lg\:grid-cols-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }

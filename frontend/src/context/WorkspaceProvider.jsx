@@ -13,7 +13,8 @@ export function WorkspaceProvider({ children }) {
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
-
+  const [isSwitching, setIsSwitching] = useState(false);
+  
   // Función para cargar los espacios de trabajo de un usuario
   const fetchWorkspaces = useCallback(async () => {
     setIsLoading(true);
@@ -36,12 +37,18 @@ export function WorkspaceProvider({ children }) {
   const createWorkspace = useCallback(async (name) => {
     if (!name) return;
     try {
-      await api.post('/workspaces', { nombre: name });
-      // Después de crear, volvemos a cargar la lista para que se actualice
-      await fetchWorkspaces();
+      const response = await api.post('/workspaces', { nombre: name });
+      const newWorkspace = response.data.workspace; // Obtenemos el workspace creado
+      
+      // Actualizamos la lista local para que la UI reaccione
+      setWorkspaces(prev => [newWorkspace, ...prev]);
+
+      // --- CAMBIO CLAVE: Devolvemos el nuevo workspace ---
+      return newWorkspace;
+
     } catch (error) {
       console.error("Error al crear el espacio de trabajo:", error);
-      throw error; // Lanzamos el error para que el componente visual pueda reaccionar
+      throw error;
     }
   }, [fetchWorkspaces]);
 
@@ -147,6 +154,7 @@ export function WorkspaceProvider({ children }) {
     createWorkspace,
     renameWorkspace, // Exponemos las nuevas funciones
     deleteWorkspace,
+    isSwitching,
     togglePinWorkspace,
     touchWorkspace
   };

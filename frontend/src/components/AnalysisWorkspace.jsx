@@ -6,6 +6,7 @@ import Select from 'react-select';
 import * as XLSX from 'xlsx';
 import { FiDownload, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
 import { StrategyProvider, useStrategy } from '../context/StrategyProvider';
+import CreateWorkspaceModal from './CreateWorkspaceModal'; // Importa el modal
 
 // Importa los componentes que necesita
 import CsvImporterComponent from '../assets/CsvImporterComponent';
@@ -182,6 +183,7 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
 
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
   // --- FUNCIONES EXTRAÍDAS DE LANDINGPAGE ---
   
@@ -213,6 +215,11 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
   //   fetchSessionState();
   // }, [fetchSessionState]);
 
+  const handleCreationSuccessAndSwitch = (newWorkspace) => {
+    console.log(`Espacio '${newWorkspace.nombre}' creado, cambiando a esta vista.`);
+    setActiveWorkspace(newWorkspace); // Cambia el contexto al nuevo espacio
+    setIsCreateModalOpen(false); // Cierra el modal
+  };
 
   const handleFileProcessed = async (file, fileType) => {
     const formData = new FormData();
@@ -521,7 +528,7 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
             workspaces={workspaces}
             activeWorkspace={activeWorkspace}
             onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
-            onCreateNew={() => alert("Abriendo modal para crear nuevo workspace...")} // Lógica futura
+            onCreateNew={() => setIsCreateModalOpen(true)}
             onBack={ () => onBack() }
           />
         )}
@@ -838,6 +845,14 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
           onRegisterSuccess={() => setActiveModal('login')}
           onSwitchToLogin={() => setActiveModal('login')}
           onBackToLanding={() => setActiveModal(null)} 
+        />
+      )}
+
+      {/* --- RENDERIZADO DEL NUEVO MODAL --- */}
+      {isCreateModalOpen && (
+        <CreateWorkspaceModal 
+            onClose={() => setIsCreateModalOpen(false)}
+            onSuccess={handleCreationSuccessAndSwitch} // Le pasamos la función de éxito específica
         />
       )}
     </div>
