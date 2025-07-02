@@ -50,7 +50,7 @@ export default function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fade-in">
     <div className="w-full max-w-md mx-auto animate-fade-in text-white">
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 shadow-2xl">
-        <button onClick={onClose} className="relative float-right text-gray-400 hover:text-gray-600">
+        <button onClick={onBackToAnalysis} className="relative float-right text-gray-400 hover:text-gray-600">
            <FiX size={24}/>
         </button>
        <h2 className="text-3xl font-bold mb-6 text-center">Iniciar Sesión</h2>

@@ -57,7 +57,7 @@ export default function RegisterPage ({ onRegisterSuccess, onSwitchToLogin, onCl
     <div className="w-full max-w-md mx-auto animate-fade-in text-white">
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 shadow-2xl">
         <div className="text-center">
-          <button onClick={onClose} className="relative float-right text-gray-400 hover:text-gray-600">
+          <button onClick={onBackToLanding} className="relative float-right text-gray-400 hover:text-gray-600">
              <FiX size={24}/>
           </button>
           <h2 className="text-3xl font-bold mb-2">Crea tu Cuenta</h2>

@@ -147,7 +147,7 @@ function Dashboard() {
     };
 
     return (
-        <>
+        <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center text-white">
             <div className={`flex justify-between ${bgColor} p-4`}>
                 <div 
                     className="flex bg-clip-text text-transparent items-center font-bold text-4xl ml-4 cursor-pointer hover:opacity-80 transition-opacity"
@@ -371,7 +371,7 @@ function Dashboard() {
                     </div>
                 </div>
             </div>        
-        </>
+        </div>
     );
 }
 

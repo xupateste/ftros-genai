@@ -495,6 +495,7 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
   };
 
   return (
+    <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center text-white">
     <div className="w-full h-full animate-fade-in-slow flex flex-col">
       {/* El encabezado ahora es parte de esta vista reutilizable */}
       <header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900 sticky top-0 z-10">
@@ -503,33 +504,29 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
             <h1 className="text-3xl md:text-5xl font-bold text-white">
                 <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
             </h1>
-            {context.type === 'user' && (
-              <WorkspaceSelector
-                workspaces={workspaces}
-                activeWorkspace={activeWorkspace}
-                onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
-                onCreateNew={() => alert("Abriendo modal para crear nuevo workspace...")} // Lógica futura
-                onBack={ () => onBack() }
-              />
-            )}
-            {/* --- BOTÓN DE LOGIN EN EL HEADER --- */}
             {/* Botón de Login solo para usuarios anónimos */}
-           {context.type === 'anonymous' && (
-             <button onClick={() => setActiveModal('login')} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiLogIn /> Iniciar Sesión</button>
-           )}
-          </div>
-          <p className="text-xs text-white flex justify-center text-center items-center font-mono gap-4">
-            {context.type === 'user' ?
-                <span>Espacio actual: {context.workspace.nombre}</span>
-              : <span>Modo: Sesión Anónima <br/> {context.id}</span>
+            {context.type === 'anonymous'
+              ? <button onClick={() => setActiveModal('login')} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiLogIn /> Iniciar Sesión</button>
+              : <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiLogOut /> Cerrar Sesión</button>
             }
-          </p>
+          </div>
+            {context.type === 'anonymous' &&
+              <p className="text-xs text-white flex justify-center text-center items-center font-mono gap-4">
+                <span>Modo: Sesión Anónima <br/> {context.id}</span>
+              </p>
+            }
         </div>
+        {context.type === 'user' && (
+          <WorkspaceSelector
+            workspaces={workspaces}
+            activeWorkspace={activeWorkspace}
+            onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
+            onCreateNew={() => alert("Abriendo modal para crear nuevo workspace...")} // Lógica futura
+            onBack={ () => onBack() }
+          />
+        )}
         <div className="flex flex-row w-full justify-center items-center gap-6">
-          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"><FiSettings /> Mi Estrategia</button>
-            {context.type === 'user' && (
-              <button onClick={onLogout} className="flex items-center gap-2 text-sm"><FiLogOut /> Cerrar Sesión</button>
-            )}
+          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"><FiSettings /> Configurar Mi Estrategia</button>
         </div>
       </header>
 
@@ -844,5 +841,6 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
         />
       )}
     </div>
+  </div>
   )
 }

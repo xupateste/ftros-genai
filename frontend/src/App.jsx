@@ -13,7 +13,6 @@ const LoadingScreen = () => (
   </div>
 );
 
-
 function AppContent() {
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('accessToken'));
   const [isInitializing, setIsInitializing] = useState(true);
