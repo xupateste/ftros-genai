@@ -26,7 +26,7 @@ const AnalysisView = ({ workspace, onBack }) => (
 );
 
 
-export function Dashboard({ onLogout, onEnterWorkspace }) {
+export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
   const { workspaces, togglePinWorkspace, activeWorkspace, setActiveWorkspace, createWorkspace, fetchWorkspaces, isLoading, touchWorkspace } = useWorkspace();
   const [view, setView] = useState('dashboard'); // 'dashboard' o 'workspace'
   const [isCreating, setIsCreating] = useState(false);
@@ -91,6 +91,7 @@ export function Dashboard({ onLogout, onEnterWorkspace }) {
             context={{ type: 'user', workspace: activeWorkspace }} 
             onBack={() => setView('dashboard')}
             onLogout={onLogout}
+            onBackToDashboard={onBackToDashboard}
         />
     );
   }

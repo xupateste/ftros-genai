@@ -19,7 +19,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 const diccionarioData = { /* ... tu objeto de insights ... */ };
 
 // Este componente ahora solo maneja el flujo para usuarios NO logueados.
-export default function LandingPage({ onLoginSuccess }) {
+export default function LandingPage({ onLoginSuccess, onBackToDashboard }) {
   const [appState, setAppState] = useState('landing');
   const [activeModal, setActiveModal] = useState(null); // null, 'login', 'register', 'onboarding'
   
@@ -109,6 +109,7 @@ export default function LandingPage({ onLoginSuccess }) {
           onLoginSuccess={onLoginSuccess}
           reportData={reportData}
           diccionarioData={diccionarioData}
+          onBackToDashboard={onBackToDashboard}
         />
       )}
 

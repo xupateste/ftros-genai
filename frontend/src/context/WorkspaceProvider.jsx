@@ -16,22 +16,41 @@ export function WorkspaceProvider({ children }) {
   const [isSwitching, setIsSwitching] = useState(false);
   
   // Función para cargar los espacios de trabajo de un usuario
-  const fetchWorkspaces = useCallback(async () => {
+  // const fetchWorkspaces = useCallback(async () => {
+  //   setIsLoading(true);
+  //   try {
+  //     const response = await api.get('/workspaces');
+  //     setWorkspaces(response.data);
+  //     // Establece el primer espacio de trabajo como activo por defecto
+  //     if (response.data.length > 0 && !activeWorkspace) {
+  //       setActiveWorkspace(response.data[0]);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error al cargar los espacios de trabajo:", error);
+  //     setWorkspaces([]); // En caso de error, dejamos la lista vacía
+  //   } finally {
+  //     setIsLoading(false);
+  //   }
+  // }, [activeWorkspace]);
+
+  const fetchWorkspaces = useCallback(async (token) => {
+    if (!token) return []; // Devuelve un array vacío si no hay token
     setIsLoading(true);
     try {
-      const response = await api.get('/workspaces');
+      const response = await api.get('/workspaces', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
       setWorkspaces(response.data);
-      // Establece el primer espacio de trabajo como activo por defecto
-      if (response.data.length > 0 && !activeWorkspace) {
-        setActiveWorkspace(response.data[0]);
-      }
+      // --- CAMBIO CLAVE ---
+      return response.data; // Devuelve los datos para que otros componentes puedan usarlos
     } catch (error) {
       console.error("Error al cargar los espacios de trabajo:", error);
-      setWorkspaces([]); // En caso de error, dejamos la lista vacía
+      setWorkspaces([]);
+      return []; // Devuelve un array vacío en caso de error
     } finally {
       setIsLoading(false);
     }
-  }, [activeWorkspace]);
+  }, []);
 
   // Función para crear un nuevo espacio de trabajo
   const createWorkspace = useCallback(async (name) => {

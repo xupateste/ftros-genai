@@ -140,7 +140,7 @@ const templateStock = {
 
 
 // Este componente recibe el contexto (sesión anónima o de usuario) como prop
-export default function AnalysisWorkspace({ context, reportData, diccionarioData, onSwitchToLogin, onSwitchToRegister, onLoginSuccess, onRegisterSuccess, onBack, onLogout }) {
+export default function AnalysisWorkspace({ context, reportData, diccionarioData, onSwitchToLogin, onSwitchToRegister, onLoginSuccess, onRegisterSuccess, onLogout, onBackToDashboard }) {
   // --- ESTADOS EXTRAÍDOS DE LANDINGPAGE ---
   const { 
     workspaces, 
@@ -516,7 +516,13 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
               ? <button onClick={() => setActiveModal('login')} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiLogIn /> Iniciar Sesión</button>
               : <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiLogOut /> Cerrar Sesión</button>
             }
-          </div>
+            </div>
+            {/* Solo se muestra si es un usuario registrado */}
+            {/*{context.type === 'user' && (
+                <button onClick={onBackToDashboard} className="text-xs text-purple-400 hover:text-white mb-1">
+                    &larr; Mis Espacios de Trabajo
+                </button>
+            )}*/}
             {context.type === 'anonymous' &&
               <p className="text-xs text-white flex justify-center text-center items-center font-mono gap-4">
                 <span>Modo: Sesión Anónima <br/> {context.id}</span>
@@ -529,7 +535,7 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
             activeWorkspace={activeWorkspace}
             onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
             onCreateNew={() => setIsCreateModalOpen(true)}
-            onBack={ () => onBack() }
+            onBackToDashboard={ onBackToDashboard}
           />
         )}
         <div className="flex flex-row w-full justify-center items-center gap-6">
