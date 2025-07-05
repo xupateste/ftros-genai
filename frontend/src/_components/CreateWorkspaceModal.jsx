@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useWorkspace } from '../context/WorkspaceProvider';
 import { FiX, FiPlusCircle, FiLoader } from 'react-icons/fi';
 
-export function CreateWorkspaceModal({ onClose, onSuccess }) {
+export default function CreateWorkspaceModal({ onClose, onSuccess }) {
   const { createWorkspace } = useWorkspace();
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [isCreating, setIsCreating] = useState(false);
@@ -14,10 +14,6 @@ export function CreateWorkspaceModal({ onClose, onSuccess }) {
     e.preventDefault();
     if (!newWorkspaceName.trim()) {
       setError("El nombre del espacio no puede estar vacío.");
-      return;
-    }
-    if (newWorkspaceName && newWorkspaceName.length < 3) {
-      setError("El nombre debe tener mas de 3 letras.");
       return;
     }
     setError('');

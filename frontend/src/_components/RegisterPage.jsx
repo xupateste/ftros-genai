@@ -5,7 +5,7 @@ import { FiUser, FiMail, FiKey, FiX, FiUserPlus, FiLoader } from 'react-icons/fi
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 
-export function RegisterPage ({ onRegisterSuccess, onSwitchToLogin, onClose, onBackToLanding, sessionId, onboardingData }) {
+export default function RegisterPage ({ onRegisterSuccess, onSwitchToLogin, onClose, onBackToLanding, sessionId, onboardingData }) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');

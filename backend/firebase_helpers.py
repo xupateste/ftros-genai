@@ -9,7 +9,9 @@ from firebase_config import db, bucket
 import os
 
 def upload_to_storage(
-    session_id: str, 
+    user_id: Optional[str],
+    workspace_id: Optional[str],
+    session_id: Optional[str],
     file_contents: bytes, 
     # --- CAMBIOS EN LA FIRMA ---
     tipo_archivo: Literal['inventario', 'ventas'],
@@ -28,7 +30,19 @@ def upload_to_storage(
         # CAMBIO CLAVE: Construimos el nombre del archivo estandarizado
         standard_filename = f"{timestamp_str}_{tipo_archivo}{file_extension}"
         
-        blob_path = f"uploads/{session_id}/{standard_filename}"
+        blob_path = None
+
+        if user_id and workspace_id:
+            # Ruta para usuarios registrados
+            blob_path = f"uploads/{user_id}/{standard_filename}"
+        elif session_id:
+            # Ruta para sesiones anónimas
+            blob_path = f"uploads/{session_id}/{standard_filename}"
+            base_ref = db.collection('sesiones_anonimas').document(session_id)
+        else:
+            print("🔥 Error de logging: No se proporcionó contexto (usuario/workspace o sesión).")
+            return
+
         blob = bucket.blob(blob_path)
 
         # Sube el contenido directamente
@@ -69,7 +83,7 @@ def extraer_metadatos_df(df: pd.DataFrame, tipo_archivo: str) -> Dict[str, Any]:
                 metadata['num_categorias_unicas'] = len(categorias_unicas)
                 # Guardamos tanto la lista completa (para el frontend) como la vista previa (para el log)
                 metadata['lista_completa_categorias'] = categorias_unicas
-                metadata['preview_categorias'] = categorias_unicas[:5]
+                # metadata['preview_categorias'] = categorias_unicas[:5]
 
             col_marca = 'Marca'
             if col_marca in df.columns:
@@ -77,7 +91,7 @@ def extraer_metadatos_df(df: pd.DataFrame, tipo_archivo: str) -> Dict[str, Any]:
                 marcas_unicas = sorted(df[col_marca].dropna().unique().tolist())
                 metadata['num_marcas_unicas'] = len(marcas_unicas)
                 metadata['lista_completa_marcas'] = marcas_unicas
-                metadata['preview_marcas'] = marcas_unicas[:5]
+                # metadata['preview_marcas'] = marcas_unicas[:5]
 
         elif tipo_archivo == 'ventas':
             # La lógica para ventas se mantiene, pero se beneficia de la limpieza de columnas

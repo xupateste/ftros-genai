@@ -1,9 +1,9 @@
 // src/components/RegisterModal.jsx
 import React from 'react';
-import { RegisterPage } from './RegisterPage';
+import RegisterPage from './RegisterPage';
 import { FiX } from 'react-icons/fi';
 
-export function RegisterModal({ onRegisterSuccess, onSwitchToLogin, onClose, sessionId, onboardingData, onBackToLanding }) {
+export default function RegisterModal({ onRegisterSuccess, onSwitchToLogin, onClose, sessionId, onboardingData, onBackToLanding }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
       <div className="relative">

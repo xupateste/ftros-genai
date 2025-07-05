@@ -199,6 +199,75 @@ async def get_session_state(
 
 
 # ===================================================================================
+# --- NUEVO ENDPOINT PARA OBTENER EL ESTADO DE UN WORKSPACE ESPECÍFICO ---
+# ===================================================================================
+
+@app.get("/workspaces/{workspace_id}/state", summary="Recupera el estado de un espacio de trabajo", tags=["Espacios de Trabajo"])
+async def get_workspace_state(
+    workspace_id: str,
+    current_user: dict = Depends(get_current_user)
+):
+    """
+    Busca en Firestore el estado completo de un espacio de trabajo específico,
+    incluyendo los últimos archivos cargados, el historial de reportes y los créditos del usuario.
+    Solo el dueño del workspace puede acceder.
+    """
+    try:
+        user_email = current_user.get("email")
+        
+        # --- 1. Obtener créditos del documento principal del usuario ---
+        user_ref = db.collection('usuarios').document(user_email)
+        user_doc = user_ref.get()
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail="Usuario no encontrado.")
+        
+        user_data = user_doc.to_dict()
+        creditos_restantes = user_data.get("creditos_restantes", 0)
+        creditos_iniciales = user_data.get("creditos_iniciales", 0)
+        creditos_usados = creditos_iniciales - creditos_restantes
+
+        # --- 2. Obtener los últimos archivos cargados para este workspace ---
+        files_ref = user_ref.collection('espacios_trabajo').document(workspace_id).collection('archivos_cargados')
+        # Pedimos el último archivo de cada tipo
+        query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1)
+        query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1)
+ 
+        last_venta_id = next(query_ventas.stream(), None)
+        last_inventario_id = next(query_inventario.stream(), None)
+
+        files_map = {
+            "ventas": last_venta_id.id if last_venta_id else None,
+            "inventario": last_inventario_id.id if last_inventario_id else None
+        }
+
+        # --- 3. Obtener el historial de reportes para este workspace ---
+        historial_ref = user_ref.collection('espacios_trabajo').document(workspace_id).collection('reportes_generados')
+        query_historial = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(10)
+        
+        historial_list = []
+        for doc in query_historial.stream():
+            doc_data = doc.to_dict()
+            if 'fechaGeneracion' in doc_data and isinstance(doc_data['fechaGeneracion'], datetime):
+                doc_data['fechaGeneracion'] = doc_data['fechaGeneracion'].isoformat()
+            historial_list.append(doc_data)
+
+        # --- 4. Construir y devolver la respuesta completa ---
+        return JSONResponse(content={
+            "credits": {
+                "used": creditos_usados,
+                "remaining": creditos_restantes
+            },
+            "history": historial_list,
+            "files": files_map
+        })
+
+    except Exception as e:
+        print(f"🔥 Error al recuperar estado del workspace {workspace_id}: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo recuperar el estado del espacio de trabajo.")
+
+
+
+# ===================================================================================
 # --- NUEVOS ENDPOINTS PARA GESTIONAR LA ESTRATEGIA ---
 # ===================================================================================
 @app.get("/strategy/default", summary="Obtiene la estrategia de negocio por defecto", tags=["Estrategia"])

@@ -17,6 +17,7 @@ import math
 import uuid
 # --- Importaciones de nuestros nuevos módulos ---
 from firebase_admin import firestore
+from google.cloud.firestore_v1.base_query import FieldFilter
 import firebase_config # Importar para asegurar que se inicialice
 from firebase_helpers import db, upload_to_storage, log_analysis_in_firestore, extraer_metadatos_df, log_file_upload_in_firestore, descargar_contenido_de_storage, log_report_generation
 from pydantic import BaseModel, Field
@@ -33,7 +34,7 @@ from report_config import REPORTS_CONFIG
 from plan_config import PLANS_CONFIG
 from strategy_config import DEFAULT_STRATEGY
 
-INITIAL_CREDITS = 35
+INITIAL_CREDITS = 25
 
 app = FastAPI(
     title="Ferretero.IA API",
@@ -127,6 +128,67 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt
 
+   
+# ===================================================================================
+# --- NUEVOS ENDPOINTS PARA GESTIONAR LOS WORKSPACES ---
+# ===================================================================================
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """
+    Decodifica el token JWT para obtener la información del usuario.
+    Esta función se usará en todos los endpoints protegidos.
+    """
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="No se pudieron validar las credenciales",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            raise credentials_exception
+        token_data = TokenData(email=email)
+    except JWTError:
+        raise credentials_exception
+    
+    user_ref = db.collection('usuarios').document(token_data.email)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        raise credentials_exception
+        
+    return user_doc.to_dict()
+
+async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[dict]:
+    """
+    Intenta obtener el usuario autenticado desde el token.
+    Si no hay token, devuelve None sin causar un error.
+    """
+    # Si el frontend no envió una cabecera de autorización, el token será None
+    if token is None:
+        return None
+
+    # Si hay un token, intentamos validarlo como antes
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Token inválido o expirado",
+    )
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        email: str = payload.get("sub")
+        if email is None:
+            return None # El token es válido pero no contiene la información esperada
+        
+        user_ref = db.collection('usuarios').document(email)
+        user_doc = user_ref.get()
+        if not user_doc.exists:
+            return None # El usuario en el token ya no existe en la base de datos
+            
+        return user_doc.to_dict()
+    except JWTError:
+        # El token es inválido o ha expirado
+        return None
+
+
 # ===================================================================================
 # --- MODELOS DE DATOS ---
 # ===================================================================================
@@ -182,8 +244,10 @@ async def register_user(
         "rol": rol,
         "hashed_password": hashed_password,
         "fechaRegistro": now_utc,
-        "creditos_restantes": 50, # Bono de bienvenida para usuarios registrados
-        "plan": "gratis" 
+        "creditos_iniciales": 25, # Bono de bienvenida para usuarios registrados
+        "creditos_restantes": 25, # Bono de bienvenida para usuarios registrados
+        "plan": "gratis",
+        "estrategia_global": DEFAULT_STRATEGY
     }
     
     # --- LÓGICA CLAVE: CREACIÓN DEL PRIMER ESPACIO DE TRABAJO ---
@@ -245,27 +309,21 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 # ===================================================================================
 # --- NUEVO ENDPOINT PARA CREAR SESIONES ---
 # ===================================================================================
-@app.post("/sessions", summary="Crea una nueva sesión de análisis anónima con créditos", tags=["Sesión"])
+@app.post("/sessions", summary="Crea una sesión y devuelve su estado inicial", tags=["Sesión"])
 async def create_analysis_session(onboarding_data: OnboardingData):
     """
-    Inicia una nueva sesión de análisis.
-    1. Genera un ID de sesión único (UUID).
-    2. Crea un documento en Firestore para registrar la sesión.
-    3. INICIALIZA EL MONEDERO con los créditos por defecto.
-    4. Devuelve el ID de la sesión al cliente.
+    Inicia una nueva sesión, la guarda en Firestore, y devuelve el ID
+    junto con la estrategia por defecto para evitar una segunda llamada a la API.
     """
     try:
         session_id = str(uuid.uuid4())
-        now = datetime.now(timezone.utc) # Usamos UTC para consistencia
+        now = datetime.now(timezone.utc)
 
         session_ref = db.collection('sesiones_anonimas').document(session_id)
         
-        # --- Datos a guardar (ahora incluye los créditos) ---
         session_log = {
             "fechaCreacion": now,
-            "onboardingData": {
-                "rol": onboarding_data.rol
-            },
+            "onboardingData": {"rol": onboarding_data.rol},
             "ultimoAcceso": now,
             "creditos_iniciales": INITIAL_CREDITS,
             "creditos_restantes": INITIAL_CREDITS,
@@ -274,17 +332,17 @@ async def create_analysis_session(onboarding_data: OnboardingData):
         
         session_ref.set(session_log)
         
-        print(f"✅ Nueva sesión creada con {INITIAL_CREDITS} créditos. ID: {session_id}")
+        print(f"✅ Nueva sesión creada con créditos y estrategia por defecto. ID: {session_id}")
         
-        return JSONResponse(content={"sessionId": session_id})
+        # --- CAMBIO CLAVE: Devolvemos tanto el ID como la estrategia ---
+        return JSONResponse(content={
+            "sessionId": session_id,
+            "strategy": DEFAULT_STRATEGY
+        })
 
     except Exception as e:
         print(f"🔥 Error al crear la sesión en Firestore: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail=f"No se pudo crear la sesión en el servidor. Error: {e}"
-        )
-
+        raise HTTPException(status_code=500, detail="No se pudo crear la sesión en el servidor.")
 
 # ===================================================================================
 # --- NUEVO ENDPOINT PARA RECUPERAR EL ESTADO DE LA SESIÓN ---
@@ -347,64 +405,144 @@ async def get_session_state(
         print(f"🔥 Error al recuperar estado de sesión para {X_Session_ID}: {e}")
         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado de la sesión desde el servidor.")
 
-# ===================================================================================
-# --- NUEVOS ENDPOINTS PARA GESTIONAR LOS WORKSPACES ---
-# ===================================================================================
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """
-    Decodifica el token JWT para obtener la información del usuario.
-    Esta función se usará en todos los endpoints protegidos.
-    """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="No se pudieron validar las credenciales",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-        token_data = TokenData(email=email)
-    except JWTError:
-        raise credentials_exception
-    
-    user_ref = db.collection('usuarios').document(token_data.email)
-    user_doc = user_ref.get()
-    if not user_doc.exists:
-        raise credentials_exception
-        
-    return user_doc.to_dict()
 
-async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme)) -> Optional[dict]:
+# ===================================================================================
+# --- NUEVO ENDPOINT PARA OBTENER EL ESTADO DE UN WORKSPACE ESPECÍFICO ---
+# ===================================================================================
+@app.get("/workspaces/{workspace_id}/state", summary="Recupera el estado de un espacio de trabajo (con caché de filtros)", tags=["Espacios de Trabajo"])
+async def get_workspace_state(
+    workspace_id: str,
+    current_user: dict = Depends(get_current_user)
+):
     """
-    Intenta obtener el usuario autenticado desde el token.
-    Si no hay token, devuelve None sin causar un error.
+    Busca en Firestore el estado completo de un espacio de trabajo.
+    Ahora, prioriza la lectura de los filtros cacheados directamente desde el
+    documento del workspace para una carga más rápida.
     """
-    # Si el frontend no envió una cabecera de autorización, el token será None
-    if token is None:
-        return None
-
-    # Si hay un token, intentamos validarlo como antes
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Token inválido o expirado",
-    )
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        email: str = payload.get("sub")
-        if email is None:
-            return None # El token es válido pero no contiene la información esperada
+        user_email = current_user.get("email")
         
-        user_ref = db.collection('usuarios').document(email)
+        # --- 1. Obtener datos del usuario y del workspace ---
+        user_ref = db.collection('usuarios').document(user_email)
+        workspace_ref = user_ref.collection('espacios_trabajo').document(workspace_id)
+        
         user_doc = user_ref.get()
-        if not user_doc.exists:
-            return None # El usuario en el token ya no existe en la base de datos
-            
-        return user_doc.to_dict()
-    except JWTError:
-        # El token es inválido o ha expirado
-        return None
+        workspace_doc = workspace_ref.get()
+
+        if not user_doc.exists or not workspace_doc.exists:
+            raise HTTPException(status_code=404, detail="Usuario o espacio de trabajo no encontrado.")
+        
+        user_data = user_doc.to_dict()
+        workspace_data = workspace_doc.to_dict()
+
+        # --- 2. LÓGICA DE CACHÉ PARA LOS FILTROS ---
+        available_filters = None
+        
+        # Primero, intentamos leer los filtros directamente desde el caché en el documento del workspace
+        if "filtros_disponibles" in workspace_data:
+            print(f"✅ Filtros encontrados en el caché de Firestore para el workspace '{workspace_id}'.")
+            available_filters = workspace_data["filtros_disponibles"]
+        
+        # --- 3. Obtener los últimos archivos cargados (la lógica no cambia) ---
+        files_ref = workspace_ref.collection('archivos_cargados')
+        query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1)
+        query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1)
+        
+        last_venta_id = next(query_ventas.stream(), None)
+        last_inventario_id = next(query_inventario.stream(), None)
+
+        files_map = {
+            "ventas": last_venta_id.id if last_venta_id else None,
+            "inventario": last_inventario_id.id if last_inventario_id else None
+        }
+
+        # --- 4. Fallback (Plan B): Si no hay caché, lo generamos al vuelo ---
+        # Esto da robustez al sistema si se trabaja con un workspace antiguo que no tenía el caché.
+        if available_filters is None and files_map["inventario"]:
+            print(f"⚠️ Filtros no encontrados en caché. Generando al vuelo para el workspace '{workspace_id}'.")
+            inventario_contents = descargar_contenido_de_storage(user_email, workspace_id, None, files_map["inventario"])
+            df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+            metadata = extraer_metadatos_df(df_inventario, 'inventario')
+            available_filters = {
+                "categorias": metadata.get("lista_completa_categorias", []),
+                "marcas": metadata.get("lista_completa_marcas", [])
+            }
+
+        # --- 5. Obtener el resto de la información (créditos e historial) ---
+        creditos_restantes = user_data.get("creditos_restantes", 0)
+        creditos_iniciales = user_data.get("creditos_iniciales", 0)
+        creditos_usados = creditos_iniciales - creditos_restantes
+        
+        historial_ref = workspace_ref.collection('reportes_generados')
+        query_historial = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(10)
+        
+        historial_list = []
+        for doc in query_historial.stream():
+            doc_data = doc.to_dict()
+            if 'fechaGeneracion' in doc_data and isinstance(doc_data['fechaGeneracion'], datetime):
+                doc_data['fechaGeneracion'] = doc_data['fechaGeneracion'].isoformat()
+            historial_list.append(doc_data)
+
+        # --- 6. Construir y devolver la respuesta completa ---
+        return JSONResponse(content={
+            "credits": {"used": creditos_usados, "remaining": creditos_restantes},
+            "history": historial_list,
+            "files": files_map,
+            "available_filters": available_filters or {"categorias": [], "marcas": []} # Aseguramos que siempre sea un objeto
+        })
+
+    except Exception as e:
+        print(f"🔥 Error al recuperar estado del workspace {workspace_id}: {e}")
+        raise HTTPException(status_code=500, detail="No se pudo recuperar el estado del espacio de trabajo.")
+
+
+# @app.get("/workspaces/{workspace_id}/state", summary="Recupera el estado de un espacio de trabajo específico", tags=["Espacios de Trabajo"])
+# async def get_workspace_state(
+#     workspace_id: str,
+#     current_user: dict = Depends(get_current_user)
+# ):
+#     """
+#     Busca en Firestore el estado de un workspace, incluyendo los archivos cargados
+#     y el historial de reportes. Solo el dueño puede acceder.
+#     """
+#     try:
+#         user_email = current_user.get("email")
+#         base_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+        
+#         # 1. Obtener archivos cargados
+#         files_ref = base_ref.collection('archivos_cargados')
+#         docs_files = files_ref.order_by("fechaCarga", direction=firestore.Query.DESCENDING).stream()
+#         files_map = {}
+#         for doc in docs_files:
+#             file_data = doc.to_dict()
+#             # Guardamos solo el último archivo de cada tipo
+#             if not files_map.get(file_data.get("tipoArchivo")):
+#                 files_map[file_data.get("tipoArchivo")] = doc.id
+        
+#         # 2. Obtener historial de reportes
+#         historial_ref = base_ref.collection('reportes_generados')
+#         query = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(10)
+#         docs_historial = query.stream()
+#         historial_list = []
+#         for doc in docs_historial:
+#             # ... (tu lógica para convertir fechas a ISO string) ...
+#             historial_list.append(doc.to_dict())
+
+#         # 3. Obtenemos los créditos del documento del usuario principal
+#         user_doc = db.collection('usuarios').document(user_email).get()
+#         user_data = user_doc.to_dict()
+#         creditos_restantes = user_data.get("creditos_restantes", 0)
+#         creditos_usados = user_data.get("creditos_iniciales", 50) - creditos_restantes
+
+#         return JSONResponse(content={
+#             "credits": {"used": creditos_usados, "remaining": creditos_restantes},
+#             "history": historial_list,
+#             "files": { "ventas": files_map.get("ventas"), "inventario": files_map.get("inventario") }
+#         })
+
+#     except Exception as e:
+#         print(f"🔥 Error al recuperar estado del workspace {workspace_id}: {e}")
+#         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado del espacio de trabajo.")
 
 
 # ===================================================================================
@@ -415,6 +553,7 @@ class WorkspaceCreate(BaseModel):
 
 class WorkspaceUpdate(BaseModel):
     nombre: str = Field(..., min_length=3, max_length=50, description="El nuevo nombre para el espacio de trabajo.")
+
 
 # ===================================================================================
 # --- API PARA GESTIÓN DE ESPACIOS DE TRABAJO ---
@@ -638,14 +777,75 @@ async def touch_workspace(
         return {"message": "La operación continuó aunque no se pudo actualizar el timestamp."}
 
 
+# ===================================================================================
+# --- 4. NUEVOS ENDPOINTS PARA GESTIONAR LA ESTRATEGIA ---
+# ===================================================================================
 
-# ===================================================================================
-# --- NUEVOS ENDPOINTS PARA GESTIONAR LA ESTRATEGIA ---
-# ===================================================================================
 @app.get("/strategy/default", summary="Obtiene la estrategia de negocio por defecto", tags=["Estrategia"])
 async def get_default_strategy():
     """Devuelve la configuración base recomendada para los parámetros de análisis."""
     return JSONResponse(content=DEFAULT_STRATEGY)
+
+@app.get("/strategy", summary="Obtiene la estrategia global del usuario", tags=["Estrategia"])
+async def get_global_strategy(current_user: dict = Depends(get_current_user)):
+    """Devuelve la estrategia global guardada para el usuario autenticado."""
+    return JSONResponse(content=current_user.get("estrategia_global", DEFAULT_STRATEGY))
+
+@app.put("/strategy", summary="Actualiza la estrategia global del usuario", tags=["Estrategia"])
+async def update_global_strategy(strategy_data: StrategyData, current_user: dict = Depends(get_current_user)):
+    """Actualiza la estrategia global para el usuario autenticado."""
+    user_email = current_user.get("email")
+    user_ref = db.collection('usuarios').document(user_email)
+    user_ref.update({"estrategia_global": strategy_data.dict()})
+    return {"message": "Estrategia global actualizada."}
+
+@app.get("/workspaces/{workspace_id}/strategy", summary="Obtiene la estrategia efectiva para un workspace", tags=["Estrategia"])
+async def get_workspace_strategy(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Devuelve la estrategia para un workspace, aplicando la jerarquía:
+    1. Estrategia personalizada del workspace (si existe).
+    2. Estrategia global del usuario.
+    """
+    user_email = current_user.get("email")
+    workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+    workspace_doc = workspace_ref.get()
+
+    if not workspace_doc.exists:
+        raise HTTPException(status_code=404, detail="Espacio de trabajo no encontrado.")
+
+    workspace_data = workspace_doc.to_dict()
+    
+    # Lógica de cascada
+    if "estrategia_personalizada" in workspace_data:
+        return JSONResponse(content=workspace_data["estrategia_personalizada"])
+    else:
+        return JSONResponse(content=current_user.get("estrategia_global", DEFAULT_STRATEGY))
+
+@app.put("/workspaces/{workspace_id}/strategy", summary="Guarda una estrategia personalizada para un workspace", tags=["Estrategia"])
+async def save_workspace_strategy(workspace_id: str, strategy_data: StrategyData, current_user: dict = Depends(get_current_user)):
+    """Guarda o actualiza la estrategia personalizada para un workspace específico."""
+    user_email = current_user.get("email")
+    workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+    workspace_ref.update({"estrategia_personalizada": strategy_data.dict()})
+    return {"message": "Estrategia del espacio de trabajo guardada."}
+
+@app.delete("/workspaces/{workspace_id}/strategy", summary="Restaura la estrategia de un workspace a la global", tags=["Estrategia"])
+async def reset_workspace_strategy(workspace_id: str, current_user: dict = Depends(get_current_user)):
+    """
+    Elimina la estrategia personalizada de un workspace, haciendo que vuelva a
+    heredar la estrategia global del usuario.
+    """
+    user_email = current_user.get("email")
+    workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+    workspace_ref.update({"estrategia_personalizada": firestore.DELETE_FIELD})
+    return {"message": "Estrategia del espacio de trabajo restaurada a la global."}
+
+
+
+
+# # ===================================================================================
+# # --- NUEVOS ENDPOINTS PARA GESTIONAR LA ESTRATEGIA ---
+# # ===================================================================================
 
 @app.get("/sessions/{session_id}/strategy", summary="Obtiene la estrategia guardada para una sesión", tags=["Estrategia"])
 async def get_session_strategy(session_id: str):
@@ -679,125 +879,150 @@ async def get_session_strategy(session_id: str):
         print(f"🔥 Error al obtener la estrategia para la sesión {session_id}: {e}")
         raise HTTPException(status_code=500, detail=f"No se pudo obtener la estrategia: {e}")
 
-@app.post("/sessions/{session_id}/strategy", summary="Guarda la estrategia de negocio para una sesión", tags=["Estrategia"])
-async def save_strategy(session_id: str, strategy_data: StrategyData):
-    """
-    Actualiza la configuración de la estrategia para una sesión dada en Firestore.
-    """
-    try:
-        session_ref = db.collection('sesiones_anonimas').document(session_id)
+# @app.post("/sessions/{session_id}/strategy", summary="Guarda la estrategia de negocio para una sesión", tags=["Estrategia"])
+# async def save_strategy(session_id: str, strategy_data: StrategyData):
+#     """
+#     Actualiza la configuración de la estrategia para una sesión dada en Firestore.
+#     """
+#     try:
+#         session_ref = db.collection('sesiones_anonimas').document(session_id)
 
-        # --- CAMBIO CLAVE: LÓGICA DE ESCRITURA ---
-        # Usamos .set() con merge=True. Esto añadirá el campo 'estrategia' si no existe,
-        # o lo sobrescribirá por completo si ya existe, sin tocar otros campos
-        # como los créditos.
-        # El método .dict() de Pydantic convierte el objeto strategy_data en un diccionario
-        # que Firestore puede entender.
-        session_ref.set({"estrategia": strategy_data.dict()}, merge=True)
+#         # --- CAMBIO CLAVE: LÓGICA DE ESCRITURA ---
+#         # Usamos .set() con merge=True. Esto añadirá el campo 'estrategia' si no existe,
+#         # o lo sobrescribirá por completo si ya existe, sin tocar otros campos
+#         # como los créditos.
+#         # El método .dict() de Pydantic convierte el objeto strategy_data en un diccionario
+#         # que Firestore puede entender.
+#         session_ref.set({"estrategia": strategy_data.dict()}, merge=True)
         
-        print(f"✅ Estrategia actualizada exitosamente para la sesión: {session_id}")
+#         print(f"✅ Estrategia actualizada exitosamente para la sesión: {session_id}")
         
-        return JSONResponse(
-            status_code=200,
-            content={"message": "Estrategia guardada exitosamente."}
-        )
+#         return JSONResponse(
+#             status_code=200,
+#             content={"message": "Estrategia guardada exitosamente."}
+#         )
         
-    except Exception as e:
-        print(f"🔥 Error al guardar la estrategia para la sesión {session_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"No se pudo guardar la estrategia: {e}")
+#     except Exception as e:
+#         print(f"🔥 Error al guardar la estrategia para la sesión {session_id}: {e}")
+#         raise HTTPException(status_code=500, detail=f"No se pudo guardar la estrategia: {e}")
 
 
-# ===================================================================================
-# --- NUEVO ENDPOINT PARA LA CARGA DE ARCHIVOS DEDICADA ---
-# ===================================================================================
-@app.post("/upload-file", summary="Sube, registra y extrae metadatos de un archivo", tags=["Archivos"])
+# @app.get("/workspaces/{workspace_id}/strategy", summary="Obtiene la estrategia guardada para un workspace", tags=["Estrategia"])
+# async def get_workspace_strategy(
+#     workspace_id: str,
+#     current_user: dict = Depends(get_current_user)
+# ):
+#     """
+#     Devuelve la configuración de estrategia para un workspace específico.
+#     Si el workspace no tiene una estrategia personalizada, busca la global del usuario.
+#     Si el usuario no tiene una, devuelve la de por defecto.
+#     """
+#     try:
+#         user_email = current_user.get("email")
+        
+#         # 1. Intenta obtener la estrategia específica del workspace
+#         workspace_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+#         workspace_doc = workspace_ref.get()
+#         if workspace_doc.exists and "estrategia" in workspace_doc.to_dict():
+#             return JSONResponse(content=workspace_doc.to_dict()["estrategia"])
+
+#         # 2. Si no existe, intenta obtener la estrategia global del usuario
+#         user_ref = db.collection('usuarios').document(user_email)
+#         user_doc = user_ref.get()
+#         if user_doc.exists and "estrategia_global" in user_doc.to_dict():
+#             return JSONResponse(content=user_doc.to_dict()["estrategia_global"])
+            
+#         # 3. Como último recurso, devuelve la de por defecto
+#         return JSONResponse(content=DEFAULT_STRATEGY)
+
+#     except Exception as e:
+#         raise HTTPException(status_code=500, detail=f"No se pudo obtener la estrategia: {e}")
+
+
+@app.post("/upload-file", summary="Sube, registra y cachea los filtros de un archivo", tags=["Archivos"])
 async def upload_file(
-    # --- Parámetros de contexto (TODOS OPCIONALES) ---
+    # --- Parámetros de contexto (sin cambios) ---
     current_user: Optional[dict] = Depends(get_current_user_optional),
     X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID"),
     workspace_id: Optional[str] = Form(None),
-    # --- Parámetros de la petición ---
+    # --- Parámetros de la petición (sin cambios) ---
     tipo_archivo: Literal['inventario', 'ventas'] = Form(...),
     file: UploadFile = File(...)
 ):
     user_id = None
     session_id_to_use = None
 
-    # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
+    # --- Lógica de Determinación de Contexto (sin cambios) ---
     if current_user:
-        # CASO 1: Usuario Registrado
         if not workspace_id:
             raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
         user_id = current_user['email']
         print(f"Contexto de carga: Usuario Registrado ({user_id}), Workspace ({workspace_id})")
     elif X_Session_ID:
-        # CASO 2: Usuario Anónimo
         session_id_to_use = X_Session_ID
         print(f"Contexto de carga: Sesión Anónima ({session_id_to_use})")
     else:
-        # CASO 3: No hay identificador
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
-    # Leemos el contenido del archivo una sola vez al principio
     contents = await file.read()
     df = None
-    
-    # --- LÓGICA DE LECTURA CORREGIDA ---
-    # Probamos las configuraciones en orden
-    try:
-        # Intento 1: UTF-8, separado por comas
-        df = pd.read_csv(io.BytesIO(contents), sep=',')
-    except Exception:
-        print("Intento 1 falló. Reintentando...")
-        try:
-            # Intento 2: Latin-1, separado por comas
-            df = pd.read_csv(io.BytesIO(contents), sep=',', encoding='latin1')
-        except Exception:
-            print("Intento 2 falló. Reintentando...")
-            try:
-                # Intento 3: UTF-8, separado por punto y coma
-                df = pd.read_csv(io.BytesIO(contents), sep=';', encoding='utf-8')
-            except Exception:
-                print("Intento 3 falló. Reintentando...")
-                try:
-                    # Intento 4 (Final): Latin-1, separado por punto y coma
-                    df = pd.read_csv(io.BytesIO(contents), sep=';', encoding='latin1')
-                except Exception as e:
-                    # Si todos los intentos fallan
-                    raise HTTPException(
-                        status_code=400,
-                        detail=f"No se pudo leer el archivo CSV. Verifique su formato. Error: {e}"
-                    )
+    last_error = None
 
-    if df is None or df.empty:
-        raise HTTPException(status_code=400, detail="El archivo se leyó pero está vacío o no se pudo interpretar.")
+    # Lista de configuraciones a intentar, en orden de probabilidad
+    configs_to_try = [
+        {'sep': ',', 'encoding': 'utf-8', 'skiprows': 0},
+        {'sep': ',', 'encoding': 'latin1', 'skiprows': 0},
+        {'sep': ';', 'encoding': 'utf-8', 'skiprows': 0},
+        {'sep': ';', 'encoding': 'latin1', 'skiprows': 0},
+        # Como plan B, intentamos leer sin saltar ninguna fila, por si el formato cambia
+        {'sep': ',', 'encoding': 'utf-8'},
+    ]
+
+    for config in configs_to_try:
+        try:
+            # Creamos un nuevo flujo de bytes en cada intento para empezar desde el principio
+            df = pd.read_csv(io.BytesIO(contents), **config)
+            print(f"✅ Archivo leído exitosamente con la configuración: {config}")
+            break # Si tiene éxito, salimos del bucle
+        except Exception as e:
+            last_error = e
+            # Si falla, simplemente continuamos con la siguiente configuración
+            continue
     
-    # Limpiamos los nombres de las columnas
+    # Si después de todos los intentos no se pudo leer, lanzamos el error final
+    if df is None:
+        raise HTTPException(
+            status_code=400,
+            detail=f"No se pudo leer el archivo CSV. Verifique su formato. Error final: {last_error}"
+        )
+
+    # El resto de tu lógica no cambia
     df.columns = df.columns.str.strip()
 
-    # --- El resto de tu lógica se mantiene igual ---
+
     try:
         metadata = extraer_metadatos_df(df, tipo_archivo)
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error al procesar el contenido del archivo: {e}")
-
+    
     try:
+        # --- Guardado en Firebase y Registro ---
         now = datetime.now(timezone.utc)
         timestamp_str = now.strftime('%Y-%m-%d_%H%M%S')
         
         ruta_storage = upload_to_storage(
-            # Esta función también debería ser refactorizada para aceptar el contexto
-            session_id=(session_id_to_use or user_id), # Usamos el ID de usuario como "carpeta" si existe
+            user_id=user_id,
+            workspace_id=workspace_id,
+            session_id=session_id_to_use,
             file_contents=contents,
             tipo_archivo=tipo_archivo,
             original_filename=file.filename,
             content_type=file.content_type,
             timestamp_str=timestamp_str
-        )
-          
+        ) # Tu llamada a upload_to_storage
+        
         file_id = f"{timestamp_str}_{tipo_archivo}"
 
-        # Llamamos a la función de logging con el contexto correcto
         log_file_upload_in_firestore(
             user_id=user_id,
             workspace_id=workspace_id,
@@ -810,18 +1035,34 @@ async def upload_file(
             timestamp_obj=now
         )
 
-        if user_id and workspace_id:
-            workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
-            workspace_ref.update({"fechaModificacion": datetime.now(timezone.utc)})
+        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ ---
+        # Si la carga es de un usuario registrado y el archivo es un inventario...
+        if user_id and workspace_id and tipo_archivo == 'inventario':
+            print(f"Detectado archivo de inventario para usuario registrado. Cacheando filtros...")
+            
+            # Obtenemos las listas de filtros desde los metadatos que ya extrajimos
+            filtros_a_guardar = {
+                "categorias": metadata.get("lista_completa_categorias", []),
+                "marcas": metadata.get("lista_completa_marcas", [])
+            }
 
-        
+            # Obtenemos la referencia al documento del ESPACIO DE TRABAJO
+            workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+            
+            # Actualizamos el documento del workspace con los filtros disponibles
+            workspace_ref.update({"filtros_disponibles": filtros_a_guardar})
+            
+            print(f"✅ Filtros cacheados exitosamente en el workspace '{workspace_id}'.")
+        # --- FIN DE LA NUEVA LÓGICA DE CACHÉ ---
+
+        # La construcción de la respuesta no cambia
         response_content = {
-            "message": f"Archivo de {tipo_archivo} subido y registrado exitosamente.",
+            "message": f"Archivo de {tipo_archivo} subido exitosamente.",
             "file_id": file_id,
             "tipo_archivo": tipo_archivo,
             "nombre_original": file.filename
         }
-
+        # Si es un inventario (para cualquier tipo de usuario), devolvemos los filtros para uso inmediato
         if tipo_archivo == 'inventario':
             response_content["available_filters"] = {
                 "categorias": metadata.get("lista_completa_categorias", []),
@@ -831,7 +1072,7 @@ async def upload_file(
         return JSONResponse(content=response_content)
 
     except Exception as e:
-        print(f"🔥 Error en la fase de guardado para la sesión: {e}")
+        print(f"🔥 Error en la fase de guardado: {e}")
         raise HTTPException(status_code=500, detail="Ocurrió un error al guardar el archivo en el servidor.")
 
 

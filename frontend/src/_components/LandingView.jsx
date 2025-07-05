@@ -6,7 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // ===================================================================================
 // --- VISTA 1: El Nuevo Landing Page ---
 // ===================================================================================
-export function LandingView ({ onStartSession, onLoginClick }) {
+export default function LandingView ({ onStartSession, onLoginClick }) {
   return (
   <div className="min-h-screen bg-gradient-to-b from-neutral-900 via-background to-gray-900
           flex flex-col items-center justify-center text-center px-4 py-4 sm:px-8 md:px-12 lg:px-20">

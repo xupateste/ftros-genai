@@ -1,7 +1,7 @@
 // src/components/StrategySlider.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
-import { FiInfo } from 'react-icons/fi'; // O el icono que prefieras
+import { FiInfo, FiX } from 'react-icons/fi'; // O el icono que prefieras
 
 export function StrategySlider({ name, label, tooltipText, value, onChange }) {
   // 1. Estado para controlar la visibilidad del tooltip

@@ -7,7 +7,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // ===================================================================================
 // --- VISTA LOGIN ---
 // ===================================================================================
-export function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister, onBackToAnalysis }) {
+export default function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister, onBackToAnalysis }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -50,7 +50,7 @@ export function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister, onBack
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4 animate-fade-in">
     <div className="w-full max-w-md mx-auto animate-fade-in text-white">
       <div className="bg-gray-800 border border-gray-700 rounded-lg p-8 shadow-2xl">
-        <button onClick={onClose} className="relative float-right text-gray-400 hover:text-gray-600">
+        <button onClick={onBackToAnalysis} className="relative float-right text-gray-400 hover:text-gray-600">
            <FiX size={24}/>
         </button>
        <h2 className="text-3xl font-bold mb-6 text-center">Iniciar Sesión</h2>
@@ -99,7 +99,7 @@ export function LoginPage ({ onLoginSuccess, onClose, onSwitchToRegister, onBack
         </form>
         <div className="mt-6 text-center text-sm">
             <p className="text-gray-400">¿No tienes cuenta? <button onClick={onSwitchToRegister} className="font-semibold text-purple-400 hover:underline">Regístrate</button></p>
-            <button onClick={onClose} className="mt-4 text-xs text-gray-500 hover:text-white">&larr; Volver</button>
+            <button onClick={onBackToAnalysis} className="mt-4 text-xs text-gray-500 hover:text-white">&larr; Volver</button>
         </div>
       </div>
     </div>

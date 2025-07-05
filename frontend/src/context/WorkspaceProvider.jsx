@@ -14,43 +14,35 @@ export function WorkspaceProvider({ children }) {
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
-  
-  // Función para cargar los espacios de trabajo de un usuario
-  // const fetchWorkspaces = useCallback(async () => {
-  //   setIsLoading(true);
-  //   try {
-  //     const response = await api.get('/workspaces');
-  //     setWorkspaces(response.data);
-  //     // Establece el primer espacio de trabajo como activo por defecto
-  //     if (response.data.length > 0 && !activeWorkspace) {
-  //       setActiveWorkspace(response.data[0]);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error al cargar los espacios de trabajo:", error);
-  //     setWorkspaces([]); // En caso de error, dejamos la lista vacía
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // }, [activeWorkspace]);
 
-  const fetchWorkspaces = useCallback(async (token) => {
-    if (!token) return []; // Devuelve un array vacío si no hay token
+  const fetchWorkspaces = useCallback(async () => {
     setIsLoading(true);
     try {
-      const response = await api.get('/workspaces', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const response = await api.get('/workspaces');
       setWorkspaces(response.data);
-      // --- CAMBIO CLAVE ---
-      return response.data; // Devuelve los datos para que otros componentes puedan usarlos
+      // Si hay workspaces, establecemos el primero como activo por defecto
+      if (response.data.length > 0) {
+        setActiveWorkspace(response.data[0]);
+        return response.data[0]; // Devolvemos el workspace activo
+      }
+      return null; // Devolvemos null si no hay workspaces
     } catch (error) {
       console.error("Error al cargar los espacios de trabajo:", error);
       setWorkspaces([]);
-      return []; // Devuelve un array vacío en caso de error
+      return null;
     } finally {
       setIsLoading(false);
     }
   }, []);
+
+  // --- NUEVA FUNCIÓN PARA LIMPIAR EL ESTADO ---
+  const clearWorkspaceContext = useCallback(() => {
+    console.log("Limpiando contexto del espacio de trabajo...");
+    setWorkspaces([]);
+    setActiveWorkspace(null);
+    setIsLoading(false);
+  }, []);
+
 
   // Función para crear un nuevo espacio de trabajo
   const createWorkspace = useCallback(async (name) => {
@@ -175,7 +167,8 @@ export function WorkspaceProvider({ children }) {
     deleteWorkspace,
     isSwitching,
     togglePinWorkspace,
-    touchWorkspace
+    touchWorkspace,
+    clearWorkspaceContext
   };
 
   return (

@@ -1,123 +1,67 @@
+// src/App.jsx (Versión Final Orquestada)
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { WorkspaceProvider, useWorkspace } from './context/WorkspaceProvider';
 import { StrategyProvider } from './context/StrategyProvider';
-import LandingPage from './pages/LandingPage'; // Tu componente existente
-import { Dashboard } from './components/Dashboard'; // El nuevo componente
-import { LoginPage } from './components/_LoginPage'; // Asumiendo que tienes un componente de Login
-import { AppHeader } from './components/AppHeader'; // Importa el nuevo encabezado
-import AnalysisWorkspace from './components/AnalysisWorkspace'; // Necesitaremos renderizarlo desde aquí
+import { ConfigProvider } from './context/ConfigProvider'; // <-- Importa el nuevo provider
 
-// Componente de Carga para una mejor UX
-const LoadingScreen = ({ message = "Cargando Ferretero.IA..." }) => (
-  <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center text-white">
-    <p>{message}</p>
-    {/* Aquí podrías añadir un spinner o logo animado */}
-  </div>
-);
+// Importa las vistas principales
+import LandingPage from './pages/LandingPage';
+import { Dashboard } from './components/Dashboard';
+import { LoadingScreen } from './components/LoadingScreen'; // Asumiendo que creas este componente
 
+// Este componente hijo contiene la lógica para evitar problemas con el contexto
 function AppContent() {
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('accessToken'));
-  // El estado ahora puede ser: 'loading', 'landing', 'dashboard', 'analysis'
-  const [currentView, setCurrentView] = useState('loading');
+  const [currentView, setCurrentView] = useState('loading'); // loading, landing, dashboard
 
-  // const [isInitializing, setIsInitializing] = useState(true);
+  const { fetchWorkspaces, clearWorkspaceContext } = useWorkspace();
 
-  // Obtenemos la función para cargar los workspaces desde el contexto
-  const { activeWorkspace, setActiveWorkspace, fetchWorkspaces } = useWorkspace();
-
+  // Decide qué mostrar al cargar la app y cuando el token cambia
   useEffect(() => {
-    if (authToken) {
-      // Si hay token, cargamos los workspaces para decidir a dónde ir
-      const initializeSession = async () => {
-        const workspaces = await fetchWorkspaces(authToken);
-        if (workspaces && workspaces.length > 0) {
-          // Si hay workspaces, vamos directo al de análisis con el más reciente
-          setActiveWorkspace(workspaces[0]);
-          setCurrentView('analysis');
-        } else {
-          // Si es un usuario nuevo sin workspaces, lo llevamos al dashboard
-          setCurrentView('dashboard');
-        }
-      };
-      initializeSession();
-    } else {
-      // Si no hay token, es un visitante anónimo
-      setCurrentView('landing');
-    }
-  }, [authToken, fetchWorkspaces, setActiveWorkspace]);
+    const initializeApp = async () => {
+      if (authToken) {
+        await fetchWorkspaces();
+        setCurrentView('dashboard');
+      } else {
+        clearWorkspaceContext(); // Limpia datos de usuario si se cierra sesión
+        setCurrentView('landing');
+      }
+    };
+    initializeApp();
+  }, [authToken, fetchWorkspaces, clearWorkspaceContext]);
 
-
-  // Función que se pasará al LoginPage a través de LandingPage
-  // const handleLoginSuccess = useCallback((token) => {
-  //   localStorage.setItem('accessToken', token);
-  //   setAuthToken(token); // Esto disparará el useEffect de arriba y cargará los workspaces
-  // }, []);
   const handleLoginSuccess = (token) => {
     localStorage.setItem('accessToken', token);
-    setAuthToken(token); // Esto disparará el useEffect de arriba, iniciando el flujo de usuario registrado
+    setAuthToken(token); // Esto dispara el useEffect de arriba
   };
 
   const handleLogout = () => {
     localStorage.removeItem('accessToken');
-    setAuthToken(null); // Esto disparará el useEffect, cambiando la vista a 'landing'
+    setAuthToken(null); // Esto también dispara el useEffect
   };
 
-  const handleEnterWorkspace = (workspace) => {
-    // Establece el workspace activo y cambia la vista a la de análisis
-    setActiveWorkspace(workspace);
-    setCurrentView('analysis');
-  };
-
-  const handleOnBackToDashboard = () => {
-    // Establece el workspace activo y cambia la vista a la de análisis
-    setActiveWorkspace('');
-    setCurrentView('dashboard');
-  };
-
-//   // --- Renderizado Condicional ---
-//   if (isInitializing) {
-//     return <LoadingScreen />;
-//   }
-  
-//   return authToken ? (
-//     // Si hay un token, mostramos el Dashboard
-//     <Dashboard onLogout={handleLogout} onEnterWorkspace={handleEnterWorkspace} />
-//   ) : (
-//     // Si no, mostramos el flujo para usuarios anónimos/nuevos
-//     <LandingPage onLoginSuccess={handleLoginSuccess} />
-//   );
-// }
-
-// --- Renderizado Condicional Basado en la Vista ---
-  switch (currentView) {
-    case 'loading':
-      return <LoadingScreen />;
-    
-    case 'dashboard':
-      // El dashboard ahora te permite entrar a un workspace, lo que cambia la vista a 'analysis'
-      return <Dashboard onLogout={handleLogout} onBackToDashboard={handleOnBackToDashboard} onEnterWorkspace={(workspace) => {
-        setActiveWorkspace(workspace);
-        setCurrentView('analysis');
-      }}/>;
-      
-    case 'analysis':
-       // El workspace necesita una forma de volver al dashboard
-      return <AnalysisWorkspace context={{ type: 'user', workspace: activeWorkspace }} onBackToDashboard={handleOnBackToDashboard} onLogout={handleLogout}/>;
-      
-    case 'landing':
-    default:
-      return <LandingPage onLoginSuccess={handleLoginSuccess} />;
+  if (currentView === 'loading') {
+    return <LoadingScreen message="Inicializando Ferretero.IA..." />;
   }
+
+  return authToken ? (
+    <Dashboard onLogout={handleLogout} />
+  ) : (
+    <LandingPage onLoginSuccess={handleLoginSuccess} />
+  );
 }
 
 
 function App() {
   return (
-    <StrategyProvider>
-      <WorkspaceProvider>
-        <AppContent />
-      </WorkspaceProvider>
-    </StrategyProvider>
+      <StrategyProvider>
+    <ConfigProvider>
+        <WorkspaceProvider>
+          <AppContent />
+        </WorkspaceProvider>
+    </ConfigProvider>
+      </StrategyProvider>
   );
 }
 

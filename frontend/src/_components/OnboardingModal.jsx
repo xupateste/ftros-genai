@@ -6,7 +6,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // ===================================================================================
 // --- VISTA 2: El Modal de Onboarding ---
 // ===================================================================================
-export function OnboardingModal ({ onSubmit, onSwitchToLogin, onCancel, isLoading, onBackToLanding }) {
+export default function OnboardingModal ({ onSubmit, onSwitchToLogin, onCancel, isLoading, onBackToLanding }) {
   const [rol, setRol] = useState('');
 
   const handleSubmit = (e) => {

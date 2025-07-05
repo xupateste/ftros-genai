@@ -41,7 +41,6 @@ function Dashboard() {
         const savedFileName = localStorage.getItem('lastUploadedFileName');
       
         if (savedFileContent && savedFileName) {
-          // Convert back to a "File-like" object if needed (e.g., for parsing CSV again)
           const restoredFile = new File([savedFileContent], savedFileName, { type: 'text/csv' });
           setCsvFile(restoredFile);
         }
@@ -66,7 +65,6 @@ function Dashboard() {
         if (csvFile) {
             handleUpload()
           } else {
-            // maybe redirect back to LandingPage or show a message
             console.log('No file received');
           }
     }, [csvFile]);
