@@ -540,11 +540,11 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   // }
 
   return (
-    <div className="w-full h-screen animate-fade-in-slow flex flex-col bg-neutral-900 text-white">
-        {/* Tu encabezado ahora puede usar `context` para mostrar la información correcta */}
-        <header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900 sticky top-0 z-10">
-        <div className="flex flex-col">
-          <div className="flex gap-4 justify-center mb-2">
+    <div className="min-h-screen w-full max-w-5xl mx-auto md:p-8 text-white animate-fade-in">
+      {/* Tu encabezado ahora puede usar `context` para mostrar la información correcta */}
+      {/*<header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900">*/}
+        {/*<div className="flex flex-col">*/}
+          <div className="flex gap-4 justify-center mt-4">
             <h1 className="text-3xl md:text-5xl font-bold text-white">
                 <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
             </h1>
@@ -561,38 +561,33 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                 </button>
             )}*/}
             {context.type === 'anonymous' &&
-              <p className="text-xs text-white flex justify-center text-center items-center font-mono gap-4">
+              <p className="text-xs mt-3 text-white flex justify-center text-center items-center font-mono gap-4">
                 <span>Modo: Sesión Anónima <br/> {context.id}</span>
               </p>
             }
+        {/*</div>*/}
+        <div className="flex flex-col w-full justify-center items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
+          {/*<div className="flex items-center gap-6">*/}
+           <CreditsPanel 
+              used={credits.used} 
+              remaining={credits.remaining}
+              onHistoryClick={() => setActiveModal('history')}
+           />
+          {/*</div>*/}
+          {context.type === 'user' && (
+            <WorkspaceSelector
+              workspaces={workspaces}
+              activeWorkspace={activeWorkspace}
+              onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
+              onCreateNew={() => setIsCreateModalOpen(true)}
+              onBackToDashboard={ onBackToDashboard }
+            />
+          )}
         </div>
-        {context.type === 'user' && (
-          <WorkspaceSelector
-            workspaces={workspaces}
-            activeWorkspace={activeWorkspace}
-            onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
-            onCreateNew={() => setIsCreateModalOpen(true)}
-            onBackToDashboard={ onBackToDashboard }
-          />
-        )}
-        <div className="flex flex-row w-full justify-center items-center gap-6">
-          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"><FiSettings /> Mi Estrategia</button>
-        
-          {/*<button onClick={() => setStrategyPanelOpen(true)} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white">
-            <FiSettings /> Estrategia de este Espacio
-          </button>*/}
-        </div>
-      </header>
+      {/*</header>*/}
 
       <main className="flex-1 overflow-y-auto p-4 w-full">
-        <div className="flex items-center gap-6 col-span-full">
-           <CreditsPanel 
-                used={credits.used} 
-                remaining={credits.remaining}
-                onHistoryClick={() => setActiveModal('history')}
-           />
-        </div>
-        <div className='mt-10 w-full max-w-5xl grid text-white md:grid-cols-2 gap-8 px-2 mx-auto'>
+        <div className='w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
           <CsvImporterComponent 
             fileType="ventas"
             title="Historial de Ventas"
@@ -608,11 +603,14 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             uploadStatus={uploadStatus.inventario}
           />
         </div>
+        <div className="flex flex-row w-full justify-center items-center">
+          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
+        </div>
         {/* El resto de tu JSX para la lista de reportes */}
         {isConfigLoading ? (
           <p>Cargando reportes...</p>
         ) : filesReady ? (
-          <div className="w-full space-y-8 px-4 mb-4 mt-10">
+          <div className="w-full space-y-8 px-4 mb-10">
             {Object.entries(reportData).map(([categoria, reportes]) => (
               <div key={categoria} className="mb-6">
                 <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">

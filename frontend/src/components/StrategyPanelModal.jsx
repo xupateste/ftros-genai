@@ -62,7 +62,7 @@ export function StrategyPanelModal({ onClose, context }) {
           />
         </div>
         
-        <div className="p-4 border-t bg-white z-10 shadow text-center sticky bottom-0 flex gap-4">
+        <div className="p-4 border-t bg-white z-10 shadow text-center sticky bottom-0 flex gap-4 rounded-b-lg">
           <button onClick={onClose} className="flex-1 text-gray-700 bg-gray-200 text-base px-4 py-3 font-bold rounded-lg hover:bg-gray-300">Cancelar</button>
           <button onClick={handleSave} className="flex-1 bg-purple-600 text-white text-base px-4 py-3 font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2" disabled={isSaving || isLoading}>
             {isSaving ? "Guardando..." : <><FiSave /> Guardar Cambios</>}
