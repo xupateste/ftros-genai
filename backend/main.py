@@ -229,6 +229,7 @@ class StrategyData(BaseModel):
 # ===================================================================================
 @app.post("/register", summary="Registra un nuevo usuario y crea su primer espacio de trabajo", tags=["Usuarios"])
 async def register_user(
+    request: Request,
     email: str = Form(...),
     password: str = Form(...),
     rol: str = Form(...),
@@ -245,6 +246,25 @@ async def register_user(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Ya existe un usuario con este correo electrónico.",
         )
+
+    # --- Lógica de Geolocalización (idéntica a la de sesiones anónimas) ---
+    client_ip = request.client.host
+    geoloc_data = {"ip": client_ip, "status": "desconocido"}
+    if client_ip and client_ip not in ["127.0.0.1", "testclient"]:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"http://ip-api.com/json/{client_ip}")
+                response.raise_for_status()
+                api_data = response.json()
+                if api_data.get("status") == "success":
+                    geoloc_data = {
+                        "ip": api_data.get("query"), "pais": api_data.get("country"),
+                        "ciudad": api_data.get("city"), "region": api_data.get("regionName"),
+                        "isp": api_data.get("isp"), "status": "exitoso"
+                    }
+        except httpx.RequestError as e:
+            print(f"🔥 Advertencia: No se pudo geolocalizar al nuevo usuario {email}. Error: {e}")
+      
         
     hashed_password = get_password_hash(password)
     now_utc = datetime.now(timezone.utc)
@@ -258,7 +278,8 @@ async def register_user(
         "creditos_iniciales": 25, # Bono de bienvenida para usuarios registrados
         "creditos_restantes": 25, # Bono de bienvenida para usuarios registrados
         "plan": "gratis",
-        "estrategia_global": DEFAULT_STRATEGY
+        "estrategia_global": DEFAULT_STRATEGY,
+        "geolocalizacion_registro": geoloc_data
     }
     
     # --- LÓGICA CLAVE: CREACIÓN DEL PRIMER ESPACIO DE TRABAJO ---
@@ -289,7 +310,10 @@ async def register_user(
 
 
 @app.post("/token", response_model=Token, summary="Inicia sesión y obtiene un token", tags=["Usuarios"])
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
+async def login_for_access_token(
+    request: Request,
+    form_data: OAuth2PasswordRequestForm = Depends()
+):
     """
     Autentica a un usuario y devuelve un token JWT para usar en las siguientes peticiones.
     FastAPI usa el campo 'username' para el email.
@@ -302,6 +326,26 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 
     if not user_doc.exists:
         raise HTTPException(status_code=400, detail="Correo o contraseña incorrectos")
+
+    # --- Lógica de Geolocalización al iniciar sesión ---
+    client_ip = request.client.host
+    if client_ip and client_ip not in ["127.0.0.1", "testclient"]:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"http://ip-api.com/json/{client_ip}")
+                if response.status_code == 200:
+                    api_data = response.json()
+                    if api_data.get("status") == "success":
+                        geoloc_data = {
+                            "ip": api_data.get("query"), "pais": api_data.get("country"),
+                            "ciudad": api_data.get("city"), "region": api_data.get("regionName"),
+                            "timestamp": datetime.now(timezone.utc) # <-- Añadimos un timestamp
+                        }
+                        # Actualizamos el documento del usuario con la nueva ubicación
+                        user_ref.update({"geolocalizacion_ultimo_login": geoloc_data})
+                        print(f"✅ Ubicación de login actualizada para {email}.")
+        except httpx.RequestError as e:
+            print(f"🔥 Advertencia: No se pudo geolocalizar el login del usuario {email}. Error: {e}")
 
     user_data = user_doc.to_dict()
     if not verify_password(password, user_data.get("hashed_password")):
@@ -341,7 +385,7 @@ async def create_analysis_session(
         geoloc_data = {"ip": client_ip, "status": "desconocido"}
 
         # Evitamos llamar a la API para IPs locales o de prueba
-        if client_ip and client_ip not in ["", "testclient"]:
+        if client_ip and client_ip not in ["127.0.0.1", "testclient"]:
             try:
                 # Usamos httpx para hacer una llamada asíncrona a la API de geolocalización
                 async with httpx.AsyncClient() as client:
