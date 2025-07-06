@@ -48,9 +48,9 @@ export function StrategyPanelModal({ onClose, context }) {
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="bg-gray-50 rounded-lg shadow-xl max-w-4xl w-full flex flex-col max-h-[90vh]">
-        <div className="p-4 border-b flex justify-end items-center sticky top-0 bg-gray-50">
+        {/*<div className="p-4 border-b flex justify-end items-center sticky top-0 bg-gray-50">
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><FiX size={28}/></button>
-        </div>
+        </div>*/}
         
         <div className="overflow-y-auto">
           <StrategyPanel 
@@ -63,10 +63,10 @@ export function StrategyPanelModal({ onClose, context }) {
         </div>
         
         <div className="p-4 border-t bg-white z-10 shadow text-center sticky bottom-0 flex gap-4">
-            <button onClick={onClose} className="flex-1 text-gray-700 bg-gray-200 ...">Cancelar</button>
-            <button onClick={handleSave} className="flex-1 bg-purple-600 text-white ..." disabled={isSaving || isLoading}>
-              {isSaving ? "Guardando..." : <><FiSave /> Guardar Cambios</>}
-            </button>
+          <button onClick={onClose} className="flex-1 text-gray-700 bg-gray-200 text-base px-4 py-3 font-bold rounded-lg hover:bg-gray-300">Cancelar</button>
+          <button onClick={handleSave} className="flex-1 bg-purple-600 text-white text-base px-4 py-3 font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-400 flex items-center justify-center gap-2" disabled={isSaving || isLoading}>
+            {isSaving ? "Guardando..." : <><FiSave /> Guardar Cambios</>}
+          </button>
         </div>
       </div>
     </div>

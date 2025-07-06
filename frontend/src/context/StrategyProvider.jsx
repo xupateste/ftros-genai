@@ -1,7 +1,7 @@
 // src/context/StrategyProvider.jsx
 
 import React, { createContext, useState, useContext, useCallback } from 'react';
-import api from '../utils/api'; // Usamos nuestro cliente API centralizado
+import api from '../utils/api';
 
 const StrategyContext = createContext();
 
@@ -9,28 +9,30 @@ export function StrategyProvider({ children }) {
   const [strategy, setStrategy] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Carga la estrategia correcta dependiendo del contexto (anónimo o de usuario)
+  // Carga la estrategia para un contexto específico (global o de workspace)
   const loadStrategy = useCallback(async (context) => {
-    if (!context || (!context.id && !context.workspace?.id)) {
-      setStrategy({}); // Evita errores si no hay contexto
+    if (!context) {
+      console.warn("Se intentó cargar una estrategia sin contexto.");
       return;
     }
     
     setIsLoading(true);
     let endpoint = '';
     
-    if (context.type === 'user' && context.workspace) {
-      endpoint = `/workspaces/${context.workspace.id}/strategy`;
+    if (context.type === 'global') {
+      endpoint = '/strategy';
+    } else if (context.type === 'workspace' && context.id) {
+      endpoint = `/workspaces/${context.id}/strategy`;
     } else {
-      // Para anónimos, el backend ya inicializó la sesión con la estrategia default
-      endpoint = `/sessions/${context.id}/strategy`;
+      // Si es anónimo, cargamos la de fábrica
+      endpoint = '/strategy/default';
     }
 
     try {
       const response = await api.get(endpoint);
       setStrategy(response.data);
     } catch (error) {
-      console.error("Error al cargar la estrategia activa:", error);
+      console.error(`Error al cargar la estrategia para el contexto ${context.type}:`, error);
       setStrategy({}); // En caso de error, establece un objeto vacío
     } finally {
       setIsLoading(false);
@@ -42,14 +44,14 @@ export function StrategyProvider({ children }) {
     if (!context || !strategyToSave || (!context.id && !context.workspace?.id)) {
       throw new Error("Falta contexto o datos para guardar la estrategia.");
     }
-    const identifier = context.type === 'user' ? context.workspace.id : context.id;
+    
+    const endpoint = context.type === 'global' ? '/strategy' : `/workspaces/${context.id}/strategy`;
+    
     try {
-      // Endpoint para guardar la estrategia personalizada del workspace o la global del usuario
-      const endpoint = context.type === 'user' ? `/workspaces/${identifier}/strategy` : `/sessions/${identifier}/strategy`;
       await api.put(endpoint, strategyToSave); 
-      setStrategy(strategyToSave); // Actualización optimista
+      setStrategy(strategyToSave);
     } catch (error) {
-      console.error("🔥 Error al guardar la estrategia:", error);
+      console.error(`🔥 Error al guardar la estrategia:`, error);
       throw error;
     }
   }, []);
@@ -75,13 +77,14 @@ export function StrategyProvider({ children }) {
     }
   }, []);
 
+
   const value = { 
     strategy, 
-    setStrategy, // Necesario para la actualización local de anónimos
+    setStrategy,
     isLoading, 
-    loadStrategy, 
-    saveStrategy, 
-    resetStrategy 
+    loadStrategy,
+    saveStrategy,
+    resetStrategy
   };
 
   return (

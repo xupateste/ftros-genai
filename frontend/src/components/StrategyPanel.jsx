@@ -29,13 +29,15 @@ export function StrategyPanel({ strategy, setStrategy, onRestore, context, isLoa
   // El texto del botón de restaurar cambia según el contexto
   const restoreButtonText = context.type === 'global' 
     ? "Restaurar a Valores de Fábrica" 
-    : "Restaurar a la Estrategia Global";
+    : context?.name 
+    ? "Restaurar a la Estrategia Global" 
+    : "Restaurar a Valores de Fábrica";
 
   return (
     <div className="p-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 border-b pb-4">
         <h2 className="text-2xl font-bold text-gray-800 mb-2 sm:mb-0">
-          {context.type === 'global' ? 'Mi Estrategia Global' : `Estrategia para "${context.name}"`}
+          {context.type === 'global' ? 'Mi Estrategia Global' : context?.name ? `Estrategia para "${context.name}"` : `Mi Estrategia`}
         </h2>
         <button onClick={onRestore} className="text-sm font-semibold text-purple-600 hover:text-purple-800 transition-colors">
           {restoreButtonText}

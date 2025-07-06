@@ -11,7 +11,7 @@ REPORTS_CONFIG = {
     "costo": 5,
     "categoria": "🧠 Diagnósticos generales",
     "basic_parameters": [
-      { "name": 'periodo_abc', "label": 'Período de Análisis ABC', "type": 'select',
+      { "name": 'periodo_abc', "label": 'Período de Análisis ABC', "type": 'select', "tooltip_key": "periodo_abc",
         "options": [
           { "value": '12', "label": 'Últimos 12 meses' },
           { "value": '6', "label": 'Últimos 6 meses' },
@@ -20,7 +20,7 @@ REPORTS_CONFIG = {
         ],
         "defaultValue": '6'
       },
-      { "name": 'criterio_abc', "label": 'Criterio Principal ABC', "type": 'select',
+      { "name": 'criterio_abc', "label": 'Criterio Principal ABC', "type": 'select', "tooltip_key": "criterio_abc",
         "options": [
           { "value": 'combinado', "label": 'Combinado o Ponderado' },
           { "value": 'ingresos', "label": 'Por Ingresos' },
@@ -52,6 +52,7 @@ REPORTS_CONFIG = {
         "name": "criterio_abc",
         "label": "Criterio de Importancia (ABC)",
         "type": "select",
+        "tooltip_key": "criterio_abc",
         "options": [
           { "value": "margen", "label": "Por Margen de Ganancia (Recomendado)" },
           { "value": "ingresos", "label": "Por Ingresos Totales" },
@@ -64,6 +65,7 @@ REPORTS_CONFIG = {
         "name": "periodo_abc",
         "label": "Período de Análisis de Importancia",
         "type": "select",
+        "tooltip_key": "periodo_abc",
         "options": [
             { "value": "3", "label": "Últimos 3 meses" },
             { "value": "6", "label": "Últimos 6 meses" },
@@ -78,6 +80,7 @@ REPORTS_CONFIG = {
         "name": "dias_sin_venta_muerto",
         "label": "Umbral de Días para 'Stock Muerto'",
         "type": "number",
+        "tooltip_key": "dias_sin_venta_muerto",
         "placeholder": "Default: dinámico",
         "defaultValue": 30,
         "min": 30
@@ -86,6 +89,7 @@ REPORTS_CONFIG = {
         "name": "meses_analisis_salud",
         "label": "Período para Cálculo de Salud (meses)",
         "type": "number",
+        "tooltip_key": "meses_analisis_salud",
         "placeholder": "Default: dinámico",
         "defaultValue": 1,
         "min": 1
@@ -94,6 +98,7 @@ REPORTS_CONFIG = {
         "name": "peso_margen",
         "label": "Peso de Margen (0.0 a 1.0)",
         "type": "number",
+        "tooltip_key": "peso_margen",
         "defaultValue": 0.5,
         "min": 0, "max": 1, "step": 0.1
       },
@@ -101,6 +106,7 @@ REPORTS_CONFIG = {
         "name": "peso_ingresos",
         "label": "Peso de Ingresos (0.0 a 1.0)",
         "type": "number",
+        "tooltip_key": "peso_ingresos",
         "defaultValue": 0.3,
         "min": 0, "max": 1, "step": 0.1
       },
@@ -108,6 +114,7 @@ REPORTS_CONFIG = {
         "name": "peso_unidades",
         "label": "Peso de Unidades (0.0 a 1.0)",
         "type": "number",
+        "tooltip_key": "peso_unidades",
         "defaultValue": 0.2,
         "min": 0, "max": 1, "step": 0.1
       }
@@ -121,7 +128,7 @@ REPORTS_CONFIG = {
     "isPro": False,
     "costo": 8,
     "basic_parameters": [
-      { "name": 'sort_by', "label": 'Ordenar Reporte Por', "type": 'select',
+      { "name": 'sort_by', "label": 'Ordenar Reporte Por', "type": 'select', "tooltip_key": "sort_by",
         "options": [
           { "value": 'Importancia_Dinamica', "label": 'Índice de Importancia (Recomendado)' },
           { "value": 'Inversion_Stock_Actual', "label": 'Mayor Inversión en Stock' },
@@ -131,40 +138,44 @@ REPORTS_CONFIG = {
         ],
         "defaultValue": 'Importancia_Dinamica'
       },
-      { "name": 'filtro_categorias_json', "label": 'Filtrar por Categorías', "type": 'multi-select', "optionsKey": 'categorias', "defaultValue": [] },
-      { "name": 'filtro_marcas_json', "label": 'Filtrar por Marcas', "type": 'multi-select', "optionsKey": 'marcas', "defaultValue": [] },
-      { "name": 'min_importancia', "label": 'Mostrar solo con Importancia mayor a', "type": 'number', "defaultValue": '', "min": 0, "max": 1, "step": 0.1, "placeholder": '"Ej": 0.7' },
-      { "name": 'max_dias_cobertura', "label": 'Mostrar solo con Cobertura menor a (días)', "type": 'number', "defaultValue": '', "min": 0, "placeholder": '"Ej": 15 (para ver bajo stock)' },
-      { "name": 'min_dias_cobertura', "label": 'Mostrar solo con Cobertura mayor a (días)', "type": 'number', "defaultValue": '', "min": 0, "placeholder": '"Ej": 180 (para ver sobre-stock)' },
+      { "name": 'filtro_categorias_json', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "filtro_categorias_json", "optionsKey": 'categorias', "defaultValue": [] },
+      { "name": 'filtro_marcas_json', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "filtro_marcas_json", "optionsKey": 'marcas', "defaultValue": [] },
+      { "name": 'min_importancia', "label": 'Mostrar solo con Importancia mayor a', "type": 'number', "tooltip_key": "min_importancia", "defaultValue": '', "min": 0, "max": 1, "step": 0.1, "placeholder": '"Ej": 0.7' },
+      { "name": 'max_dias_cobertura', "label": 'Mostrar solo con Cobertura menor a (días)', "type": 'number', "tooltip_key": "max_dias_cobertura", "defaultValue": '', "min": 0, "placeholder": '"Ej": 15 (para ver bajo stock)' },
+      { "name": 'min_dias_cobertura', "label": 'Mostrar solo con Cobertura mayor a (días)', "type": 'number', "tooltip_key": "min_dias_cobertura", "defaultValue": '', "min": 0, "placeholder": '"Ej": 180 (para ver sobre-stock)' },
     ],
     "advanced_parameters": [
-      { "name": 'dias_analisis_ventas_recientes', "label": 'Período de Análisis Reciente (días)', "type": 'number', "defaultValue": 30, "min": 15 },
-      { "name": 'dias_analisis_ventas_general', "label": 'Período de Análisis General (días)', "type": 'number', "defaultValue": 180, "min": 30 },
+      { "name": 'dias_analisis_ventas_recientes', "label": 'Período de Análisis Reciente (días)', "type": 'number', "tooltip_key": "dias_analisis_ventas_recientes", "defaultValue": 30, "min": 15 },
+      { "name": 'dias_analisis_ventas_general', "label": 'Período de Análisis General (días)', "type": 'number', "tooltip_key": "dias_analisis_ventas_general", "defaultValue": 180, "min": 30 },
       {
           "name": 'score_ventas',
-          "label": 'Importancia de Ventas (1-10)',
+          "label": 'Peso de Ventas (Popularidad)',
           "type": 'number',
+          "tooltip_key": "score_ventas",
           "defaultValue": 8,
           "min": 1, "max": 10
       },
       {
           "name": 'score_ingreso',
-          "label": 'Importancia de Ingresos (1-10)',
+          "label": 'Peso de Ingresos (Facturación)',
           "type": 'number',
+          "tooltip_key": "score_ingreso",
           "defaultValue": 6,
           "min": 1, "max": 10
       },
       {
           "name": 'score_margen',
-          "label": 'Importancia de Margen (1-10)',
+          "label": 'Peso del Margen (Rentabilidad)',
           "type": 'number',
+          "tooltip_key": "score_margen",
           "defaultValue": 4,
           "min": 1, "max": 10
       },
       {
           "name": 'score_dias_venta',
-          "label": 'Importancia de Frecuencia de Venta (1-10)',
+          "label": 'Peso de Frecuencia de Venta',
           "type": 'number',
+          "tooltip_key": "score_dias_venta",
           "defaultValue": 2,
           "min": 1, "max": 10
       },
@@ -180,7 +191,7 @@ REPORTS_CONFIG = {
     "isPro": False,
     "costo": 6,
     "basic_parameters": [
-      { "name": 'lead_time_dias', "label": 'El tiempo promedio de entrega del proveedor en días', "type": 'select',
+      { "name": 'lead_time_dias', "label": 'El tiempo promedio de entrega del proveedor en días', "type": 'select', "tooltip_key": "lead_time_dias",
         "options": [
           { "value": '5', "label": '5 días' },
           { "value": '7', "label": '7 días' },
@@ -190,7 +201,7 @@ REPORTS_CONFIG = {
         ],
         "defaultValue": '7'
       },
-      { "name": 'dias_seguridad_base', "label": 'Días adicionales de cobertura para stock de seguridad', "type": 'select',
+      { "name": 'dias_seguridad_base', "label": 'Días adicionales de cobertura para stock de seguridad', "type": 'select', "tooltip_key": "dias_seguridad_base",
         "options": [
           { "value": '0', "label": 'Ninguno' },
           { "value": '1', "label": '1 día adicional' },
@@ -209,7 +220,7 @@ REPORTS_CONFIG = {
     "isPro": False,
     "costo": 8,
     "basic_parameters": [
-      { "name": 'ordenar_por', "label": 'Ordenar reporte por', "type": 'select', 
+      { "name": 'ordenar_por', "label": 'Ordenar reporte por', "type": 'select', "tooltip_key": "ordenar_por",
         "options": [
           { "value": 'Importancia', "label": 'Índice de Importancia (Recomendado)' },
           { "value": 'Índice de Urgencia', "label": 'Índice de Urgencia (Stock bajo + Importancia)' },
@@ -222,47 +233,51 @@ REPORTS_CONFIG = {
         ],
         "defaultValue": 'Índice de Urgencia'
       },
-      { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "optionsKey": 'categorias', "defaultValue": [] },
-      { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "optionsKey": 'marcas', "defaultValue": [] }
+      { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "incluir_solo_categorias", "optionsKey": 'categorias', "defaultValue": [] },
+      { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "incluir_solo_marcas", "optionsKey": 'marcas', "defaultValue": [] }
     ],
     "advanced_parameters": [
-      { "name": 'dias_analisis_ventas_recientes', "label": 'Período de Análisis Reciente (días)', "type": 'number', "defaultValue": 30, "min": 15 },
-      { "name": 'dias_analisis_ventas_general', "label": 'Período de Análisis General (días)', "type": 'number', "defaultValue": 180, "min": 30 },
-      { "name": 'excluir_sin_ventas', "label": '¿Excluir productos con CERO ventas?', "type": 'boolean_select', 
+      { "name": 'dias_analisis_ventas_recientes', "label": 'Período de Análisis Reciente (días)', "type": 'number', "tooltip_key": "dias_analisis_ventas_recientes", "defaultValue": 30, "min": 15 },
+      { "name": 'dias_analisis_ventas_general', "label": 'Período de Análisis General (días)', "type": 'number', "tooltip_key": "dias_analisis_ventas_general", "defaultValue": 180, "min": 30 },
+      { "name": 'excluir_sin_ventas', "label": '¿Excluir productos con CERO ventas?', "type": 'boolean_select', "tooltip_key": "excluir_sin_ventas",
         "options": [
           { "value": 'true', "label": 'Sí, excluir (Recomendado)' },
           { "value": 'false', "label": 'No, incluirlos' }
         ],
         "defaultValue": 'true'
       },
-      { "name": 'lead_time_dias', "label": 'Tiempo de Entrega del Proveedor en Días', "type": 'number', "defaultValue": 7, "min": 0 },
-      { "name": 'dias_cobertura_ideal_base', "label": 'Días de Cobertura Ideal Base', "type": 'number', "defaultValue": 10, "min": 3 },
-      { "name": 'peso_ventas_historicas', "label": 'Peso Ventas Históricas (0.0-1.0)', "type": 'number', "defaultValue": 0.6, "min": 0, "max": 1, "step": 0.1 },
+      { "name": 'lead_time_dias', "label": 'Tiempo de Entrega del Proveedor en Días', "type": 'number', "tooltip_key": "lead_time_dias", "defaultValue": 7, "min": 0 },
+      { "name": 'dias_cobertura_ideal_base', "label": 'Días de Cobertura Ideal Base', "type": 'number', "tooltip_key": "dias_cobertura_ideal_base", "defaultValue": 10, "min": 3 },
+      { "name": 'peso_ventas_historicas', "label": 'Peso Ventas Históricas (0.0-1.0)', "type": 'number', "tooltip_key": "peso_ventas_historicas", "defaultValue": 0.6, "min": 0, "max": 1, "step": 0.1 },
       {
           "name": 'score_ventas',
-          "label": 'Importancia de Ventas (1-10)',
+          "label": 'Peso de Ventas (Popularidad)',
           "type": 'number',
+          "tooltip_key": "score_ventas",
           "defaultValue": 8,
           "min": 1, "max": 10
       },
       {
           "name": 'score_ingreso',
-          "label": 'Importancia de Ingresos (1-10)',
+          "label": 'Peso de Ingresos (Facturación)',
           "type": 'number',
+          "tooltip_key": "score_ingreso",
           "defaultValue": 6,
           "min": 1, "max": 10
       },
       {
           "name": 'score_margen',
-          "label": 'Importancia de Margen (1-10)',
+          "label": 'Peso del Margen (Rentabilidad)',
           "type": 'number',
+          "tooltip_key": "score_margen",
           "defaultValue": 4,
           "min": 1, "max": 10
       },
       {
           "name": 'score_dias_venta',
-          "label": 'Importancia de Frecuencia de Venta (1-10)',
+          "label": 'Peso de Frecuencia de Venta',
           "type": 'number',
+          "tooltip_key": "score_dias_venta",
           "defaultValue": 2,
           "min": 1, "max": 10
       }

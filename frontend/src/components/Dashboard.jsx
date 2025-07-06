@@ -110,17 +110,15 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
         </div>
 
         <h1 className="flex text-3xl font-bold">Mis Espacios de Trabajo</h1>
-        <div className="flex gap-6 justify-center">
-          <button onClick={() => setStrategyModalOpen(true)}>
-            <FiSettings /> Mi Estrategia Global
-          </button>
-        </div>
+        <button onClick={() => setStrategyModalOpen(true)} className="flex gap-2 items-center justify-center">
+          <FiSettings /> Mi Estrategia Global
+        </button>
       </header>
 
       <div className="mb-10 p-6 bg-gray-800 ...">
           <button 
               onClick={() => setIsCreateModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 font-bold bg-purple-600 ...">
+              className="w-full flex items-center justify-center gap-2 px-6 py-3 font-bold bg-purple-600 hover:bg-purple-700 rounded-lg">
               <FiPlusCircle /> Crear Nuevo Espacio de Trabajo
           </button>
       </div>

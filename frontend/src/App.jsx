@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { WorkspaceProvider, useWorkspace } from './context/WorkspaceProvider';
-import { StrategyProvider } from './context/StrategyProvider';
+import { StrategyProvider, useStrategy } from './context/StrategyProvider';
 import { ConfigProvider } from './context/ConfigProvider'; // <-- Importa el nuevo provider
 
 // Importa las vistas principales
@@ -15,21 +15,40 @@ function AppContent() {
   const [authToken, setAuthToken] = useState(() => localStorage.getItem('accessToken'));
   const [currentView, setCurrentView] = useState('loading'); // loading, landing, dashboard
 
-  const { fetchWorkspaces, clearWorkspaceContext } = useWorkspace();
+  const { fetchWorkspaces, clearWorkspaceContext, activeWorkspace, setActiveWorkspace } = useWorkspace();
+  const { loadStrategy } = useStrategy();
 
-  // Decide qué mostrar al cargar la app y cuando el token cambia
+  // "Checklist de Bienvenida": se ejecuta al cargar la app o al cambiar el token
   useEffect(() => {
     const initializeApp = async () => {
       if (authToken) {
-        await fetchWorkspaces();
-        setCurrentView('dashboard');
+        // Si hay token, cargamos los datos del usuario en paralelo
+        const [workspaces, globalStrategy] = await Promise.all([
+            fetchWorkspaces(),
+            loadStrategy({ type: 'global' })
+        ]);
+        
+        if (workspaces && workspaces.length > 0) {
+          // Si tiene workspaces, establecemos el más reciente como activo
+          const mostRecentWorkspace = workspaces[0];
+          setActiveWorkspace(mostRecentWorkspace);
+          // Cargamos la estrategia específica de ese workspace (o la global si no tiene una)
+          await loadStrategy({ type: 'workspace', id: mostRecentWorkspace.id });
+          // Lo llevamos directo al análisis
+          setCurrentView('analysis'); 
+        } else {
+          // Si es un usuario nuevo sin workspaces, lo llevamos al dashboard
+          setCurrentView('dashboard');
+        }
       } else {
-        clearWorkspaceContext(); // Limpia datos de usuario si se cierra sesión
+        // Si no hay token, es un visitante anónimo
+        clearWorkspaceContext();
         setCurrentView('landing');
       }
     };
     initializeApp();
-  }, [authToken, fetchWorkspaces, clearWorkspaceContext]);
+  }, [authToken, fetchWorkspaces, setActiveWorkspace, loadStrategy, clearWorkspaceContext]);
+
 
   const handleLoginSuccess = (token) => {
     localStorage.setItem('accessToken', token);
@@ -41,15 +60,36 @@ function AppContent() {
     setAuthToken(null); // Esto también dispara el useEffect
   };
 
+  // Esta función se llamará desde el Dashboard
+  const handleEnterWorkspace = async (workspace) => {
+    setActiveWorkspace(workspace);
+    // Antes de cambiar la vista, cargamos la estrategia para ese workspace
+    await loadStrategy({ type: 'workspace', id: workspace.id });
+    setCurrentView('analysis');
+  };
+
   if (currentView === 'loading') {
     return <LoadingScreen message="Inicializando Ferretero.IA..." />;
   }
 
-  return authToken ? (
-    <Dashboard onLogout={handleLogout} />
-  ) : (
-    <LandingPage onLoginSuccess={handleLoginSuccess} />
-  );
+  if (authToken) {
+    switch(currentView) {
+        case 'dashboard':
+            return <Dashboard onLogout={handleLogout} onEnterWorkspace={handleEnterWorkspace} />;
+        case 'analysis':
+            return <AnalysisWorkspace 
+                        context={{ type: 'user', workspace: activeWorkspace }}
+                        onLogout={handleLogout} 
+                        onBackToDashboard={() => setCurrentView('dashboard')} 
+                    />;
+        default:
+            // Si está logueado pero aún cargando, muestra el loader
+            return <LoadingScreen message="Cargando tu espacio..."/>;
+    }
+  }
+  
+  // Si no hay token, el único camino es el LandingPage
+  return <LandingPage onLoginSuccess={handleLoginSuccess} />;
 }
 
 

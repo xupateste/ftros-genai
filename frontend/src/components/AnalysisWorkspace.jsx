@@ -21,6 +21,7 @@ import { WorkspaceSelector } from './WorkspaceSelector';
 import { LoadingScreen } from './LoadingScreen';
 import { FiDownload, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el modal
+import { Tooltip } from './Tooltip';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
@@ -144,15 +145,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   // --- ESTADOS ---
   const { strategy, loadStrategy } = useStrategy();
   const { workspaces, activeWorkspace, setActiveWorkspace, touchWorkspace } = useWorkspace();
-  const { reportData, isLoading: isConfigLoading } = useConfig();
+  const { reportData, tooltips, isLoading: isConfigLoading } = useConfig();
 
   // 1. ESTADO DE CARGA PRINCIPAL
   const [isLoading, setIsLoading] = useState(true);
   
   // 2. ESTADOS DEL WORKSPACE (con inicialización segura)
-  // const [uploadedFileIds, setUploadedFileIds] = useState(initialData.files);
-  // const [credits, setCredits] = useState(initialData.credits);
-  // const [creditHistory, setCreditHistory] = useState(initialData.history);
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
   const [credits, setCredits] = useState({ used: 0, remaining: 0 });
   const [creditHistory, setCreditHistory] = useState([]);
@@ -471,19 +469,27 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       ...(reportItem.advanced_parameters || [])
     ];
 
-    allParamsConfig.forEach(param => {
-      const paramName = param.name;
+    // allParamsConfig.forEach(param => {
+    //   const paramName = param.name;
       
-      // JERARQUÍA DE PARÁMETROS:
-      // Nivel 1 (Prioridad Alta): El valor de la Estrategia Global guardada.
-      // Nivel 2 (Prioridad Baja): El valor por defecto del código del reporte.
-      // El valor que el usuario modifique después se guardará en `modalParams`.
-      if (strategy[paramName] !== undefined && strategy[paramName] !== null) {
-        initialParams[paramName] = strategy[paramName];
-      } else {
-        initialParams[paramName] = param.defaultValue;
-      }
-    });
+    //   // JERARQUÍA DE PARÁMETROS:
+    //   // Nivel 1 (Prioridad Alta): El valor de la Estrategia Global guardada.
+    //   // Nivel 2 (Prioridad Baja): El valor por defecto del código del reporte.
+    //   // El valor que el usuario modifique después se guardará en `modalParams`.
+    //   if (strategy[paramName] !== undefined && strategy[paramName] !== null) {
+    //     initialParams[paramName] = strategy[paramName];
+    //   } else {
+    //     initialParams[paramName] = param.defaultValue;
+    //   }
+    // });
+
+    allParamsConfig.forEach(param => {
+          if (strategy && strategy[param.name] !== undefined) {
+              initialParams[param.name] = strategy[param.name];
+          } else {
+              initialParams[param.name] = param.defaultValue;
+          }
+      });
 
     // Establecemos los parámetros iniciales en el estado del modal y lo abrimos
     setModalParams(initialParams);
@@ -525,9 +531,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   };
 
   // --- RENDERIZADO ---
-  if (isLoading) {
+  if (isConfigLoading || isLoading) {
     return <LoadingScreen message={context.type === 'user' ? `Cargando espacio: ${context.workspace?.nombre}...` : "Iniciando sesión anónima..."} />;
   }
+
+  // if (isConfigLoading || isLoading) {
+  //   return <LoadingScreen message="Cargando..." />;
+  // }
 
   return (
     <div className="w-full h-screen animate-fade-in-slow flex flex-col bg-neutral-900 text-white">
@@ -644,7 +654,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       {activeModal === 'reportParams' && selectedReport && (
         <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
           {/*<div className="h-full bg-white rounded-lg relative max-w-48 top-0 flex flex-col">*/}
-          <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-center">
+          <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-left">
             <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0">
               <h2 className="text-xl font-bold text-gray-800 ">
                 {selectedReport.label}
@@ -663,7 +673,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                         if (param.type === 'select') {
                           return (
                             <div key={param.name} className="mb-4">
-                              <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                              <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                                {param.label}:
+                                <Tooltip text={tooltips[param.tooltip_key]} />
+                              </label>
                               <select
                                 id={param.name}
                                 name={param.name}
@@ -685,7 +698,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                           const valueForSelect = currentValue.map(val => ({ value: val, label: val }));
                           return (
                             <div key={param.name} className="mb-4 text-left">
-                              <label className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                              <label className="block text-sm font-medium text-gray-600 mb-1">
+                                {param.label}:
+                                <Tooltip text={tooltips[param.tooltip_key]} />
+                              </label>
                               <Select
                                 isMulti
                                 name={param.name}
@@ -724,7 +740,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                                   if (param.type === 'boolean_select') {
                                     return (
                                       <div key={param.name} className="mb-4">
-                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                                          {param.label}:
+                                          <Tooltip text={tooltips[param.tooltip_key]} />
+                                        </label>
                                         <select
                                           id={param.name}
                                           name={param.name}
@@ -740,7 +759,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                                   if (param.type === 'number') {
                                     return (
                                       <div key={param.name} className="mb-4">
-                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                                          {param.label}:
+                                          <Tooltip text={tooltips[param.tooltip_key]} />
+                                        </label>
                                         <input
                                           type="number"
                                           id={param.name}

@@ -3,6 +3,7 @@
 import React, { createContext, useState, useContext, useCallback } from 'react';
 // import axios from 'axios';
 import api from '../utils/api'; // Usamos nuestro cliente de API centralizado
+import { useStrategy } from './StrategyProvider'; // Usamos nuestro cliente de API centralizado
 
 
 // const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
@@ -14,6 +15,7 @@ export function WorkspaceProvider({ children }) {
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+  const { loadStrategy } = useStrategy();
 
   const fetchWorkspaces = useCallback(async () => {
     setIsLoading(true);
@@ -23,8 +25,9 @@ export function WorkspaceProvider({ children }) {
       // Si hay workspaces, establecemos el primero como activo por defecto
       if (response.data.length > 0) {
         setActiveWorkspace(response.data[0]);
-        return response.data[0]; // Devolvemos el workspace activo
+        return response.data[0]; // Devolvemos el workspace activ
       }
+      // loadStrategy()
       return null; // Devolvemos null si no hay workspaces
     } catch (error) {
       console.error("Error al cargar los espacios de trabajo:", error);

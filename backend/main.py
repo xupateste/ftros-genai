@@ -33,6 +33,7 @@ from track_expenses import generar_reporte_maestro_inventario
 from report_config import REPORTS_CONFIG
 from plan_config import PLANS_CONFIG
 from strategy_config import DEFAULT_STRATEGY
+from tooltips_config import TOOLTIPS_GLOSSARY
 
 INITIAL_CREDITS = 25
 
@@ -71,7 +72,10 @@ async def get_reports_configuration():
     Devuelve la lista de reportes disponibles con sus propiedades (costo, si es Pro, etc.).
     El frontend usará esto para construir dinámicamente la interfaz.
     """
-    return JSONResponse(content=REPORTS_CONFIG)
+    return JSONResponse(content={
+            "reports": REPORTS_CONFIG,
+            "tooltips": TOOLTIPS_GLOSSARY
+        })
 
 
 # ===================================================================================
