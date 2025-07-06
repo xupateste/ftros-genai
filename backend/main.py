@@ -70,7 +70,7 @@ if __name__ == "__main__":
 @app.get("/healthcheck", status_code=200, tags=["Health"])
 async def health_check():
     return {"status": "ok"}
-    
+
 @app.get("/reports-config", summary="Obtiene la configuración de los reportes disponibles", tags=["Configuración"])
 async def get_reports_configuration():
     """
@@ -319,7 +319,10 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
 # --- NUEVO ENDPOINT PARA CREAR SESIONES ---
 # ===================================================================================
 @app.post("/sessions", summary="Crea una sesión y devuelve su estado inicial", tags=["Sesión"])
-async def create_analysis_session(onboarding_data: OnboardingData):
+async def create_analysis_session(
+    request: Request, # Inyectamos el objeto Request para obtener la IP
+    onboarding_data: OnboardingData
+):
     """
     Inicia una nueva sesión, la guarda en Firestore, y devuelve el ID
     junto con la estrategia por defecto para evitar una segunda llamada a la API.
@@ -327,6 +330,44 @@ async def create_analysis_session(onboarding_data: OnboardingData):
     try:
         session_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc)
+
+
+        # --- INICIO DE LA LÓGICA DE GEOLOCALIZACIÓN ---
+    
+        # Obtenemos la IP del cliente desde el objeto Request
+        client_ip = request.client.host
+        geoloc_data = {"ip": client_ip, "status": "desconocido"}
+
+        # Evitamos llamar a la API para IPs locales o de prueba
+        if client_ip and client_ip not in ["127.0.0.1", "testclient"]:
+            try:
+                # Usamos httpx para hacer una llamada asíncrona a la API de geolocalización
+                async with httpx.AsyncClient() as client:
+                    response = await client.get(f"http://ip-api.com/json/{client_ip}")
+                    response.raise_for_status() # Lanza un error si la respuesta no es 2xx
+                    
+                    # Guardamos los datos si la petición fue exitosa
+                    api_data = response.json()
+                    if api_data.get("status") == "success":
+                        geoloc_data = {
+                            "ip": api_data.get("query"),
+                            "pais": api_data.get("country"),
+                            "ciudad": api_data.get("city"),
+                            "region": api_data.get("regionName"),
+                            "isp": api_data.get("isp"),
+                            "status": "exitoso"
+                        }
+                    else:
+                        geoloc_data["status"] = "fallido_api"
+                        geoloc_data["error_message"] = api_data.get("message")
+
+            except httpx.RequestError as e:
+                print(f"🔥 Error de red al consultar la API de geolocalización: {e}")
+                geoloc_data["status"] = "fallido_red"
+                geoloc_data["error_message"] = str(e)
+        
+        # --- FIN DE LA LÓGICA DE GEOLOCALIZACIÓN ---
+
 
         session_ref = db.collection('sesiones_anonimas').document(session_id)
         
@@ -336,12 +377,13 @@ async def create_analysis_session(onboarding_data: OnboardingData):
             "ultimoAcceso": now,
             "creditos_iniciales": INITIAL_CREDITS,
             "creditos_restantes": INITIAL_CREDITS,
-            "estrategia": DEFAULT_STRATEGY 
+            "estrategia": DEFAULT_STRATEGY,
+            "geolocalizacion": geoloc_data # <-- Guardamos el nuevo objeto en Firestore
         }
         
         session_ref.set(session_log)
         
-        print(f"✅ Nueva sesión creada con créditos y estrategia por defecto. ID: {session_id}")
+        print(f"✅ Nueva sesión creada para IP {client_ip} desde {geoloc_data.get('ciudad', 'N/A')}. ID: {session_id}")
         
         # --- CAMBIO CLAVE: Devolvemos tanto el ID como la estrategia ---
         return JSONResponse(content={
