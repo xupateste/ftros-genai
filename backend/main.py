@@ -15,6 +15,8 @@ import traceback
 import io
 import math
 import uuid
+import httpx
+
 # --- Importaciones de nuestros nuevos módulos ---
 from firebase_admin import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -339,7 +341,7 @@ async def create_analysis_session(
         geoloc_data = {"ip": client_ip, "status": "desconocido"}
 
         # Evitamos llamar a la API para IPs locales o de prueba
-        if client_ip and client_ip not in ["127.0.0.1", "testclient"]:
+        if client_ip and client_ip not in ["", "testclient"]:
             try:
                 # Usamos httpx para hacer una llamada asíncrona a la API de geolocalización
                 async with httpx.AsyncClient() as client:
