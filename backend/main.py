@@ -66,6 +66,11 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000)) # Default to 8000 if not set
     uvicorn.run(app, host="0.0.0.0", port=port)
 
+# En tu main.py
+@app.get("/healthcheck", status_code=200, tags=["Health"])
+async def health_check():
+    return {"status": "ok"}
+    
 @app.get("/reports-config", summary="Obtiene la configuración de los reportes disponibles", tags=["Configuración"])
 async def get_reports_configuration():
     """
