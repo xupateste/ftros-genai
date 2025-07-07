@@ -10,6 +10,7 @@ import * as XLSX from 'xlsx';
 import Select from 'react-select';
 
 // Importa todos los componentes visuales y de iconos que este workspace necesita
+import { ReportModal } from './ReportModal'; 
 import CsvImporterComponent from '../assets/CsvImporterComponent';
 import { CreditsPanel } from './CreditsPanel';
 import { CreditHistoryModal } from './CreditHistoryModal';
@@ -157,7 +158,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   
   // 3. ESTADOS DE LA UI
   const [activeModal, setActiveModal] = useState(null);
-  const [selectedReport, setSelectedReport] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
 
 
@@ -176,6 +176,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
+
+  // --- ESTADOS SIMPLIFICADOS ---
+  // El estado del modal de reporte ahora es mucho más simple
+  const [selectedReport, setSelectedReport] = useState(null); 
+
+  const [count, setCount] = useState(0)
 
   // --- LÓGICA DE CARGA Y ACTUALIZACIÓN ---
   useEffect(() => {
@@ -228,6 +234,34 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   // Ahora depende de los IDs, que son strings estables, no de objetos que se recrean.
   // }, [context.type, context.id, context.workspace?.id, loadStrategy]);
   }, [context.type, context.id, context.workspace?.id, loadStrategy]);
+
+  // --- NUEVA FUNCIÓN: Actualiza solo créditos e historial ---
+  const refreshCreditsAndHistory = useCallback(async (context) => {
+    if (!context) return;
+    const isUserContext = context.type === 'user' && context.workspace;
+    const identifier = isUserContext ? context.workspace.id : context.id;
+    if (!identifier) return;
+
+    const formData = new FormData();
+
+    if (context.type === 'user') {
+      const token = localStorage.getItem('accessToken');
+      formData.append("workspace_id", context.workspace.id);
+      formData.append("current_user", token);
+    }
+
+    try {
+      const endpoint = isUserContext ? `/workspaces/${identifier}/state` : `/session-state`;
+      const headers = isUserContext ? {} : { 'X-Session-ID': identifier };
+      const response = await api.get(endpoint, { headers: headers, params: formData });
+      
+      const { credits: loadedCredits, history: loadedHistory } = response.data || {};
+      if (loadedCredits) setCredits(loadedCredits);
+      if (loadedHistory) setCreditHistory(loadedHistory);
+    } catch (error) {
+      console.error("No se pudo refrescar el estado de créditos/historial:", error);
+    }
+  }, []);
 
   const strategyModalContext = useMemo(() => {
     if (context.type === 'user') {
@@ -294,6 +328,11 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   // ... (Aquí van tus otras funciones: handleGenerateAnalysis, handleReportView, etc.)
   // ¡Asegúrate de que usen el cliente `api` y pasen el `workspace_id` si es necesario!
+  const handleAnalysisCompletion = useCallback(() => {
+    console.log("Análisis completado. Refrescando créditos e historial...");
+    // Llama a la función ligera que solo actualiza lo necesario
+    refreshCreditsAndHistory(context);
+  }, [context, refreshCreditsAndHistory]);
 
   const handleGenerateAnalysis = async () => {  
     const isUserContext = context.type === 'user' && context.workspace;
@@ -459,41 +498,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       setActiveModal('proOffer');
       return;
     }
-    
-    // --- LÓGICA DE PARÁMETROS CORREGIDA Y FINAL ---
     setSelectedReport(reportItem);
-    const initialParams = {};
-
-    const allParamsConfig = [
-      ...(reportItem.basic_parameters || []),
-      ...(reportItem.advanced_parameters || [])
-    ];
-
-    // allParamsConfig.forEach(param => {
-    //   const paramName = param.name;
-      
-    //   // JERARQUÍA DE PARÁMETROS:
-    //   // Nivel 1 (Prioridad Alta): El valor de la Estrategia Global guardada.
-    //   // Nivel 2 (Prioridad Baja): El valor por defecto del código del reporte.
-    //   // El valor que el usuario modifique después se guardará en `modalParams`.
-    //   if (strategy[paramName] !== undefined && strategy[paramName] !== null) {
-    //     initialParams[paramName] = strategy[paramName];
-    //   } else {
-    //     initialParams[paramName] = param.defaultValue;
-    //   }
-    // });
-
-    allParamsConfig.forEach(param => {
-          if (strategy && strategy[param.name] !== undefined) {
-              initialParams[param.name] = strategy[param.name];
-          } else {
-              initialParams[param.name] = param.defaultValue;
-          }
-      });
-
-    // Establecemos los parámetros iniciales en el estado del modal y lo abrimos
-    setModalParams(initialParams);
-    setActiveModal('reportParams');
   };
 
 
@@ -648,226 +653,19 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         )}
       </main>
 
-      {/* El renderizado de tus modales se mantiene igual */}
-      {activeModal === 'reportParams' && selectedReport && (
-        <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
-          {/*<div className="h-full bg-white rounded-lg relative max-w-48 top-0 flex flex-col">*/}
-          <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-left">
-            <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0">
-              <h2 className="text-xl font-bold text-gray-800 ">
-                {selectedReport.label}
-              </h2>
-            </div>
-            <div className="flex-1 min-h-0 overflow-y-auto">
-              {!analysisResult ? (
-                <div className="flex-1 min-h-0 gap-4 p-4 text-black">
-                  {(selectedReport.basic_parameters?.length > 0 || selectedReport.advanced_parameters?.length > 0) && (
-                    <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
-                      <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
-                      
-                      {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
-                      {selectedReport.basic_parameters?.map((param) => {
-                        // Lógica de renderizado para select y multi-select
-                        if (param.type === 'select') {
-                          return (
-                            <div key={param.name} className="mb-4">
-                              <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-                                {param.label}:
-                                <Tooltip text={tooltips[param.tooltip_key]} />
-                              </label>
-                              <select
-                                id={param.name}
-                                name={param.name}
-                                value={modalParams[param.name] || ''}
-                                onChange={e => handleParamChange(param.name, e.target.value)}
-                                className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                              >
-                                {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                              </select>
-                            </div>
-                          );
-                        }
-                        if (param.type === 'multi-select') {
-                          // 1. Obtenemos las opciones del estado `availableFilters`
-                          const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-                          // 2. Obtenemos el valor actual del estado `modalParams`
-                          const currentValue = modalParams[param.name] || [];
-                          // 3. Convertimos el valor actual al formato que `react-select` espera
-                          const valueForSelect = currentValue.map(val => ({ value: val, label: val }));
-                          return (
-                            <div key={param.name} className="mb-4 text-left">
-                              <label className="block text-sm font-medium text-gray-600 mb-1">
-                                {param.label}:
-                                <Tooltip text={tooltips[param.tooltip_key]} />
-                              </label>
-                              <Select
-                                isMulti
-                                name={param.name}
-                                options={options}
-                                className="mt-1 block w-full basic-multi-select"
-                                classNamePrefix="select"
-                                value={valueForSelect} // <-- Usamos el valor formateado
-                                isLoading={isLoadingFilters}
-                                placeholder={isLoadingFilters ? "Cargando..." : "Selecciona..."}
-                                onChange={(selectedOptions) => {
-                                  // Al cambiar, extraemos solo los valores (strings) para guardarlos en el estado
-                                  const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-                                  handleParamChange(param.name, values);
-                                }}
-                              />
-                            </div>
-                          );
-                        }
-                        return null;
-                      })}
-
-                      {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
-                      {(selectedReport.advanced_parameters && selectedReport.advanced_parameters.length > 0) && (
-                        <div className="mt-6 pt-4 border-t border-gray-200">
-                          <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
-                            {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
-                            {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
-                            <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                          </button>
-                          
-                          {showAdvanced && (
-                            <>
-                              <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
-                                {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
-                                {selectedReport.advanced_parameters.map(param => {
-                                  if (param.type === 'boolean_select') {
-                                    return (
-                                      <div key={param.name} className="mb-4">
-                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-                                          {param.label}:
-                                          <Tooltip text={tooltips[param.tooltip_key]} />
-                                        </label>
-                                        <select
-                                          id={param.name}
-                                          name={param.name}
-                                          value={modalParams[param.name] || ''}
-                                          onChange={e => handleParamChange(param.name, e.target.value)}
-                                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        >
-                                          {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                        </select>
-                                      </div>
-                                    );
-                                  }
-                                  if (param.type === 'number') {
-                                    return (
-                                      <div key={param.name} className="mb-4">
-                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-                                          {param.label}:
-                                          <Tooltip text={tooltips[param.tooltip_key]} />
-                                        </label>
-                                        <input
-                                          type="number"
-                                          id={param.name}
-                                          name={param.name}
-                                          value={modalParams[param.name] || ''}
-                                          onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                          min={param.min}
-                                          max={param.max}
-                                          step={param.step}
-                                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        />
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })}
-                              </div>
-                              {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
-                              <button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
-                                <FiRefreshCw className="text-md"/> Restaurar valores por defecto
-                              </button>
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                // VISTA DE RESULTADOS: Botones de descarga y para volver
-                <div className="space-y-3">
-                  <div className="flex gap-4">
-                      <button onClick={() => handleDownloadExcel('accionable')} className="flex-1 bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700">
-                          📋 Descargar Accionable
-                      </button>
-                      <button onClick={() => handleDownloadExcel('detallado')} className="flex-1 bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">
-                          📊 Descargar Detallado
-                      </button>
-                  </div>
-                  <button onClick={() => setAnalysisResult(null)} className="text-sm text-gray-600 hover:text-black">
-                      ‹ Volver a Parámetros
-                  </button>
-                </div>
-              )}
-            </div>
-            <div className="p-4 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
-              <button
-                  onClick={handleGenerateAnalysis}
-                  // La condición disabled ahora solo depende de si los archivos están listos o si está cargando
-                  disabled={!filesReady || isLoading}
-                  className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-                      ${
-                          // Lógica de estilos condicional
-                          isLoading ? 'bg-gray-200 text-gray-500 cursor-wait' :
-                          !filesReady ? 'bg-gray-200 text-gray-400 cursor-not-allowed' :
-                          isCacheValid ? 'bg-green-100 border-green-600 text-green-800 hover:bg-green-200' : 'text-transparent border-purple-700'
-                      }`
-                  }
-                  style={!isLoading && !isCacheValid ? {
-                    backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
-                    backgroundClip: 'text',
-                  } : {}}
-              >
-                  {/* Lógica para renderizar el contenido del botón */}
-                  {isLoading ? (
-                      <>
-                          <FiLoader className="animate-spin h-5 w-5" />
-                          <span>Generando...</span>
-                      </>
-                  ) : isCacheValid ? (
-                      <>
-                          <FiDownload className="font-bold text-xl"/>
-                          <span>Descargar Reporte (en caché)</span>
-                      </>
-                  ) : (
-                      <>
-                          <span className="text-black font-bold text-lg">🚀</span>
-                          {/* El texto cambia si ya existe una caché pero es obsoleta */}
-                          <span>{cachedResponse.key ? 'Volver a Ejecutar con Nuevos Parámetros' : 'Ejecutar Análisis'}</span>
-                      </>
-                  )}
-              </button>
-              <button
-                  onClick={() => setActiveModal(null)}
-                  className="mt-2 w-full text-white text-xl px-4 py-2 font-bold rounded-lg hover:text-gray-100"
-                  disabled={isLoading}
-                  style={{
-                    backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
-                  }}
-              >
-                  Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/*{isStrategyPanelOpen && ()}*/}
-      {/*{activeModal === 'strategy' && (
-        <StrategyPanelModal
-          strategy={draftStrategy} 
-          context={context} 
-          setStrategy={setDraftStrategy} 
-          onClose={() => setActiveModal(null)}
-          sessionId={context.id}
+      {/* --- RENDERIZADO DEL MODAL DE REPORTE --- */}
+      {/* Se renderiza solo si hay un reporte seleccionado */}
+      {selectedReport && (
+        <ReportModal 
+          reportConfig={selectedReport}
+          context={{...context, fileIds: uploadedFileIds}} // Pasamos toda la info necesaria
+          availableFilters={availableFilters}
+          onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
+          onStateUpdate={setCount} // Pasamos la función para que el modal pueda pedir un refresco
+          onAnalysisComplete={handleAnalysisCompletion}
         />
-      )}*/}
+      )}
+      
       {isStrategyPanelOpen && (
         <StrategyPanelModal 
           context={{ type: 'workspace', id: context.workspace.id, name: context.workspace.nombre }}

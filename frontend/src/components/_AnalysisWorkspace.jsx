@@ -1,27 +1,31 @@
 // src/components/AnalysisWorkspace.jsx
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import api from '../utils/api'; // Usamos nuestro cliente API centralizado
 import axios from 'axios';
-import Select from 'react-select';
+import { useStrategy } from '../context/StrategyProvider';
+import { useWorkspace } from '../context/WorkspaceProvider';
+import { useConfig } from '../context/ConfigProvider';
 import * as XLSX from 'xlsx';
-import { FiDownload, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
-import { StrategyProvider, useStrategy } from '../context/StrategyProvider';
-import CreateWorkspaceModal from './CreateWorkspaceModal'; // Importa el modal
+import Select from 'react-select';
 
-// Importa los componentes que necesita
+// Importa todos los componentes visuales y de iconos que este workspace necesita
 import CsvImporterComponent from '../assets/CsvImporterComponent';
 import { CreditsPanel } from './CreditsPanel';
 import { CreditHistoryModal } from './CreditHistoryModal';
 import { ProOfferModal } from './ProOfferModal';
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
-
 import { StrategyPanelModal } from './StrategyPanelModal';
-import { useWorkspace } from '../context/WorkspaceProvider'; // <-- Importamos el hook
-import { WorkspaceSelector } from './WorkspaceSelector';   
+import { RegisterPage } from './RegisterPage';
+import { WorkspaceSelector } from './WorkspaceSelector';
+import { LoadingScreen } from './LoadingScreen';
+import { FiDownload, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
+import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el modal
+import { Tooltip } from './Tooltip';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
-import LoginModal from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
-import RegisterModal from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
+import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
+import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
 
 // Las plantillas ahora viven aquí, junto a la lógica que las usa
 const templateVentas = {
@@ -137,139 +141,166 @@ const templateStock = {
         ]
       };
 
+export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogout, onBackToDashboard }) {
+  // --- ESTADOS ---
+  const { strategy, loadStrategy } = useStrategy();
+  const { workspaces, activeWorkspace, setActiveWorkspace, touchWorkspace } = useWorkspace();
+  const { reportData, tooltips, isLoading: isConfigLoading } = useConfig();
 
-
-// Este componente recibe el contexto (sesión anónima o de usuario) como prop
-export default function AnalysisWorkspace({ context, reportData, diccionarioData, onSwitchToLogin, onSwitchToRegister, onLoginSuccess, onRegisterSuccess, onLogout, onBackToDashboard }) {
-  // --- ESTADOS EXTRAÍDOS DE LANDINGPAGE ---
-  const { 
-    workspaces, 
-    activeWorkspace, 
-    setActiveWorkspace,
-    createWorkspace // Necesario para el modal de creación
-  } = useWorkspace();
-
+  // 1. ESTADO DE CARGA PRINCIPAL
+  const [isLoading, setIsLoading] = useState(true);
+  
+  // 2. ESTADOS DEL WORKSPACE (con inicialización segura)
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
-  const [uploadStatus, setUploadStatus] = useState({ ventas: 'idle', inventario: 'idle' });
-  const [filesReady, setFilesReady] = useState(false);
-  
-  const [showModal, setShowModal] = useState(false);
-  const [selectedReport, setSelectedReport] = useState(null);
-  const [showReportModal, setShowReportModal] = useState(false);
-  const [modalParams, setModalParams] = useState({});
-  const [analysisResult, setAnalysisResult] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
-
-  
-  const [availableFilters, setAvailableFilters] = useState({ categorias: [], marcas: [] });
-  const [isLoadingFilters, setIsLoadingFilters] = useState(false);
-  const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
-  const [activeModal, setActiveModal] = useState(null); // 'login', 'register', 'reportParams', etc.
-  
-  // const { loadStrategy } = useStrategy();
-  const { initializeSessionAndLoadStrategy } = useStrategy();
-  const { strategy } = useStrategy();
-  const [proReportClicked, setProReportClicked] = useState(null);
-  const [showProModal, setShowProModal] = useState(false);
-  const [insightHtml, setInsightHtml] = useState('');
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [sessionId, setSessionId] = useState(null);
-  const [isCacheValid, setIsCacheValid] = useState(false);
-  const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
   const [credits, setCredits] = useState({ used: 0, remaining: 0 });
   const [creditHistory, setCreditHistory] = useState([]);
-  const [showCreditsModal, setShowCreditsModal] = useState(false);
-  const [creditsInfo, setCreditsInfo] = useState({ required: 0, remaining: 0 });
-
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  // --- FUNCIONES EXTRAÍDAS DE LANDINGPAGE ---
   
+  // 3. ESTADOS DE LA UI
+  const [activeModal, setActiveModal] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [analysisResult, setAnalysisResult] = useState(null);
+
+
+  // --- ESTADOS Y CONTEXTO ---
+  const [draftStrategy, setDraftStrategy] = useState({});
+  const [modalParams, setModalParams] = useState({});
+  const [filesReady, setFilesReady] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState({ ventas: 'idle', inventario: 'idle' });
+  const [creditsInfo, setCreditsInfo] = useState({ required: 0, remaining: 0 });
+  const [proReportClicked, setProReportClicked] = useState(null);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [availableFilters, setAvailableFilters] = useState({ categorias: [], marcas: [] });
+  const [isLoadingFilters, setIsLoadingFilters] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isCacheValid, setIsCacheValid] = useState(false);
+  const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
+
+  const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
+
+  // --- LÓGICA DE CARGA Y ACTUALIZACIÓN ---
+  useEffect(() => {
+    const loadInitialData = async () => {
+      const isUserContext = context.type === 'user' && context.workspace;
+      const identifier = isUserContext ? context.workspace.id : context.id;
+
+      if (!identifier) {
+        setIsLoading(false);
+        return;
+      }
+
+      setIsLoading(true);
+      resetWorkspaceState();
+
+      try {
+        // Hacemos las llamadas en paralelo
+        const [stateResponse] = await Promise.all([
+          api.get(isUserContext ? `/workspaces/${identifier}/state` : `/session-state`, {
+            headers: isUserContext ? {} : { 'X-Session-ID': identifier }
+          }),
+          loadStrategy(context)
+        ]);
+
+        const { credits, history, files, available_filters } = stateResponse.data || {};
+        setCredits(credits || { used: 0, remaining: 20 });
+        setCreditHistory(history || []);
+        setUploadedFileIds(files || { ventas: null, inventario: null });
+        setAvailableFilters( available_filters
+                ? { categorias: available_filters.categorias, marcas: available_filters.marcas }
+                : { categorias: [], marcas: []});          
+        
+        const loadedFiles = files || { ventas: null, inventario: null };
+        setUploadedFileIds(loadedFiles);
+
+        setUploadStatus({
+          ventas: loadedFiles.ventas ? 'success' : 'idle',
+          inventario: loadedFiles.inventario ? 'success' : 'idle'
+        });
+
+      } catch (error) {
+        console.error("Error al cargar el contexto:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadInitialData();
+
+  // Ahora depende de los IDs, que son strings estables, no de objetos que se recrean.
+  // }, [context.type, context.id, context.workspace?.id, loadStrategy]);
+  }, [context.type, context.id, context.workspace?.id, loadStrategy]);
+
+  const strategyModalContext = useMemo(() => {
+    if (context.type === 'user') {
+        return { type: 'workspace', id: context.workspace.id, name: context.workspace.nombre };
+    }
+    return { type: 'anonymous', id: context.id };
+  }, [context.type, context.id, context.workspace?.id, context.workspace?.nombre]);
+
+
   useEffect(() => {
     setFilesReady(!!uploadedFileIds.ventas && !!uploadedFileIds.inventario);
   }, [uploadedFileIds]);
 
-  // Carga el estado inicial de la sesión (créditos e historial)
-  const fetchSessionState = useCallback(async () => {
-    if (!context?.id) return;
-    const identifier = context.type === 'anonymous' ? context.id : context.workspace.id;
-    try {
-        const response = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': identifier } });
-        setCredits(response.data.credits || { used: 0, remaining: 20 });
-        setCreditHistory(response.data.history || []);
-    } catch (error) {
-        console.error("Error al recuperar el estado de la sesión:", error);
-    }
-  }, [context]);
-
-  useEffect(() => {
-    if (context?.type === 'anonymous') {
-        fetchSessionState();
-    }
-    // En el futuro, aquí se podría añadir la lógica para cargar el estado de un workspace de usuario
-  }, [context, fetchSessionState]);
-
-  // useEffect(() => {
-  //   fetchSessionState();
-  // }, [fetchSessionState]);
-
-  const handleCreationSuccessAndSwitch = (newWorkspace) => {
-    console.log(`Espacio '${newWorkspace.nombre}' creado, cambiando a esta vista.`);
-    setActiveWorkspace(newWorkspace); // Cambia el contexto al nuevo espacio
-    setIsCreateModalOpen(false); // Cierra el modal
+  // Función para limpiar el estado al cambiar de workspace
+  const resetWorkspaceState = () => {
+    setUploadedFileIds({ ventas: null, inventario: null });
+    setUploadStatus({ ventas: 'idle', inventario: 'idle' });
+    setAnalysisResult(null);
   };
 
+  // --- FUNCIÓN DE CARGA DE ARCHIVOS CONSCIENTE DEL CONTEXTO ---
   const handleFileProcessed = async (file, fileType) => {
+    const isUserContext = context.type === 'user' && context.workspace;
+    if (!isUserContext && !context.id) {
+        alert("Error: No se ha iniciado una sesión de análisis.");
+        return;
+    }
+
+    setUploadStatus(prev => ({ ...prev, [fileType]: 'uploading' }));
     const formData = new FormData();
     formData.append("file", file);
     formData.append("tipo_archivo", fileType);
 
-    // Añade el contexto correcto a la petición
-    if (context.type === 'user' && context.workspace) {
+    const headers = {};
+    if (isUserContext) {
         formData.append("workspace_id", context.workspace.id);
-      console.log('desde refactoring -> user')
-    } else if (context.type === 'anonymous') {
-        // El interceptor de axios se encargará del X-Session-ID si no hay token
-      console.log('desde refactoring -> anonymous')
+        // El token de autorización se añade automáticamente por el interceptor de `api.js`
+        console.log(`Subiendo archivo al workspace: ${context.workspace.id}`);
+    } else {
+        headers['X-Session-ID'] = context.id;
+        console.log(`Subiendo archivo a la sesión anónima: ${context.id}`);
     }
-    
-    setUploadStatus(prev => ({ ...prev, [fileType]: 'uploading' }));
-
-    // const headers = {};
-    // if (context.type === 'anonymous') {
-    //     // --- LÓGICA PARA USUARIO ANÓNIMO ---
-    //     headers['X-Session-ID'] = sessionId;
-    //     console.log(`Enviando archivo a la sesión anónima: ${sessionId}`);
-    // } else {
-    //     // --- LÓGICA PARA USUARIO REGISTRADO ---
-    //     headers['Authorization'] = `Bearer ${authToken}`;
-    //     formData.append("workspace_id", activeWorkspace.id);
-    //     console.log(`Enviando archivo al workspace: ${activeWorkspace.id}`);
-    // }
 
     try {
-      // Usamos un cliente `api` centralizado que añade el token o el X-Session-ID
-      const response = await axios.post(`${API_URL}/upload-file`, formData, { headers: { 'X-Session-ID': context.id }});
+      const response = await api.post('/upload-file', formData, { headers });
       setUploadedFileIds(prev => ({ ...prev, [fileType]: response.data.file_id }));
       setUploadStatus(prev => ({ ...prev, [fileType]: 'success' }));
+      
+      // --- LÓGICA CLAVE PARA POBLAR LOS FILTROS ---
       if (fileType === 'inventario' && response.data.available_filters) {
-        setAvailableFilters(response.data.available_filters);
-        // setAvailableFilters({
-        //     categorias: response.data.available_filters.categorias || [],
-        //     marcas: response.data.available_filters.marcas || []
-        //   });
+        console.log("Filtros de Categorías y Marcas recibidos:", response.data.available_filters);
+        setAvailableFilters({
+          categorias: response.data.available_filters.categorias || [],
+          marcas: response.data.available_filters.marcas || []
+        });
       }
+
     } catch (error) {
       console.error(`Error al subir ${fileType}:`, error);
+      alert(error.response?.data?.detail || `Error al subir el archivo.`);
       setUploadStatus(prev => ({ ...prev, [fileType]: 'error' }));
     }
-  }
+  };
 
-  const handleGenerateAnalysis = async () => {
+  // ... (Aquí van tus otras funciones: handleGenerateAnalysis, handleReportView, etc.)
+  // ¡Asegúrate de que usen el cliente `api` y pasen el `workspace_id` si es necesario!
+
+  const handleGenerateAnalysis = async () => {  
+    const isUserContext = context.type === 'user' && context.workspace;
+    const identifier = isUserContext ? context.workspace.id : context.id;
+
     // 1. Verificación inicial (ahora comprueba los IDs de archivo)
-    if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario || !context.id) {
+    if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario || !identifier) {
       alert("Asegúrate de haber iniciado una sesión, subido ambos archivos y seleccionado un reporte.");
       return;
     }
@@ -305,21 +336,32 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
 
     // --- FIN DEL CAMBIO ---
 
+    const headers = {};
+    if (isUserContext) {
+        const token = localStorage.getItem('accessToken');
+        formData.append("workspace_id", context.workspace.id);
+        formData.append("current_user", token);
+        headers['X-Session-ID'] = context.workspace.id;
+    } else {
+        headers['X-Session-ID'] = context.id;
+        console.log(`Subiendo archivo a la sesión anónima: ${context.id}`);
+    }
+
     try {
-      const response = await axios.post(`${API_URL}${selectedReport.endpoint}`, formData, {
-        // responseType: 'blob', // Ahora espera un JSON
-        headers: { 'X-Session-ID': context.id }
-      });
+      const response = await api.post(`${API_URL}${selectedReport.endpoint}`, formData, { headers });
       
       const newBlob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-       // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
+      // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
       setAnalysisResult(response.data);
 
-       // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
-      const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': context.id } });
-      setCredits(updatedState.data.credits);
-      setCreditHistory(updatedState.data.history);
+      // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
+      const updatedState = await api.get(isUserContext ? `/workspaces/${identifier}/state` : `/session-state`, {
+            headers: isUserContext ? {} : { 'X-Session-ID': identifier }
+          })
+      const { credits, history } = updatedState.data || {};
+      setCredits(credits || { used: 0, remaining: 20 });
+      setCreditHistory(history || []);
 
     } catch (error) {
       // --- 5. LÓGICA DE MANEJO DE ERRORES MEJORADA ---
@@ -333,7 +375,7 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
           setCreditsInfo({ required, remaining });
           
           // Mostramos el modal específico de créditos insuficientes
-          setShowCreditsModal(true);
+          setActiveModal('creditsOffer');
       } else {
           // Para cualquier otro error, mantenemos la lógica genérica
           let errorMessage = "Ocurrió un error al generar el reporte.";
@@ -350,8 +392,12 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
       // Si el reporte falló, también es buena idea actualizar el historial
       // para que el usuario vea el intento fallido.
       try {
-          const updatedState = await axios.get(`${API_URL}/session-state`, { headers: { 'X-Session-ID': context.id } });
-          setCreditHistory(updatedState.data.history);
+          // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
+          const updatedState = await api.get(isUserContext ? `/workspaces/${identifier}/state` : `/session-state`, {
+                headers: isUserContext ? {} : { 'X-Session-ID': identifier }
+              })
+          const { history } = updatedState.data || {};
+          setCreditHistory(history || []);
       } catch (stateError) {
           console.error("No se pudo actualizar el historial después de un error:", stateError);
       }
@@ -402,33 +448,55 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
   };
 
   const handleReportView = (reportItem) => {
-    // Lógica que decide qué modal abrir
-    if (context.type === 'anonymous' && reportItem.isPro) {
+    // 1. Defensa contra estado nulo (se mantiene)
+    if (!strategy) {
+      alert("La configuración de la estrategia aún se está cargando, por favor espera un momento.");
+      return;
+    }
+    // Lógica para la oferta Pro (se mantiene)
+    if ( reportItem.isPro ) {
       setProReportClicked(reportItem);
       setActiveModal('proOffer');
-    } else {
-      setSelectedReport(reportItem);
-      const initialParams = {};
-      const allParamsConfig = [
-          ...(reportItem.basic_parameters || []),
-          ...(reportItem.advanced_parameters || [])
-      ];
+      return;
+    }
+    
+    // --- LÓGICA DE PARÁMETROS CORREGIDA Y FINAL ---
+    setSelectedReport(reportItem);
+    const initialParams = {};
 
-      allParamsConfig.forEach(param => {
-          const paramName = param.name;
-          
-          initialParams[paramName] = param.defaultValue;
+    const allParamsConfig = [
+      ...(reportItem.basic_parameters || []),
+      ...(reportItem.advanced_parameters || [])
+    ];
 
-          // Tu lógica de jerarquía de 3 niveles se mantiene intacta aquí
-          if (strategy[paramName] !== undefined) {
-              initialParams[paramName] = strategy[paramName];
+    // allParamsConfig.forEach(param => {
+    //   const paramName = param.name;
+      
+    //   // JERARQUÍA DE PARÁMETROS:
+    //   // Nivel 1 (Prioridad Alta): El valor de la Estrategia Global guardada.
+    //   // Nivel 2 (Prioridad Baja): El valor por defecto del código del reporte.
+    //   // El valor que el usuario modifique después se guardará en `modalParams`.
+    //   if (strategy[paramName] !== undefined && strategy[paramName] !== null) {
+    //     initialParams[paramName] = strategy[paramName];
+    //   } else {
+    //     initialParams[paramName] = param.defaultValue;
+    //   }
+    // });
+
+    allParamsConfig.forEach(param => {
+          if (strategy && strategy[param.name] !== undefined) {
+              initialParams[param.name] = strategy[param.name];
           } else {
-              initialParams[paramName] = param.defaultValue;
+              initialParams[param.name] = param.defaultValue;
           }
       });
-      setActiveModal('reportParams');
-    }
+
+    // Establecemos los parámetros iniciales en el estado del modal y lo abrimos
+    setModalParams(initialParams);
+    setActiveModal('reportParams');
   };
+
+
 
   const handleParamChange = (paramName, value) => {
     // Ahora solo modifica los parámetros del modal, nada más.
@@ -438,14 +506,7 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
   const handleResetAdvanced = () => {
     const advancedDefaults = {};
     selectedReport.advanced_parameters?.forEach(param => {
-        // Al resetear, volvemos a aplicar la jerarquía para obtener los defaults correctos
-
         advancedDefaults[param.name] = param.defaultValue;
-        // if (strategy[param.name] !== undefined) {
-        //     advancedDefaults[param.name] = strategy[param.name];
-        // } else {
-        //     advancedDefaults[param.name] = param.defaultValue;
-        // }
     });
     
     setModalParams(prev => ({ ...prev, ...advancedDefaults }));
@@ -453,7 +514,7 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
 
   const handleGoToRegister = () => {
       // Cerramos cualquier modal que esté abierto y cambiamos a la vista de registro
-      setShowProModal(false); 
+      setActiveModal(null); 
       // setAppState('registering');
   };
 
@@ -463,13 +524,27 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
     onLoginSuccess(token);
   };
 
+  const handleCreationSuccessAndSwitch = (newWorkspace) => {
+    console.log(`Espacio '${newWorkspace.nombre}' creado, cambiando a esta vista.`);
+    setActiveWorkspace(newWorkspace); // Cambia el contexto al nuevo espacio
+    setIsCreateModalOpen(false); // Cierra el modal
+  };
+
+  // --- RENDERIZADO ---
+  if (isConfigLoading || isLoading) {
+    return <LoadingScreen message={context.type === 'user' ? `Cargando espacio: ${context.workspace?.nombre}...` : "Iniciando sesión anónima..."} />;
+  }
+
+  // if (isConfigLoading || isLoading) {
+  //   return <LoadingScreen message="Cargando..." />;
+  // }
+
   return (
-    <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center text-white">
-    <div className="w-full h-full animate-fade-in-slow flex flex-col">
-      {/* El encabezado ahora es parte de esta vista reutilizable */}
-      <header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900 sticky top-0 z-10">
-        <div className="flex flex-col">
-          <div className="flex gap-4 justify-center mb-2">
+    <div className="min-h-screen w-full max-w-5xl mx-auto md:p-8 text-white animate-fade-in">
+      {/* Tu encabezado ahora puede usar `context` para mostrar la información correcta */}
+      {/*<header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900">*/}
+        {/*<div className="flex flex-col">*/}
+          <div className="flex gap-4 justify-center mt-4">
             <h1 className="text-3xl md:text-5xl font-bold text-white">
                 <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
             </h1>
@@ -486,34 +561,33 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
                 </button>
             )}*/}
             {context.type === 'anonymous' &&
-              <p className="text-xs text-white flex justify-center text-center items-center font-mono gap-4">
+              <p className="text-xs mt-3 text-white flex justify-center text-center items-center font-mono gap-4">
                 <span>Modo: Sesión Anónima <br/> {context.id}</span>
               </p>
             }
+        {/*</div>*/}
+        <div className="flex flex-col w-full justify-center items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
+          {/*<div className="flex items-center gap-6">*/}
+           <CreditsPanel 
+              used={credits.used} 
+              remaining={credits.remaining}
+              onHistoryClick={() => setActiveModal('history')}
+           />
+          {/*</div>*/}
+          {context.type === 'user' && (
+            <WorkspaceSelector
+              workspaces={workspaces}
+              activeWorkspace={activeWorkspace}
+              onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
+              onCreateNew={() => setIsCreateModalOpen(true)}
+              onBackToDashboard={ onBackToDashboard }
+            />
+          )}
         </div>
-        {context.type === 'user' && (
-          <WorkspaceSelector
-            workspaces={workspaces}
-            activeWorkspace={activeWorkspace}
-            onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
-            onCreateNew={() => setIsCreateModalOpen(true)}
-            onBackToDashboard={ onBackToDashboard}
-          />
-        )}
-        <div className="flex flex-row w-full justify-center items-center gap-6">
-          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 text-sm text-gray-300 hover:text-white"><FiSettings /> Configurar Mi Estrategia</button>
-        </div>
-      </header>
+      {/*</header>*/}
 
       <main className="flex-1 overflow-y-auto p-4 w-full">
-        <div className="flex items-center gap-6 col-span-full">
-           <CreditsPanel 
-                used={credits.used} 
-                remaining={credits.remaining}
-                onHistoryClick={() => setActiveModal('history')}
-           />
-        </div>
-        <div className='mt-10 w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
+        <div className='w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
           <CsvImporterComponent 
             fileType="ventas"
             title="Historial de Ventas"
@@ -529,9 +603,14 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
             uploadStatus={uploadStatus.inventario}
           />
         </div>
-        
-        {filesReady ? (
-          <div className="w-full space-y-8 px-4 mb-4 mt-10">
+        <div className="flex flex-row w-full justify-center items-center">
+          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
+        </div>
+        {/* El resto de tu JSX para la lista de reportes */}
+        {isConfigLoading ? (
+          <p>Cargando reportes...</p>
+        ) : filesReady ? (
+          <div className="w-full space-y-8 px-4 mb-10">
             {Object.entries(reportData).map(([categoria, reportes]) => (
               <div key={categoria} className="mb-6">
                 <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
@@ -569,11 +648,11 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
         )}
       </main>
 
-      {/* El modal de parámetros ahora vive aquí */}
+      {/* El renderizado de tus modales se mantiene igual */}
       {activeModal === 'reportParams' && selectedReport && (
         <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
           {/*<div className="h-full bg-white rounded-lg relative max-w-48 top-0 flex flex-col">*/}
-          <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-center">
+          <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-left">
             <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0">
               <h2 className="text-xl font-bold text-gray-800 ">
                 {selectedReport.label}
@@ -592,7 +671,10 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
                         if (param.type === 'select') {
                           return (
                             <div key={param.name} className="mb-4">
-                              <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                              <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                                {param.label}:
+                                <Tooltip text={tooltips[param.tooltip_key]} />
+                              </label>
                               <select
                                 id={param.name}
                                 name={param.name}
@@ -606,21 +688,29 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
                           );
                         }
                         if (param.type === 'multi-select') {
+                          // 1. Obtenemos las opciones del estado `availableFilters`
                           const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-                          const value = (modalParams[param.name] || []).map(val => ({ value: val, label: val }));
+                          // 2. Obtenemos el valor actual del estado `modalParams`
+                          const currentValue = modalParams[param.name] || [];
+                          // 3. Convertimos el valor actual al formato que `react-select` espera
+                          const valueForSelect = currentValue.map(val => ({ value: val, label: val }));
                           return (
-                            <div key={param.name} className="mb-4">
-                              <label className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                            <div key={param.name} className="mb-4 text-left">
+                              <label className="block text-sm font-medium text-gray-600 mb-1">
+                                {param.label}:
+                                <Tooltip text={tooltips[param.tooltip_key]} />
+                              </label>
                               <Select
                                 isMulti
                                 name={param.name}
                                 options={options}
                                 className="mt-1 block w-full basic-multi-select"
                                 classNamePrefix="select"
-                                value={value}
+                                value={valueForSelect} // <-- Usamos el valor formateado
                                 isLoading={isLoadingFilters}
-                                placeholder={isLoadingFilters ? "Cargando filtros..." : "Selecciona uno o más..."}
+                                placeholder={isLoadingFilters ? "Cargando..." : "Selecciona..."}
                                 onChange={(selectedOptions) => {
+                                  // Al cambiar, extraemos solo los valores (strings) para guardarlos en el estado
                                   const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
                                   handleParamChange(param.name, values);
                                 }}
@@ -648,7 +738,10 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
                                   if (param.type === 'boolean_select') {
                                     return (
                                       <div key={param.name} className="mb-4">
-                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                                          {param.label}:
+                                          <Tooltip text={tooltips[param.tooltip_key]} />
+                                        </label>
                                         <select
                                           id={param.name}
                                           name={param.name}
@@ -664,7 +757,10 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
                                   if (param.type === 'number') {
                                     return (
                                       <div key={param.name} className="mb-4">
-                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">{param.label}:</label>
+                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                                          {param.label}:
+                                          <Tooltip text={tooltips[param.tooltip_key]} />
+                                        </label>
                                         <input
                                           type="number"
                                           id={param.name}
@@ -763,12 +859,19 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
       )}
 
       {/*{isStrategyPanelOpen && ()}*/}
-      {activeModal === 'strategy' && (
+      {/*{activeModal === 'strategy' && (
         <StrategyPanelModal
           strategy={draftStrategy} 
+          context={context} 
           setStrategy={setDraftStrategy} 
           onClose={() => setActiveModal(null)}
           sessionId={context.id}
+        />
+      )}*/}
+      {isStrategyPanelOpen && (
+        <StrategyPanelModal 
+          context={{ type: 'workspace', id: context.workspace.id, name: context.workspace.nombre }}
+          onClose={() => setStrategyPanelOpen(false)}
         />
       )}
 
@@ -806,6 +909,7 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
           onLoginSuccess={handleLoginFromModal} 
           onSwitchToRegister={() => setActiveModal('register')}
           onBackToAnalysis={() => setActiveModal(null)} 
+          onClose={() => setActiveModal(null)}
         />
       )}
 
@@ -819,13 +923,18 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
       )}
 
       {/* --- RENDERIZADO DEL NUEVO MODAL --- */}
-      {isCreateModalOpen && (
+      {activeModal === 'strategy' && (
+        <StrategyPanelModal 
+          context={strategyModalContext} 
+          onClose={() => setActiveModal(null)} 
+        />
+      )}
+      {/*{isCreateModalOpen && (
         <CreateWorkspaceModal 
             onClose={() => setIsCreateModalOpen(false)}
             onSuccess={handleCreationSuccessAndSwitch} // Le pasamos la función de éxito específica
         />
-      )}
+      )}*/}
     </div>
-  </div>
-  )
+  );
 }
