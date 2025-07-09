@@ -16,7 +16,7 @@ import io
 import math
 import uuid
 import httpx
-
+import numpy as np
 # --- Importaciones de nuestros nuevos módulos ---
 from firebase_admin import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
@@ -31,11 +31,11 @@ from track_expenses import process_csv, summarise_expenses, clean_data, get_top_
 from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
-from track_expenses import generar_reporte_maestro_inventario
+from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos
 from report_config import REPORTS_CONFIG
 from plan_config import PLANS_CONFIG
 from strategy_config import DEFAULT_STRATEGY
-from tooltips_config import TOOLTIPS_GLOSSARY
+from tooltips_config import TOOLTIPS_GLOSSARY, KPI_TOOLTIPS_GLOSSARY
 
 INITIAL_CREDITS = 25
 
@@ -81,7 +81,8 @@ async def get_reports_configuration():
     """
     return JSONResponse(content={
             "reports": REPORTS_CONFIG,
-            "tooltips": TOOLTIPS_GLOSSARY
+            "tooltips": TOOLTIPS_GLOSSARY,
+            "kpi_tooltips": KPI_TOOLTIPS_GLOSSARY
         })
 
 
@@ -1707,7 +1708,7 @@ async def lista_basica_reposicion_historico(
         "lead_time_dias": lead_time_dias,
         "dias_cobertura_ideal_base": dias_cobertura_ideal_base,
         "peso_ventas_historicas": peso_ventas_historicas,
-        "pesos_importancia": pesos_importancia
+        "pesos_importancia": pesos_importancia,
     }
 
     full_params_for_logging = dict(await request.form())
@@ -1976,30 +1977,57 @@ async def _handle_report_generation(
         df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
         df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
         
-        resultado_df = processing_function(df_ventas, df_inventario, **processing_params)
+        # La función ahora devuelve un diccionario
+        processing_result = processing_function(df_ventas, df_inventario, **processing_params)
+        
+        # Extraemos las partes del resultado
+        resultado_df = processing_result.get("data")
+        summary_data = processing_result.get("summary")
         
         columnas = resultado_df.columns
         columnas_duplicadas = columnas[columnas.duplicated()].unique().tolist()
         
-        if columnas_duplicadas:
-            print("\n--- 🕵️  DEBUG: ¡ADVERTENCIA DE COLUMNAS DUPLICADAS! ---")
-            print(f"El DataFrame final para el reporte '{report_key}' tiene nombres de columna repetidos:")
-            print(f"Columnas duplicadas encontradas: {columnas_duplicadas}")
-            print("Esto causará que se omitan datos en el frontend. Revisa tu función de procesamiento para renombrar o eliminar estas columnas antes de devolver el DataFrame.")
-            print("-----------------------------------------------------------\n")
-            # Opcional: Podrías decidir lanzar un error aquí para forzar la corrección
-            # raise ValueError(f"Columnas duplicadas detectadas: {columnas_duplicadas}")
-        # --- FIN DEL BLOQUE DE DEPURACIÓN ---
+        if resultado_df is None or summary_data is None:
+            raise ValueError("La función de procesamiento no devolvió la estructura de datos esperada.")
+
+
+        # if columnas_duplicadas:
+        #     print("\n--- 🕵️  DEBUG: ¡ADVERTENCIA DE COLUMNAS DUPLICADAS! ---")
+        #     print(f"El DataFrame final para el reporte '{report_key}' tiene nombres de columna repetidos:")
+        #     print(f"Columnas duplicadas encontradas: {columnas_duplicadas}")
+        #     print("Esto causará que se omitan datos en el frontend. Revisa tu función de procesamiento para renombrar o eliminar estas columnas antes de devolver el DataFrame.")
+        #     print("-----------------------------------------------------------\n")
+        #     # Opcional: Podrías decidir lanzar un error aquí para forzar la corrección
+        #     # raise ValueError(f"Columnas duplicadas detectadas: {columnas_duplicadas}")
+        # # --- FIN DEL BLOQUE DE DEPURACIÓN ---
         
+        # --- INICIO DE LA NUEVA LÓGICA DE LIMPIEZA CENTRALIZADA ---
+        print("Ejecutando limpieza de datos centralizada...")
+
+        # 1. Reemplazamos infinitos con NaN
+        df_limpio = resultado_df.replace([np.inf, -np.inf], np.nan)
+        
+        # 2. Convertimos el DataFrame limpio a un diccionario. 
+        #    Este paso puede convertir los pd.NA o NaT a NaN de Python.
+        records = df_limpio.to_dict(orient='records')
+
+        # 3. Iteramos sobre la lista de diccionarios para reemplazar los NaN por None.
+        #    Esta es la forma más segura de garantizar la compatibilidad con JSON.
+        data_for_frontend = [
+            {k: (None if pd.isna(v) else v) for k, v in row.items()}
+            for row in records
+        ]
+        print("✅ Limpieza de datos completada.")
+
         insight_text = f"Análisis completado. Se encontraron {len(resultado_df)} productos que cumplen los criterios."
         if resultado_df.empty:
             insight_text = "El análisis se completó, pero no se encontraron productos con los filtros seleccionados."
         
         # Convertimos el DataFrame a un formato JSON (lista de diccionarios)
-        data_for_frontend = resultado_df.to_dict(orient='records')
+        # data_for_frontend = resultado_df.to_dict(orient='records')
         
         # --- Transacción Final ---
-        if resultado_df.empty:
+        if not data_for_frontend:
             log_report_generation(
                 user_id=user_id, workspace_id=workspace_id, session_id=session_id,
                 report_name=report_key, params=full_params_for_logging,
@@ -2020,13 +2048,12 @@ async def _handle_report_generation(
             workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
             workspace_ref.update({"fechaModificacion": datetime.now(timezone.utc)})
 
-        # Devolvemos la respuesta JSON
         return JSONResponse(content={
-            "insight": insight_text,
+            "insight": summary_data.get("insight"),
+            "kpis": summary_data.get("kpis"),
             "data": data_for_frontend,
-            "report_key": report_key # Enviamos la clave para que el frontend sepa qué hacer
+            "report_key": report_key
         })
-
 
     except Exception as e:
         # Si CUALQUIER COSA falla durante el procesamiento...
@@ -2260,4 +2287,46 @@ def to_excel_with_autofit(df, sheet_name='Sheet1'):
 # ===================================================
 # ===================================================
 # ===================================================
+
+# ===================================================================================
+# --- ENDPOINT DE DIAGNÓSTICO TEMPORAL ---
+# ===================================================================================
+@app.post("/debug/auditoria-margenes", summary="[Debug] Audita los márgenes para encontrar inconsistencias", tags=["Debug"])
+async def run_auditoria_margenes(
+    request: Request,
+    # Recibe los mismos parámetros de contexto que tus otros reportes
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+    ventas_file_id: str = Form(...),
+    inventario_file_id: str = Form(...)
+):
+    """
+    Este endpoint especial ejecuta la auditoría de márgenes y devuelve un
+    reporte con los productos que se están vendiendo por debajo del costo.
+    """
+    # Determinamos el contexto (anónimo o registrado)
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+
+    print(f"🔥 current_user: {user_id}")
+    print(f"🔥 X_Session_ID: {X_Session_ID}")
+    print(f"🔥 workspace_id: {workspace_id}")
+    print(f"🔥 ventas_file_id: {ventas_file_id}")
+    print(f"🔥 inventario_file_id: {inventario_file_id}")
+
+    # Llamamos a nuestra función manejadora central, pasándole la nueva función de auditoría
+    return await _handle_report_generation(
+        full_params_for_logging=dict(await request.form()),
+        report_key="AuditoriaMargenes", # Una clave interna para este reporte
+        processing_function=auditar_margenes_de_productos,
+        processing_params={}, # La función de auditoría no necesita parámetros extra
+        output_filename="Auditoria_De_Margenes.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=X_Session_ID,
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id
+    )
 

@@ -3,6 +3,15 @@
 # ===================================================================================
 REPORTS_CONFIG = {
   # "🧠 Diagnósticos generales": [
+  "AuditoriaMargenes": {
+        "label": "Auditoría de Márgenes [Debug]",
+        "endpoint": "/debug/auditoria-margenes",
+        "isPro": False, # No es una función Pro
+        "costo": 0,     # ¡No consume créditos!
+        "categoria": "Herramientas de Diagnóstico",
+        "basic_parameters": [], # No tiene parámetros configurables
+        "advanced_parameters": []
+    },
   "ReporteABC": {
     "label": 'Análisis ABC de Productos ✓',
     "endpoint": '/abc',

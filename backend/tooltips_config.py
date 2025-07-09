@@ -1,4 +1,5 @@
 TOOLTIPS_GLOSSARY = {
+    "filtro_texto": "Busca coincidencias en el SKU, Nombre, Categoría o Marca del producto. Ideal para encontrar rápidamente un item específico dentro de los resultados.",
     # --- Parámetros de Análisis ABC ---
     "periodo_abc": "Define el rango de tiempo de las ventas que se usarán para calcular la importancia de cada producto. '6 meses' es un buen balance entre datos recientes y estabilidad.",
     "criterio_abc": "Elige la métrica principal para clasificar tus productos. 'Margen' se enfoca en la rentabilidad, 'Ingresos' en la facturación, y 'Unidades' en la popularidad.",
@@ -32,4 +33,12 @@ TOOLTIPS_GLOSSARY = {
     "min_importancia": "Filtra el reporte para mostrar únicamente los productos que superen este umbral de importancia (de 0 a 1).",
     "max_dias_cobertura": "Filtra el reporte para encontrar productos con bajo stock, mostrando solo aquellos cuya cobertura sea menor o igual a este número de días.",
     "min_dias_cobertura": "Filtra el reporte para encontrar productos con exceso de stock, mostrando solo aquellos cuya cobertura sea mayor o igual a este número de días."
+}
+
+KPI_TOOLTIPS_GLOSSARY = {
+    "Inversión Total Sugerida": "El monto total en soles (S/.) que necesitas invertir para comprar todas las unidades sugeridas en este reporte. Te ayuda a planificar tu flujo de caja.",
+    "SKUs a Reponer": "El número total de productos únicos (diferentes códigos SKU) que la herramienta recomienda reponer. Te da una idea de la variedad de tu próximo pedido.",
+    "Unidades Totales a Pedir": "La suma de todas las unidades individuales que se sugieren pedir en este reporte. Útil para la logística y la negociación por volumen con tus proveedores.",
+    "Margen Potencial de la Compra": "La ganancia bruta estimada que obtendrías al vender todas las unidades sugeridas en esta compra, considerando solo los productos con margen de venta positivo.",
+    "Productos con Pérdida": "El número de productos que, según los datos de ventas recientes, se están vendiendo por debajo de su costo actual. ¡Requieren atención inmediata!"
 }

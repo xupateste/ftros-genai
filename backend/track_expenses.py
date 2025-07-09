@@ -1529,7 +1529,7 @@ def process_csv_lista_basica_reposicion_historico(
     incluir_solo_marcas: Optional[List[str]] = None,
     ordenar_por: str = 'Importancia'
 ) -> pd.DataFrame:
-    
+    # --- 1. Definición de Nombres de Columna Única y Clara ---
     sku_col = 'SKU / Código de producto'
     fecha_col_ventas = 'Fecha de venta'
     cantidad_col_ventas = 'Cantidad vendida'
@@ -1540,15 +1540,37 @@ def process_csv_lista_basica_reposicion_historico(
     categoria_col_stock = 'Categoría'
     subcategoria_col_stock = 'Subcategoría'
     precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
+    precio_venta_actual_col_stock = 'Precio de venta actual (S/.)' # Columna del inventario
     
+    # Nombres para columnas calculadas
+    precio_venta_prom_col = 'Precio_Venta_Prom_Reciente'
+    sugerencia_ideal_col = 'Sugerencia_Pedido_Ideal_Unds'
+
+    # --- 2. Pre-procesamiento y Estandarización de Tipos ---
     df_ventas_proc = df_ventas.copy()
     df_inventario_proc = df_inventario.copy()
+
+    # Forzamos la columna de unión a ser string
     df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
     df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
-    df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
-    df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
-    df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
-    df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
+
+
+    # Forzamos las columnas numéricas a un tipo que soporta negativos (float)
+    numeric_cols_inv = [stock_actual_col_stock, precio_compra_actual_col_stock, precio_venta_actual_col_stock]
+    for col in numeric_cols_inv:
+        if col in df_inventario_proc.columns:
+            df_inventario_proc[col] = pd.to_numeric(df_inventario_proc[col], errors='coerce')
+
+    numeric_cols_ventas = [cantidad_col_ventas, precio_venta_col_ventas]
+    for col in numeric_cols_ventas:
+        if col in df_ventas_proc.columns:
+            df_ventas_proc[col] = pd.to_numeric(df_ventas_proc[col], errors='coerce')
+    
+    # df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
+    # df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
+    # df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
+    # df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
+
     df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
     df_ventas_proc.dropna(subset=[fecha_col_ventas], inplace=True)
     if df_ventas_proc.empty: return pd.DataFrame()
@@ -1702,8 +1724,13 @@ def process_csv_lista_basica_reposicion_historico(
     df_resultado = df_analisis.copy()
 
     if excluir_productos_sin_sugerencia_ideal:
-        df_resultado = df_resultado[df_resultado['Sugerencia_Pedido_Ideal_Unds'] > 0]
-        if df_resultado.empty: return pd.DataFrame()
+        df_resultado = df_resultado[df_resultado[SUGERENCIA_IDEAL_COL] > 0]
+        if df_resultado.empty: 
+            return {"data": pd.DataFrame(), "summary": {"insight": "No se encontraron productos para reponer con los filtros aplicados.", "kpis": {}}}
+
+    # if excluir_productos_sin_sugerencia_ideal:
+    #     df_resultado = df_resultado[df_resultado['Sugerencia_Pedido_Ideal_Unds'] > 0]
+    #     if df_resultado.empty: return pd.DataFrame()
 
     # --- SECCIÓN DE ORDENAMIENTO DINÁMICO ---
     if ordenar_por == 'Inversion Requerida':
@@ -1732,7 +1759,56 @@ def process_csv_lista_basica_reposicion_historico(
         df_resultado = df_resultado.sort_values(by='Factor_Rotacion_Crudo', ascending=False)
     else: # Por defecto, 'Importancia'
         df_resultado = df_resultado.sort_values(by='Importancia_Dinamica', ascending=False)
+    
+
+    # --- INICIO DE LA NUEVA LÓGICA DE RESUMEN ---
+
+    # --- PASO 9: CÁLCULO Y EXPOSICIÓN DE MÁRGENES PARA DEBUG ---
+    print("Calculando márgenes detallados para auditoría...")
+
+    # Aseguramos que las columnas necesarias existan y sean numéricas antes de usarlas
+    for col in [precio_venta_actual_col_stock, precio_compra_actual_col_stock, precio_venta_prom_col]:
+        if col in df_resultado.columns:
+            df_resultado[col] = pd.to_numeric(df_resultado[col], errors='coerce').fillna(0)
+        else:
+            df_resultado[col] = 0 # Si no existe, la creamos con ceros para evitar errores
+
+    # Margen Teórico: Basado en el precio de lista actual del inventario.
+    df_resultado['debug_margen_lista'] = df_resultado[precio_venta_actual_col_stock] - df_resultado[precio_compra_actual_col_stock]
+    
+    # Margen Real: Basado en el precio promedio de las ventas recientes.
+    df_resultado['debug_margen_promedio'] = df_resultado[precio_venta_prom_col] - df_resultado[precio_compra_actual_col_stock]
+
+
+    # --- PASO 10: CÁLCULO DE KPIs Y RESUMEN (usando los márgenes auditados) ---
+    
+    df_a_reponer = df_resultado[df_resultado[sugerencia_ideal_col] > 0].copy()
+
+    if not df_a_reponer.empty:
+        inversion_total = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer[precio_compra_actual_col_stock]).sum()
+        skus_a_reponer = int(df_a_reponer[sku_col].nunique())
+        unidades_a_pedir = int(df_a_reponer[sugerencia_ideal_col].sum())
         
+        # CÁLCULO CORREGIDO: Para el margen potencial, solo sumamos los productos que generan ganancia real.
+        # Usamos .clip(lower=0) para tratar cualquier margen negativo como 0 en la suma.
+        # margen_potencial = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer['debug_margen_promedio'].clip(lower=0)).sum()
+        margen_potencial = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer['debug_margen_lista'].clip(lower=0)).sum()
+    else:
+        inversion_total, skus_a_reponer, unidades_a_pedir, margen_potencial = 0, 0, 0, 0
+
+    insight_text = f"Hemos identificado {skus_a_reponer} productos que necesitan una inversión de S/ {inversion_total:,.2f} para optimizar tu inventario."
+    if skus_a_reponer == 0:
+        insight_text = "¡Buen trabajo! Tu inventario parece estar bien abastecido."
+
+    kpis = {
+        "Inversión Total Sugerida": f"S/ {inversion_total:,.2f}",
+        "SKUs a Reponer": skus_a_reponer,
+        "Unidades Totales a Pedir": unidades_a_pedir,
+        "Margen Potencial de la Compra": f"S/ {margen_potencial:,.2f}"
+    }
+    # --- FIN DE LA NUEVA LÓGICA DE RESUMEN ---
+
+
     columnas_salida_deseadas = [
         sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock, 
         precio_compra_actual_col_stock, stock_actual_col_stock,
@@ -1742,15 +1818,21 @@ def process_csv_lista_basica_reposicion_historico(
         'Stock_Minimo_Unds', 'Stock_Ideal_Unds', 
         'Sugerencia_Pedido_Minimo_Unds', 'Sugerencia_Pedido_Ideal_Unds', 
         'Importancia_Dinamica', 'PDA_Final',
-        'Ventas_Total_General', 'Ventas_Total_Reciente'
+        'Ventas_Total_General', 'Ventas_Total_Reciente',
+        precio_venta_prom_col,
+        'debug_margen_promedio',
+        precio_venta_actual_col_stock,
+        'debug_margen_lista'
     ]
     
-    columnas_finales_presentes = [col for col in columnas_salida_deseadas if col in df_resultado.columns]
-    df_resultado_final = df_resultado[columnas_finales_presentes].copy()
+    # columnas_finales_presentes = [col for col in columnas_salida_deseadas if col in df_resultado.columns]
+    # df_resultado_final = df_resultado[columnas_finales_presentes].copy()
+    
+    df_resultado_final = df_resultado[[col for col in columnas_salida_deseadas if col in df_resultado.columns]].copy()
     
     if 'temp_sort_col' in df_resultado_final.columns:
         df_resultado_final = df_resultado_final.drop(columns=['temp_sort_col'])
-
+    
     if not df_resultado_final.empty:
         column_rename_map = {
             stock_actual_col_stock: 'Stock Actual (Unds)',
@@ -1767,23 +1849,42 @@ def process_csv_lista_basica_reposicion_historico(
             'Sugerencia_Pedido_Minimo_Unds': 'Pedido Mínimo Sugerido (Unds)',
             'Importancia_Dinamica': 'Índice de Importancia',
             'Ventas_Total_Reciente': f'Ventas Recientes ({final_dias_recientes}d) (Unds)',
-            'Ventas_Total_General' : f'Ventas Periodo General ({final_dias_general}d) (Unds)'
+            'Ventas_Total_General' : f'Ventas Periodo General ({final_dias_general}d) (Unds)',
+            'debug_margen_lista': '[Debug] Margen s/ P. Lista',
+            'debug_margen_promedio': '[Debug] Margen s/ P. Promedio',
+            precio_venta_prom_col: '[Debug] Precio Venta Promedio',
+            precio_venta_actual_col_stock: '[Debug] Precio Venta Lista',
         }
         df_resultado_final.rename(columns=column_rename_map, inplace=True)
 
     # --- NUEVO PASO FINAL: LIMPIEZA PARA COMPATIBILIDAD CON JSON ---
     print("Limpiando DataFrame de reposición para JSON...")
 
-    if df_resultado_final.empty:
-        return df_resultado_final
+    # if df_resultado_final.empty:
+    #     return df_resultado_final
 
-    # 1. Reemplazar valores infinitos (inf, -inf) con NaN.
-    df_limpio = df_resultado_final.replace([np.inf, -np.inf], np.nan)
+    # # 1. Reemplazar valores infinitos (inf, -inf) con NaN.
+    # df_limpio = df_resultado_final.replace([np.inf, -np.inf], np.nan)
 
-    # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
-    resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
-    
-    return resultado_final_json_safe
+    # # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
+    # resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
+
+    # --- PASO 11: LIMPIEZA FINAL PARA COMPATIBILIDAD CON JSON ---
+    # Este bloque ahora se aplica de forma segura al final.
+    if not df_resultado_final.empty:
+        # Reemplazamos infinitos con NaN
+        df_resultado_final = df_resultado_final.replace([np.inf, -np.inf], np.nan)
+        # Reemplazamos NaN con None, que es compatible con JSON (se convierte en 'null')
+        df_resultado_final = df_resultado_final.where(pd.notna(df_resultado_final), None)
+   
+    # return resultado_final_json_safe
+    return {
+        "data": df_resultado_final,
+        "summary": {
+            "insight": insight_text,
+            "kpis": kpis
+        }
+    }
 
 
 
@@ -2203,7 +2304,109 @@ def _calcular_parametros_dinamicos_stock_muerto(
     # print("Productos con stock = 0 e importantes:", ((df['Cantidad en stock actual'] == 0) & (df['Importancia del producto'] > 0)).sum())
 
 
+def auditar_margenes_de_productos(
+    df_ventas: pd.DataFrame,
+    df_inventario: pd.DataFrame,
+    **kwargs # Acepta argumentos extra para mantener la compatibilidad
+) -> Dict[str, Any]:
+    """
+    Genera un reporte de auditoría para identificar productos con márgenes negativos,
+    asegurando que los nombres de las columnas sean consistentes y el resultado sea
+    compatible con JSON.
+    """
+    print("Iniciando auditoría de márgenes...")
 
+    # --- 1. Definición y Limpieza de Nombres de Columna ---
+    sku_col = 'SKU / Código de producto'
+    cantidad_col_ventas = 'Cantidad vendida' # <-- Nombre correcto
+    precio_venta_col_ventas = 'Precio de venta unitario (S/.)'
+    nombre_prod_col_stock = 'Nombre del producto'
+    precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
+    precio_venta_actual_col_stock = 'Precio de venta actual (S/.)'
+
+    # --- 2. Pre-procesamiento de Datos ---
+    df_ventas_proc = df_ventas.copy()
+    df_inventario_proc = df_inventario.copy()
+
+    df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+    
+    numeric_cols_inv = [
+        'Cantidad en stock actual', 
+        'Precio de compra actual (S/.)', 
+        'Precio de venta actual (S/.)'
+    ]
+    for col in numeric_cols_inv:
+        if col in df_inventario_proc.columns:
+            df_inventario_proc[col] = pd.to_numeric(df_inventario_proc[col], errors='coerce')
+
+    numeric_cols_ventas = [
+        'Cantidad vendida',
+        'Precio de venta unitario (S/.)'
+    ]
+    for col in numeric_cols_ventas:
+        if col in df_ventas_proc.columns:
+            df_ventas_proc[col] = pd.to_numeric(df_ventas_proc[col], errors='coerce')
+
+
+    # --- 3. Cálculo del Precio de Venta Promedio ---
+    df_ventas_proc['ingreso_total_linea'] = df_ventas_proc[cantidad_col_ventas] * df_ventas_proc[precio_venta_col_ventas]
+    
+    agg_ventas = df_ventas_proc.groupby(sku_col).agg(
+        total_ingresos=('ingreso_total_linea', 'sum'),
+        total_unidades=(cantidad_col_ventas, 'sum') # <-- Usando la variable correcta
+    ).reset_index()
+
+    agg_ventas['Precio_Venta_Prom_Calculado'] = agg_ventas['total_ingresos'] / agg_ventas['total_unidades']
+
+    # --- 4. Combinar Datos y Calcular Márgenes ---
+    df_auditoria = pd.merge(
+        df_inventario_proc[[sku_col, nombre_prod_col_stock, precio_compra_actual_col_stock, precio_venta_actual_col_stock]],
+        agg_ventas[[sku_col, 'Precio_Venta_Prom_Calculado']],
+        on=sku_col,
+        how='left'
+    )
+
+    df_auditoria['Margen_Unitario_Calculado'] = df_auditoria['Precio_Venta_Prom_Calculado'] - df_auditoria[precio_compra_actual_col_stock]
+
+    # --- 5. Filtrar para Encontrar Problemas ---
+    df_problemas = df_auditoria[df_auditoria['Margen_Unitario_Calculado'] < 0].copy()
+    
+    # --- PASO 6: Formateo y Limpieza Final (sin cambios en la lógica, solo en el return) ---
+    if df_problemas.empty:
+        print("✅ Auditoría completada. No se encontraron productos con márgenes negativos.")
+        # Devolvemos la estructura de diccionario esperada, con un DataFrame vacío
+        return {
+            "data": pd.DataFrame({"Resultado": ["No se encontraron productos con márgenes de venta negativos."]}),
+            "summary": {
+                "insight": "¡Excelente! No se detectaron productos vendidos por debajo de su costo actual.",
+                "kpis": {}
+            }
+        }
+
+    print(f"⚠️ Auditoría completada. Se encontraron {len(df_problemas)} productos con márgenes negativos.")
+    
+    df_problemas.rename(columns={
+        'Precio Venta de Lista (Inventario)': 'Precio Venta Lista',
+        'Precio Venta Promedio (Ventas)': 'Precio Venta Promedio',
+        'Precio Compra Actual': 'Costo Actual',
+        'Margen Unitario Real (Negativo)': 'Margen Calculado'
+    }, inplace=True)
+    
+    # Limpieza final para compatibilidad con JSON
+    df_limpio = df_problemas.replace([np.inf, -np.inf], np.nan)
+    resultado_final = df_limpio.where(pd.notna(df_limpio), None)
+
+    # --- CAMBIO CLAVE: Construimos el diccionario de respuesta final ---
+    return {
+        "data": resultado_final,
+        "summary": {
+            "insight": f"Se encontraron {len(resultado_final)} productos con un margen de venta negativo. Revisa la tabla para más detalles.",
+            "kpis": {
+                "Productos con Pérdida": len(resultado_final)
+            }
+        }
+    }
 
 # ===================================================
 # ============== FINAL: FULL REPORTES ===============
