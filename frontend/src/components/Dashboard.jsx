@@ -10,6 +10,7 @@ import { ConfirmationModal } from './ConfirmationModal';
 import { AnalysisWorkspace } from './AnalysisWorkspace'; // Importa el nuevo componente
 import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el nuevo modal
 import { StrategyPanelModal } from './StrategyPanelModal'; // Importa el nuevo modal
+import { FerreterosLogo } from './FerreterosLogo'
 
 // Este es el placeholder de tu vista de análisis. En el futuro, aquí
 // importarías el componente que contiene los CsvImporters y la lista de reportes.
@@ -155,15 +156,16 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
             ) : pinnedWorkspaces.length > 0 ? (
                 <p className="text-center text-gray-500 p-8">No hay más espacios de trabajo recientes.</p>
             ) : (
-                <p className="text-center text-gray-400 p-8 ...">¡Bienvenido! Crea tu primer espacio para empezar.</p>
+                <p className="text-center text-gray-400 p-8">¡Bienvenido! Crea tu primer espacio para empezar.</p>
             )}
           </>
         ) : (
           // Si termina y no hay workspaces, muestra el mensaje de bienvenida
-          <p className="text-center text-gray-400 p-8 border-2 border-dashed ...">
+          <p className="text-center text-gray-400 p-8 border-2 border-dashed">
             ¡Bienvenido! Crea tu primer espacio de trabajo para empezar.
           </p>
         )}
+        <FerreterosLogo/>
       </div>
       {/* --- RENDERIZADO DEL NUEVO MODAL --- */}
       {isCreateModalOpen && (

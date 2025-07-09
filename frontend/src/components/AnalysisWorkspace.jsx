@@ -23,6 +23,7 @@ import { LoadingScreen } from './LoadingScreen';
 import { FiDownload, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el modal
 import { Tooltip } from './Tooltip';
+import { FerreterosLogo } from './FerreterosLogo'
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
@@ -333,158 +334,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     // Llama a la función ligera que solo actualiza lo necesario
     refreshCreditsAndHistory(context);
   }, [context, refreshCreditsAndHistory]);
-
-  const handleGenerateAnalysis = async () => {  
-    const isUserContext = context.type === 'user' && context.workspace;
-    const identifier = isUserContext ? context.workspace.id : context.id;
-
-    // 1. Verificación inicial (ahora comprueba los IDs de archivo)
-    if (!selectedReport || !uploadedFileIds.ventas || !uploadedFileIds.inventario || !identifier) {
-      alert("Asegúrate de haber iniciado una sesión, subido ambos archivos y seleccionado un reporte.");
-      return;
-    }
-
-    setIsLoading(true);
-    setAnalysisResult(null);
-
   
-    // 2. Crear el FormData (ahora con IDs en lugar de archivos)
-    const formData = new FormData();
-    
-    // --- CAMBIO CLAVE ---
-    // Enviamos los IDs de los archivos, no los archivos completos.
-    formData.append("ventas_file_id", uploadedFileIds.ventas);
-    formData.append("inventario_file_id", uploadedFileIds.inventario);
-
-    // Adjuntamos el resto de los parámetros del modal como antes
-    const allParameters = [
-      ...(selectedReport.basic_parameters || []),
-      ...(selectedReport.advanced_parameters || [])
-    ];
-
-    allParameters.forEach(param => {
-        const value = modalParams[param.name];
-        if (value !== undefined && value !== null && value !== '') {
-            if (Array.isArray(value)) {
-                formData.append(param.name, JSON.stringify(value));
-            } else {
-                formData.append(param.name, value);
-            }
-        }
-    });
-
-    // --- FIN DEL CAMBIO ---
-
-    const headers = {};
-    if (isUserContext) {
-        const token = localStorage.getItem('accessToken');
-        formData.append("workspace_id", context.workspace.id);
-        formData.append("current_user", token);
-        headers['X-Session-ID'] = context.workspace.id;
-    } else {
-        headers['X-Session-ID'] = context.id;
-        console.log(`Subiendo archivo a la sesión anónima: ${context.id}`);
-    }
-
-    try {
-      const response = await api.post(`${API_URL}${selectedReport.endpoint}`, formData, { headers });
-      
-      const newBlob = new Blob([response.data], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-      // Guardamos el resultado completo (insight + datos) en nuestro nuevo estado
-      setAnalysisResult(response.data);
-
-      // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
-      const updatedState = await api.get(isUserContext ? `/workspaces/${identifier}/state` : `/session-state`, {
-            headers: isUserContext ? {} : { 'X-Session-ID': identifier }
-          })
-      const { credits, history } = updatedState.data || {};
-      setCredits(credits || { used: 0, remaining: 20 });
-      setCreditHistory(history || []);
-
-    } catch (error) {
-      // --- 5. LÓGICA DE MANEJO DE ERRORES MEJORADA ---
-      console.error("Error al generar el reporte:", error);
-
-      // Verificamos si el error es por falta de créditos (código 402)
-      if (error.response?.status === 402) {
-          // Obtenemos la información necesaria para el modal
-          const required = selectedReport?.costo || 0;
-          const remaining = credits.remaining || 0;
-          setCreditsInfo({ required, remaining });
-          
-          // Mostramos el modal específico de créditos insuficientes
-          setActiveModal('creditsOffer');
-      } else {
-          // Para cualquier otro error, mantenemos la lógica genérica
-          let errorMessage = "Ocurrió un error al generar el reporte.";
-          if (error.response?.data && error.response.data instanceof Blob) {
-              try {
-                  const errorText = await error.response.data.text();
-                  const errorJson = JSON.parse(errorText);
-                  errorMessage = errorJson.detail || errorMessage;
-              } catch (e) { /* Mantener mensaje genérico */ }
-          }
-          alert(errorMessage);
-      }
-
-      // Si el reporte falló, también es buena idea actualizar el historial
-      // para que el usuario vea el intento fallido.
-      try {
-          // Después de una ejecución exitosa, volvemos a pedir el estado actualizado
-          const updatedState = await api.get(isUserContext ? `/workspaces/${identifier}/state` : `/session-state`, {
-                headers: isUserContext ? {} : { 'X-Session-ID': identifier }
-              })
-          const { history } = updatedState.data || {};
-          setCreditHistory(history || []);
-      } catch (stateError) {
-          console.error("No se pudo actualizar el historial después de un error:", stateError);
-      }
-   } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleDownloadExcel = (type) => {
-    if (!analysisResult || !analysisResult.data) {
-        alert("No hay datos de análisis para descargar.");
-        return;
-    }
-
-    let dataToExport = analysisResult.data;
-    let filename = `FerreteroIA_${analysisResult.report_key}.xlsx`;
-
-    // Lógica para crear el reporte accionable
-    if (type === 'accionable') {
-        const columnasAccionables = [
-            'SKU / Código de producto', 
-            'Nombre del producto', 
-            'Stock Actual (Unds)', 
-            'Sugerencia_Pedido_Ideal_Unds', // Asegúrate que este nombre de columna coincida con el que devuelve tu backend
-            // ... puedes añadir más columnas clave aquí
-        ];
-
-        dataToExport = analysisResult.data.map(row => {
-            let newRow = {};
-            columnasAccionables.forEach(col => {
-                if (row[col] !== undefined) newRow[col] = row[col];
-            });
-            // Añadimos las columnas vacías que pediste para imprimir
-            newRow['Check ✓'] = '';
-            newRow['Cantidad Final'] = '';
-            return newRow;
-        });
-        filename = `FerreteroIA_${analysisResult.report_key}_Accionable.xlsx`;
-    }
-
-    // Usamos la librería xlsx para crear el archivo desde el JSON
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte");
-    
-    // Disparamos la descarga
-    XLSX.writeFile(workbook, filename);
-  };
 
   const handleReportView = (reportItem) => {
     // 1. Defensa contra estado nulo (se mantiene)
@@ -499,22 +349,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       return;
     }
     setSelectedReport(reportItem);
-  };
-
-
-
-  const handleParamChange = (paramName, value) => {
-    // Ahora solo modifica los parámetros del modal, nada más.
-    setModalParams(prev => ({ ...prev, [paramName]: value }));
-  };
-
-  const handleResetAdvanced = () => {
-    const advancedDefaults = {};
-    selectedReport.advanced_parameters?.forEach(param => {
-        advancedDefaults[param.name] = param.defaultValue;
-    });
-    
-    setModalParams(prev => ({ ...prev, ...advancedDefaults }));
   };
 
   const handleGoToRegister = () => {
@@ -558,20 +392,20 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
               ? <button onClick={() => setActiveModal('login')} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiLogIn /> Iniciar Sesión</button>
               : <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiLogOut /> Cerrar Sesión</button>
             }
-            </div>
-            {/* Solo se muestra si es un usuario registrado */}
-            {/*{context.type === 'user' && (
-                <button onClick={onBackToDashboard} className="text-xs text-purple-400 hover:text-white mb-1">
-                    &larr; Mis Espacios de Trabajo
-                </button>
-            )}*/}
-            {context.type === 'anonymous' &&
-              <p className="text-xs mt-3 text-white flex justify-center text-center items-center font-mono gap-4">
-                <span>Modo: Sesión Anónima <br/> {context.id}</span>
-              </p>
-            }
+          </div>
+          {/* Solo se muestra si es un usuario registrado */}
+          {/*{context.type === 'user' && (
+              <button onClick={onBackToDashboard} className="text-xs text-purple-400 hover:text-white mb-1">
+                  &larr; Mis Espacios de Trabajo
+              </button>
+          )}*/}
+          {context.type === 'anonymous' &&
+            <p className="text-xs mt-3 text-white flex justify-center text-center items-center font-mono gap-4">
+              <span>Modo: Sesión Anónima <br/> {context.id}</span>
+            </p>
+          }
         {/*</div>*/}
-        <div className="flex flex-col w-full justify-center items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
+        <div className="flex flex-col w-full justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
           {/*<div className="flex items-center gap-6">*/}
            <CreditsPanel 
               used={credits.used} 
@@ -591,7 +425,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         </div>
       {/*</header>*/}
 
-      <main className="flex-1 overflow-y-auto p-4 w-full">
+      <main className="flex-1 overflow-y-auto pb-4 w-full">
         <div className='w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
           <CsvImporterComponent 
             fileType="ventas"
@@ -647,10 +481,11 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             ))}
           </div>
         ) : (
-          <p className="mt-10 text-base text-white p-4 bg-gray-800 rounded-md shadow">
+          <p className="mt-10 text-center text-white p-4 bg-gray-800 rounded-md shadow">
             📂 Carga tus archivos y activa la inteligencia comercial de tu ferretería.
           </p>
         )}
+        <FerreterosLogo/>
       </main>
 
       {/* --- RENDERIZADO DEL MODAL DE REPORTE --- */}
@@ -661,8 +496,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           context={{...context, fileIds: uploadedFileIds}} // Pasamos toda la info necesaria
           availableFilters={availableFilters}
           onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
-          onStateUpdate={setCount} // Pasamos la función para que el modal pueda pedir un refresco
           onAnalysisComplete={handleAnalysisCompletion}
+          // onStateUpdate={setCount} // Pasamos la función para que el modal pueda pedir un refresco
         />
       )}
       
@@ -727,12 +562,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           onClose={() => setActiveModal(null)} 
         />
       )}
-      {/*{isCreateModalOpen && (
+      {isCreateModalOpen && (
         <CreateWorkspaceModal 
             onClose={() => setIsCreateModalOpen(false)}
             onSuccess={handleCreationSuccessAndSwitch} // Le pasamos la función de éxito específica
         />
-      )}*/}
+      )}
     </div>
   );
 }

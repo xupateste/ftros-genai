@@ -9,7 +9,7 @@ const ConfigContext = createContext();
 
 export function ConfigProvider({ children }) {
   // Estado para la configuración cruda que viene de la API
-  const [rawConfig, setRawConfig] = useState({ reports: {}, tooltips: {} });
+  const [rawConfig, setRawConfig] = useState({ reports: {}, tooltips: {}, kpi_tooltips: {} });
   const [isLoading, setIsLoading] = useState(true);
 
   // Este efecto carga la configuración completa una sola vez al iniciar la app
@@ -18,11 +18,11 @@ export function ConfigProvider({ children }) {
       setIsLoading(true);
       try {
         const response = await axios.get(`${API_URL}/reports-config`);
-        setRawConfig(response.data || { reports: {}, tooltips: {} });
+        setRawConfig(response.data || { reports: {}, tooltips: {}, kpi_tooltips: {} });
       } catch (error) {
         console.error("Error fatal: no se pudo cargar la configuración de reportes.", error);
         // En caso de error, establecemos un estado vacío para que la app no se rompa
-        setRawConfig({ reports: {}, tooltips: {} });
+        setRawConfig({ reports: {}, tooltips: {}, kpi_tooltips: {} });
       } finally {
         setIsLoading(false);
       }
@@ -48,7 +48,8 @@ export function ConfigProvider({ children }) {
   // El valor del contexto ahora expone los datos de los reportes y el glosario de tooltips.
   const value = { 
     reportData, 
-    tooltips: rawConfig.tooltips, 
+    tooltips: rawConfig.tooltips,
+    kpiTooltips: rawConfig.kpi_tooltips,
     isLoading 
   };
 

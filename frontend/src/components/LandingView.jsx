@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { FiLock, FiBarChart2, FiChevronsRight, FiUser, FiMail, FiKey, FiUserPlus, FiLoader } from 'react-icons/fi';
-
+import { FerreterosLogo } from './FerreterosLogo'
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 // ===================================================================================
 // --- VISTA 1: El Nuevo Landing Page ---
@@ -58,5 +58,6 @@ export function LandingView ({ onStartSession, onLoginClick }) {
         </button>
       </p>
     </div>
+    <FerreterosLogo/>
   </div>
 )};

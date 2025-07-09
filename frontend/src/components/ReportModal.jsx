@@ -1,6 +1,6 @@
 // src/components/ReportModal.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 import * as XLSX from 'xlsx';
@@ -8,21 +8,42 @@ import { useStrategy } from '../context/StrategyProvider';
 import { useConfig } from '../context/ConfigProvider';
 import api from '../utils/api';
 import { Tooltip } from './Tooltip';
+import { jsPDF } from "jspdf";
+// import "jspdf-autotable";
+
+import { autoTable } from 'jspdf-autotable';
+
 
 // Importa los iconos que necesitas
-import { FiX, FiLoader, FiDownload, FiRefreshCw } from 'react-icons/fi';
+import { FiX, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
-export function ReportModal({ reportConfig, context, availableFilters, onClose, onStateUpdate, onAnalysisComplete }) {
+// --- NUEVO COMPONENTE REUTILIZABLE PARA LAS TARJETAS DE KPI ---
+const KpiCard = ({ label, value, tooltipText }) => (
+  <div className="bg-white p-4 rounded-lg shadow border">
+    <div className="flex items-center">
+      <p className="text-sm text-gray-500">{label}</p>
+      {/* El tooltip se renderiza aquí */}
+      <Tooltip text={tooltipText} />
+    </div>
+    <p className="text-2xl font-bold text-gray-800 mt-1">{value}</p>
+  </div>
+);
+
+
+export function ReportModal({ reportConfig, context, availableFilters, onClose, onAnalysisComplete }) {
   const { strategy } = useStrategy();
-  const { tooltips } = useConfig();
+  const { tooltips, kpiTooltips } = useConfig();
 
   // --- ESTADOS INTERNOS DEL MODAL ---
   const [modalView, setModalView] = useState('parameters'); // 'parameters', 'loading', 'results'
   const [modalParams, setModalParams] = useState({});
   const [analysisResult, setAnalysisResult] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Efecto para inicializar los parámetros cuando el modal se abre
   useEffect(() => {
@@ -40,6 +61,26 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     });
     setModalParams(initialParams);
   }, [reportConfig, strategy]);
+
+  // --- LÓGICA DE FILTRADO EN TIEMPO REAL ---
+  const filteredData = useMemo(() => {
+    if (!analysisResult?.data) return [];
+    if (!searchTerm.trim()) return analysisResult.data;
+
+    const lowerCaseSearchTerm = searchTerm.toLowerCase();
+    return analysisResult.data.filter(row => 
+      Object.values(row).some(value => 
+        String(value).toLowerCase().includes(lowerCaseSearchTerm)
+      )
+    );
+  }, [analysisResult, searchTerm]);
+
+  useEffect(() => {
+      let timer1 = setTimeout(() => setIsLoading(false), 500);
+      return () => {
+        clearTimeout(timer1);
+      };
+    }, []);
 
   const handleParamChange = (paramName, value) => {
     setModalParams(prev => ({ ...prev, [paramName]: value }));
@@ -69,6 +110,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : { 'X-Session-ID': context.workspace.id }
       });
       setAnalysisResult(response.data);
+      setSearchTerm('');
       setModalView('results');
       // onStateUpdate(i => i + 1); // Notifica al workspace que debe refrescar créditos e historial
       if (onAnalysisComplete) {
@@ -86,21 +128,135 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
   const handleResetAdvanced = () => {
     const advancedDefaults = {};
-    selectedReport.advanced_parameters?.forEach(param => {
+    reportConfig.advanced_parameters?.forEach(param => {
         advancedDefaults[param.name] = param.defaultValue;
     });
     
     setModalParams(prev => ({ ...prev, ...advancedDefaults }));
   };
 
-  const handleDownloadExcel = (type) => { /* ... tu lógica de descarga de Excel ... */ };
+  // const handleDownloadExcel = (type) => {
+  //   if (!analysisResult || !filteredData) {
+  //       alert("No hay datos de análisis para descargar.");
+  //       return;
+  //   }
+
+  //   let dataToExport = filteredData;
+  //   let filename = `FerreteroIA_${analysisResult.report_key}.xlsx`;
+  //   let ws_name = "Reporte";
+
+  //   // Lógica para crear el reporte accionable
+  //   if (type === 'accionable') {
+  //       const columnasAccionables = [
+  //           'SKU / Código de producto', 'Nombre del producto', 
+  //           'Precio Compra Actual (S/.)', 'Stock Actual (Unds)', 
+  //           'Stock Mínimo Sugerido (Unds)'
+  //       ];
+
+  //       dataToExport = filteredData.map(row => {
+  //           let newRow = {};
+  //           columnasAccionables.forEach(col => {
+  //               if (row[col] !== undefined) newRow[col] = row[col];
+  //           });
+  //           // Añadimos las columnas vacías que pediste para imprimir
+  //           newRow['Check ✓'] = '';
+  //           return newRow;
+  //       });
+  //       filename = `FerreteroIA_${analysisResult.report_key}_Accionable.xlsx`;
+  //       ws_name = "Accionable";
+  //   }
+
+  //   // Usamos la librería xlsx para crear el archivo desde el JSON
+  //   const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+  //   const workbook = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, ws_name);
+    
+  //   // Disparamos la descarga
+  //   XLSX.writeFile(workbook, filename);
+  // };
+
+  // --- LÓGICA DE DESCARGA MEJORADA ---
+  const handleDownload = (type) => {
+    const dataToUse = filteredData; // Siempre usamos los datos filtrados
+    if (!dataToUse || dataToUse.length === 0) {
+      alert("No hay datos para descargar.");
+      return;
+    }
+
+    let headers, dataForSheet, filename;
+
+    if (type === 'accionable') {
+      headers = ['SKU', 'Nombre del Producto', 'Stock Actual', 'Sugerencia de Pedido', 'Check ✓', 'Cant. Final'];
+      dataForSheet = dataToUse.map(row => ({
+        'SKU': row['SKU / Código de producto'],
+        'Nombre del Producto': row['Nombre del producto'],
+        'Stock Actual': row['Stock Actual (Unds)'],
+        'Sugerencia de Pedido': row['Pedido Ideal Sugerido (Unds)'],
+        'Check ✓': '',
+        'Cant. Final': ''
+      }));
+      filename = `FerreteroIA_${analysisResult.report_key}_Accionable.pdf`;
+      
+      // Generación de PDF
+      const doc = new jsPDF();
+      doc.text(`Reporte Accionable: \n ${reportConfig.label}\n`, 14, 15);
+      autoTable(doc, {
+        head: [headers],
+        body: dataForSheet.map(Object.values),
+        startY: 30,
+      });
+      doc.save(filename);
+
+    } else { // Detallado (Excel)
+      dataForSheet = dataToUse; // Usamos los datos filtrados con sus nombres originales
+      filename = `FerreteroIA_${analysisResult.report_key}_Detallado.xlsx`;
+      
+      const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+      // Lógica para anchos de columna (ejemplo)
+      worksheet['!cols'] = [ { wch: 15 }, { wch: 50 }, { wch: 25 }, { wch: 25 } ];
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Análisis Detallado");
+      XLSX.writeFile(workbook, filename);
+    }
+  };
+
+  const handleTemporalAudit = async () => {
+    console.log('Iniciando auditoría temporal...');
+
+    const formData = new FormData();
+    formData.append("ventas_file_id", context.fileIds.ventas);
+    formData.append("inventario_file_id", context.fileIds.inventario);
+    
+    // --- LÓGICA DE CONTEXTO SIMPLIFICADA ---
+    // Solo añadimos el workspace_id si es un usuario registrado.
+    if (context.type === 'user' && context.workspace) {
+        formData.append("workspace_id", context.workspace.id);
+    }
+
+    try {
+        // --- LLAMADA A LA API CORREGIDA ---
+        // Usamos nuestro cliente `api`. NO necesitamos pasarle las cabeceras manualmente.
+        // El interceptor de `api.js` se encargará de añadir el `Authorization` token si existe,
+        // o no añadirá nada si el usuario es anónimo.
+        // Y para el caso anónimo, el backend leerá el X-Session-ID que ya se está enviando.
+        
+        const response = await api.post('/debug/auditoria-margenes', formData);
+        
+        console.log("Respuesta de la auditoría:", response.data);
+        // Aquí podrías añadir la lógica para descargar el Excel de auditoría
+        // que te devuelve el backend.
+
+    } catch (error) {
+        console.error("Error al generar el reporte de auditoría:", error);
+        alert(error.response?.data?.detail || "No se pudo generar el reporte de auditoría.");
+    }
+};
 
   return (
     <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
       <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-center text-left">
-        <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0">
+        <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0 text-black">
           <h2 className="text-xl font-bold text-gray-800">{reportConfig.label}</h2>
-          {/*<button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>*/}
         </div>
         
         <div className="flex-1 min-h-0 overflow-y-auto">
@@ -170,7 +326,29 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                           </div>
                         );
                       }
-                      return null;
+
+                      if (param.type === 'text') {
+                      return (
+                        <div key={param.name} className="mb-4 text-left">
+                          <label htmlFor={param.name} className="flex items-center text-sm font-medium text-gray-600 mb-1">
+                            {param.label}:
+                            <Tooltip text={tooltips[param.tooltip_key]} />
+                          </label>
+                          <input
+                            type="text"
+                            id={param.name}
+                            name={param.name}
+                            value={modalParams[param.name] || ''}
+                            onChange={e => handleParamChange(param.name, e.target.value)}
+                            placeholder={param.placeholder || ''}
+                            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                          />
+                        </div>
+                      );
+                    }
+
+                    return null;
+
                     })}
 
                     {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
@@ -246,15 +424,94 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
           {modalView === 'results' && (
             <div className="p-6 text-center">
-              <h3 className="text-lg font-bold text-gray-800">Análisis Completado</h3>
-              <div className="mt-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-                <p className="text-sm text-purple-800">{analysisResult.insight}</p>
+              <h3 className="text-lg font-bold text-gray-800 p-6">Análisis Completado</h3>
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {modalView === 'loading' && (
+                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                    <FiLoader className="animate-spin text-4xl text-purple-600" />
+                    <p className="mt-4">Generando análisis, esto puede tardar unos segundos...</p>
+                  </div>
+                )}
+                
+                {modalView === 'parameters' && (
+                  <div className="p-4 text-black">
+                    {/* Tu JSX para renderizar el formulario de parámetros va aquí */}
+                  </div>
+                )}
+
+                {modalView === 'results' && analysisResult && (
+                  <div className="text-left animate-fade-in">
+                    
+                    {/* Insight Clave */}
+                    <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
+                      <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
+                    </div>
+
+                    {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
+                    <div className="mb-6">
+                      <h4 className="font-semibold text-gray-700 mb-2">Resumen Ejecutivo</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {Object.entries(analysisResult.kpis).map(([key, value]) => (
+                          <KpiCard 
+                            key={key} 
+                            label={key} 
+                            value={value}
+                            // Buscamos el texto del tooltip en nuestro glosario
+                            tooltipText={kpiTooltips[key]} 
+                          />
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
+                    <div className="my-6">
+                      <h4 className="font-semibold text-gray-700 mb-2">Refina tu Análisis</h4>
+                      <div className="flex relative items-center">
+                        <FiSearch className="absolute left-4 text-gray-400" />
+                        <input
+                          id="search-results"
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Filtra tus resultados..."
+                          className="w-full bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                      {filteredData.slice(0, 3).map((item, index) => (
+                        <div key={index} className="p-3 bg-gray-50 rounded-md border">
+                          <p className="font-semibold text-sm text-gray-800">{item['Nombre del producto']}</p>
+                          <p className="text-xs text-gray-500">SKU: {item['SKU / Código de producto']} | Marca: {item['Marca']}</p>
+                        </div>
+                      ))}
+                    </div>
+                    {/* --- ECO INTELIGENTE --- */}
+                    <p className="text-xs text-center text-gray-500 mt-2 italic">
+                      {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
+                      {filteredData.length > 3 && `Mostrando 3 de ${filteredData.length} resultados...`}
+                    </p>
+                  </div>
+                )}
               </div>
+
               <div className="mt-6 space-y-3">
-                <p className="text-sm font-semibold text-gray-700">Descarga tus reportes:</p>
-                <div className="flex gap-4 text-black">
-                  <button onClick={() => handleDownloadExcel('accionable')} className="...">Descargar Accionable</button>
-                  <button onClick={() => handleDownloadExcel('detallado')} className="...">Descargar Detallado</button>
+                <h4 className="font-semibold text-gray-700">Descarga tus reportes:</h4>
+                <div className="flex gap-3 w-full justify-center">
+                  <button onClick={() => handleDownload('accionable')} className="flex-col bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
+                    <FiFileText className="text-2xl" />
+                    <div>
+                      <span className="font-bold">Accionable (PDF)</span>
+                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span>
+                    </div>
+                  </button>
+                  <button onClick={() => handleDownload('detallado')} className="flex-col bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+                    <FiTable className="text-2xl" />
+                    <div>
+                      <span className="font-bold">Detallado (Excel)</span>
+                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span>
+                    </div>
+                  </button>
                 </div>
               </div>
             </div>
@@ -266,13 +523,29 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
             <>
               <button
                 onClick={ handleGenerateAnalysis }
-                className="border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2"
+                disabled={ isLoading }
+                className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
+                    ${
+                        // Lógica de estilos condicional
+                        isLoading ? 'bg-gray-200 text-gray-500 cursor-wait' : 'text-transparent border-purple-700'
+                    }`
+                }
                 style={{
                   backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
                   backgroundClip: 'text'
                 }}
               >
-                🚀 Ejecutar Análisis
+                {isLoading ? (
+                      <>
+                          <FiLoader className="animate-spin h-5 w-5" />
+                          <span>Cargando parametros...</span>
+                      </>
+                  ) : <>
+                          <span className="text-black font-bold text-xl">🚀</span>
+                          {/* El texto cambia si ya existe una caché pero es obsoleta */}
+                          <span className="text-lg font-bold">Ejecutar Análisis</span>
+                      </>
+                }
               </button>
               <button
                 onClick={ onClose }
