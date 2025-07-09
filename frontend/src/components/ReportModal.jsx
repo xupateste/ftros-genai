@@ -451,15 +451,17 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                     <div className="mb-6">
                       <h4 className="font-semibold text-gray-700 mb-2">Resumen Ejecutivo</h4>
                       <div className="grid grid-cols-2 gap-4">
-                        {Object.entries(analysisResult.kpis).map(([key, value]) => (
-                          <KpiCard 
-                            key={key} 
-                            label={key} 
-                            value={value}
-                            // Buscamos el texto del tooltip en nuestro glosario
-                            tooltipText={kpiTooltips[key]} 
-                          />
-                        ))}
+                        {analysisResult && analysisResult.kpis && 
+                          Object.entries(analysisResult.kpis).map(([key, value]) => (
+                            <KpiCard 
+                              key={key} 
+                              label={key} 
+                              value={value}
+                              // Buscamos el texto del tooltip en nuestro glosario
+                              tooltipText={kpiTooltips[key]} 
+                            />
+                          ))
+                        }
                       </div>
                     </div>
 
