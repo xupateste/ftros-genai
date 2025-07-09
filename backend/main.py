@@ -1991,6 +1991,27 @@ async def _handle_report_generation(
             raise ValueError("La función de procesamiento no devolvió la estructura de datos esperada.")
 
 
+        # Verificamos si el DataFrame resultante está vacío
+        if resultado_df.empty:
+            print(f"⚠️ Reporte '{report_key}' generado pero sin resultados. No se cobrarán créditos.")
+            
+            # Registramos el evento con costo 0 y un estado claro.
+            log_report_generation(
+                user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+                report_name=report_key, params=full_params_for_logging,
+                ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+                creditos_consumidos=0, estado="exitoso_vacio"
+            )
+
+            # Devolvemos una respuesta JSON exitosa (200 OK) pero con datos vacíos
+            # y un insight que explica la situación.
+            return JSONResponse(content={
+                "insight": "No se encontraron productos que coincidan con los parámetros seleccionados.",
+                "kpis": {}, # Devolvemos un objeto de KPIs vacío
+                "data": [],  # Devolvemos una lista de datos vacía
+                "report_key": report_key
+            })
+
         # if columnas_duplicadas:
         #     print("\n--- 🕵️  DEBUG: ¡ADVERTENCIA DE COLUMNAS DUPLICADAS! ---")
         #     print(f"El DataFrame final para el reporte '{report_key}' tiene nombres de columna repetidos:")
@@ -2026,23 +2047,23 @@ async def _handle_report_generation(
         # Convertimos el DataFrame a un formato JSON (lista de diccionarios)
         # data_for_frontend = resultado_df.to_dict(orient='records')
         
-        # --- Transacción Final ---
-        if not data_for_frontend:
-            log_report_generation(
-                user_id=user_id, workspace_id=workspace_id, session_id=session_id,
-                report_name=report_key, params=full_params_for_logging,
-                ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
-                creditos_consumidos=0, estado="exitoso_vacio"
-            )
-        else:
-            # Usamos la `entity_ref` correcta para descontar créditos
-            entity_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
-            log_report_generation(
-                user_id=user_id, workspace_id=workspace_id, session_id=session_id,
-                report_name=report_key, params=full_params_for_logging,
-                ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
-                creditos_consumidos=report_cost, estado="exitoso"
-            )
+        # # --- Transacción Final ---
+        # if not data_for_frontend:
+        #     log_report_generation(
+        #         user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+        #         report_name=report_key, params=full_params_for_logging,
+        #         ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+        #         creditos_consumidos=0, estado="exitoso_vacio"
+        #     )
+        
+        # Usamos la `entity_ref` correcta para descontar créditos
+        entity_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
+        log_report_generation(
+            user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+            report_name=report_key, params=full_params_for_logging,
+            ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+            creditos_consumidos=report_cost, estado="exitoso"
+        )
 
         if user_id and workspace_id:
             workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)

@@ -257,110 +257,6 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     saveAs(blob, filename);
   };
 
-  // const handleDownloadExcel = () => {
-  //   const dataToUse = filteredData;
-  //   if (!dataToUse || dataToUse.length === 0) return;
-
-  //   const filename = `FerreteroIA_${analysisResult.report_key}_Detallado.xlsx`;
-  //   const worksheet = XLSX.utils.json_to_sheet(dataToUse);
-
-  //   const headerStyle = {
-  //     font: {
-  //       bold: true,
-  //       color: { rgb: "FFFFFF" } // Texto blanco
-  //     },
-  //     fill: {
-  //       fgColor: { rgb: "6B21A8" } // Fondo color púrpura oscuro (un tono de tu marca)
-  //     },
-  //     alignment: {
-  //       wrapText: true, // Ajuste de texto
-  //       vertical: "center",
-  //       horizontal: "center"
-  //     },
-  //     border: {
-  //       bottom: { style: "thin", color: { rgb: "FFFFFF" } }
-  //     }
-  //   };
-
-  //   // Obtenemos el rango de la hoja de cálculo
-  //   const range = XLSX.utils.decode_range(worksheet['!ref']);
-  //   // Iteramos solo sobre la primera fila (los encabezados)
-  //   for (let C = range.s.c; C <= range.e.c; ++C) {
-  //     const address = XLSX.utils.encode_cell({ r: 0, c: C });
-  //     if (!worksheet[address]) continue;
-  //     // Aplicamos el estilo a cada celda del encabezado
-  //     worksheet[address].s = headerStyle;
-  //   }
-
-  //   // Definimos la altura de la primera fila (en puntos, no píxeles)
-  //   worksheet['!rows'] = [{ hpt: 80 }]; // hpt = height in points
-
-  //   // Definimos los anchos de las columnas que pediste
-  //   worksheet['!cols'] = [
-  //     { wch: 8 },  // SKU / Código de producto
-  //     { wch: 50 }, // Nombre del producto
-  //     { wch: 24 }, // Categoría
-  //     { wch: 24 }, // Subcategoría
-  //     // El resto tomará un ancho por defecto de 13
-  //   ];
-  //   // Aplicamos el ancho por defecto al resto
-  //   for (let i = 4; i <= range.e.c; i++) {
-  //       if (!worksheet['!cols'][i]) {
-  //           worksheet['!cols'][i] = { wch: 13 };
-  //       }
-  //   }
-
-  //   // 3. Creamos el libro y disparamos la descarga
-  //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Análisis Detallado");
-  //   XLSX.writeFile(workbook, filename);
-  // };
-
-  // --- LÓGICA DE DESCARGA MEJORADA ---
-  // const handleDownload = (type) => {
-  //   const dataToUse = filteredData; // Siempre usamos los datos filtrados
-  //   if (!dataToUse || dataToUse.length === 0) {
-  //     alert("No hay datos para descargar.");
-  //     return;
-  //   }
-
-  //   let headers, dataForSheet, filename;
-
-  //   if (type === 'accionable') {
-  //     headers = ['SKU', 'Nombre del Producto', 'Stock Actual', 'Sugerencia de Pedido', 'Check ✓', 'Cant. Final'];
-  //     dataForSheet = dataToUse.map(row => ({
-  //       'SKU': row['SKU / Código de producto'],
-  //       'Nombre del Producto': row['Nombre del producto'],
-  //       'Stock Actual': row['Stock Actual (Unds)'],
-  //       'Sugerencia de Pedido': row['Pedido Ideal Sugerido (Unds)'],
-  //       'Check ✓': '',
-  //       'Cant. Final': ''
-  //     }));
-  //     filename = `FerreteroIA_${analysisResult.report_key}_Accionable.pdf`;
-      
-  //     // Generación de PDF
-  //     const doc = new jsPDF();
-  //     doc.text(`Reporte Accionable: \n ${reportConfig.label}\n`, 14, 15);
-  //     autoTable(doc, {
-  //       head: [headers],
-  //       body: dataForSheet.map(Object.values),
-  //       startY: 30,
-  //     });
-  //     doc.save(filename);
-
-  //   } else { // Detallado (Excel)
-  //     dataForSheet = dataToUse; // Usamos los datos filtrados con sus nombres originales
-  //     filename = `FerreteroIA_${analysisResult.report_key}_Detallado.xlsx`;
-      
-  //     const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
-  //     // Lógica para anchos de columna (ejemplo)
-  //     worksheet['!cols'] = [ { wch: 15 }, { wch: 50 }, { wch: 25 }, { wch: 25 } ];
-  //     const workbook = XLSX.utils.book_new();
-  //     XLSX.utils.book_append_sheet(workbook, worksheet, "Análisis Detallado");
-  //     XLSX.writeFile(workbook, filename);
-  //   }
-  // };
-
   const handleTemporalAudit = async () => {
     console.log('Iniciando auditoría temporal...');
 
@@ -565,100 +461,99 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
           {modalView === 'results' && (
             <div className="p-6 text-center">
-              <h3 className="text-lg font-bold text-gray-800 p-6">Análisis Completado</h3>
+              {/*<h3 className="text-lg font-bold text-gray-800 p-6">Análisis Completado</h3>*/}
               <div className="flex-1 min-h-0 overflow-y-auto">
-                {modalView === 'loading' && (
-                  <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                    <FiLoader className="animate-spin text-4xl text-purple-600" />
-                    <p className="mt-4">Generando análisis, esto puede tardar unos segundos...</p>
-                  </div>
-                )}
-                
-                {modalView === 'parameters' && (
-                  <div className="p-4 text-black">
-                    {/* Tu JSX para renderizar el formulario de parámetros va aquí */}
-                  </div>
-                )}
-
                 {modalView === 'results' && analysisResult && (
                   <div className="text-left animate-fade-in">
                     
                     {/* Insight Clave */}
                     <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
+                      <p className="text-md font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
                       <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
+                      {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
                     </div>
-
-                    {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
-                    <div className="mb-6">
-                      <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {analysisResult && analysisResult.kpis && 
-                          Object.entries(analysisResult.kpis).map(([key, value]) => (
-                            <KpiCard 
-                              key={key} 
-                              label={key} 
-                              value={value}
-                              // Buscamos el texto del tooltip en nuestro glosario
-                              tooltipText={kpiTooltips[key]} 
-                            />
-                          ))
-                        }
-                      </div>
-                    </div>
-                    <hr />
-                    {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
-                    <div className="mt-6 mb-6">
-                      <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar resultados</h4>
-                      <div className="bg-gray-50 p-4 rounded-lg border">
-                        <div className="flex relative items-center mb-2">
-                          <FiSearch className="absolute left-4 text-gray-400" />
-                          <input
-                            id="search-results"
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Filtra tus resultados..."
-                            className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
-                          />
+                    {Object.entries(analysisResult.kpis).length > 0 && (
+                      <>
+                        <hr />
+                        {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
+                        <div className="mb-6 mt-6">
+                          <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            {analysisResult && analysisResult.kpis && 
+                              Object.entries(analysisResult.kpis).map(([key, value]) => (
+                                <KpiCard 
+                                  key={key} 
+                                  label={key} 
+                                  value={value}
+                                  // Buscamos el texto del tooltip en nuestro glosario
+                                  tooltipText={kpiTooltips[key]} 
+                                />
+                              ))
+                            }
+                          </div>
                         </div>
-                        <div className="space-y-2 max-h-60 overflow-y-auto">
-                          {filteredData.slice(0, 5).map((item, index) => (
-                            <div key={index} className="p-3 bg-white rounded-md border">
-                              <p className="font-semibold text-sm text-gray-800">{item['Nombre del producto']}</p>
-                              <p className="text-xs text-gray-500 break-words truncate">SKU: {item['SKU / Código de producto']} | Marca: {item['Marca']} | Categoría: {item['Categoría']}</p>
+                      </>
+                    )}
+                    {filteredData.length > 0 && (
+                      <>
+                        <hr />
+                        {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
+                        <div className="mt-6 mb-6">
+                          <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar resultados</h4>
+                          <div className="bg-gray-50 p-4 rounded-lg border">
+                            <div className="flex relative items-center mb-2">
+                              <FiSearch className="absolute left-4 text-gray-400" />
+                              <input
+                                id="search-results"
+                                type="text"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                placeholder="Filtra tus resultados..."
+                                className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                              />
                             </div>
-                          ))}
-                        </div>
-                        {/* --- ECO INTELIGENTE --- */}
-                        <p className="text-xs text-center text-gray-500 mt-4 italic">
-                          {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
-                          {filteredData.length > 5 && `Mostrando 5 de ${filteredData.length} resultados...`}
-                        </p>
-                      </div>
-                    </div>
+                            <div className="space-y-2 max-h-60 overflow-y-auto">
+                              {filteredData.slice(0, 5).map((item, index) => (
+                                <div key={index} className="p-3 bg-white rounded-md border">
+                                  <p className="font-semibold text-sm text-gray-800">{item['Nombre del producto']}</p>
+                                  <p className="text-xs text-gray-500 break-words truncate">SKU: {item['SKU / Código de producto']} | Marca: {item['Marca']} | Categoría: {item['Categoría']}</p>
+                                </div>
+                              ))}
+                            </div>
+                            {/* --- ECO INTELIGENTE --- */}
+                            <p className="text-xs text-center text-gray-500 mt-4 italic">
+                              {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
+                              {filteredData.length > 5 && `Mostrando 5 de ${filteredData.length} resultados...`}
+                            </p>
+                          </div>
+                        </div>    
+                      </>
+                    )}
                   </div>
                 )}
               </div>
-              <hr />
-              <div className="mt-6 space-y-3">
-                <h4 className="font-semibold text-gray-700">Descarga tus reportes:</h4>
-                <div className="flex gap-3 w-full justify-center">
-                  <button onClick={() => handleOpenPDF()} className="flex-col bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
-                    <FiFileText className="text-4xl" />
-                    <div>
-                      <span className="font-bold">Accionable (PDF)</span>
-                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span>
-                    </div>
-                  </button>
-                  <button onClick={() => handleDownloadExcel()} className="flex-col bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
-                    <FiTable className="text-4xl" />
-                    <div>
-                      <span className="font-bold">Detallado (Excel)</span>
-                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
+              {filteredData.length > 0 && (
+                <>
+                  <hr />
+                  <div className="mt-6 space-y-3 mb-10">
+                    <h4 className="font-semibold text-gray-700 text-left">⬇️ Descarga tus reportes:</h4>
+                      <button onClick={() => handleOpenPDF()} className="w-full flex-row bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
+                        <FiFileText className="text-4xl" />
+                        <div className="text-left">
+                          <span className="font-bold">Reporte Imprimible (PDF)</span>
+                          <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
+                        </div>
+                      </button>
+                      <button onClick={() => handleDownloadExcel()} className="w-full flex-row bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+                        <FiTable className="text-4xl" />
+                        <div className="text-left">
+                          <span className="font-bold">Reporte Detallado (Excel)</span>
+                          <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
+                        </div>
+                      </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
         </div>

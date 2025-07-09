@@ -1636,7 +1636,14 @@ def process_csv_lista_basica_reposicion_historico(
     
     if df_analisis.empty:
         # print("❌ DEBUG: El DataFrame está vacío ANTES del último filtro. La función terminará aquí.")
-        return pd.DataFrame()
+        # return pd.DataFrame()
+        return {
+            "data": pd.DataFrame(),
+            "summary": {
+                "insight": "No se encontraron productos que coincidan con los filtros aplicados.",
+                "kpis": {}
+            }
+        }
     
     df_analisis['Margen_Bruto_con_PCA'] = df_analisis['Precio_Venta_Prom_Reciente'] - df_analisis[precio_compra_actual_col_stock]
     df_analisis['Ingreso_Total_Reciente'] = df_analisis['Ventas_Total_Reciente'] * df_analisis['Precio_Venta_Prom_Reciente']
