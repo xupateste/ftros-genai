@@ -6,8 +6,8 @@ DEFAULT_STRATEGY = {
   "score_dias_venta": 2,
   
   # Parámetros de Riesgo y Cobertura
-  "lead_time_dias": 7,
-  "dias_cobertura_ideal_base": 10,
+  "lead_time_dias": 3,
+  "dias_cobertura_ideal_base": 5,
   "dias_seguridad_base": 0,
 
   # Parámetros de Análisis

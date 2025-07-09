@@ -49,9 +49,9 @@ export function StrategyPanel({ strategy, setStrategy, onRestore, context, isLoa
           <h3 className="text-xl font-semibold text-gray-700 mb-4 border-l-4 border-purple-500 pl-4">Importancia de Productos</h3>
           <p className="text-sm text-gray-600 mb-6 ml-5">Define qué es "importante" para ti (escala 1-10). Estos serán los defaults en los reportes.</p>
           <div className="grid md:grid-cols-2 gap-x-8 gap-y-6 ml-5">
-            <StrategySlider name="score_margen" label="Peso del Margen (Rentabilidad)" tooltipText={tooltips.score_margen} value={strategy.score_margen} onChange={handleChange} />
-            <StrategySlider name="score_ingreso" label="Peso de Ingresos (Facturación)" tooltipText={tooltips.score_ingreso} value={strategy.score_ingreso} onChange={handleChange} />
             <StrategySlider name="score_ventas" label="Peso de Ventas (Popularidad)" tooltipText={tooltips.score_ventas} value={strategy.score_ventas} onChange={handleChange} />
+            <StrategySlider name="score_ingreso" label="Peso de Ingresos (Facturación)" tooltipText={tooltips.score_ingreso} value={strategy.score_ingreso} onChange={handleChange} />
+            <StrategySlider name="score_margen" label="Peso del Margen (Rentabilidad)" tooltipText={tooltips.score_margen} value={strategy.score_margen} onChange={handleChange} />
             <StrategySlider name="score_dias_venta" label="Peso de Frecuencia de Venta" tooltipText={tooltips.score_dias_venta} value={strategy.score_dias_venta} onChange={handleChange} />
           </div>
         </div>

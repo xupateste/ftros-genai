@@ -1818,11 +1818,11 @@ def process_csv_lista_basica_reposicion_historico(
         'Stock_Minimo_Unds', 'Stock_Ideal_Unds', 
         'Sugerencia_Pedido_Minimo_Unds', 'Sugerencia_Pedido_Ideal_Unds', 
         'Importancia_Dinamica', 'PDA_Final',
-        'Ventas_Total_General', 'Ventas_Total_Reciente',
-        precio_venta_prom_col,
-        'debug_margen_promedio',
-        precio_venta_actual_col_stock,
-        'debug_margen_lista'
+        'Ventas_Total_General', 'Ventas_Total_Reciente'
+        # precio_venta_prom_col,
+        # 'debug_margen_promedio',
+        # precio_venta_actual_col_stock,
+        # 'debug_margen_lista'
     ]
     
     # columnas_finales_presentes = [col for col in columnas_salida_deseadas if col in df_resultado.columns]
@@ -1850,10 +1850,10 @@ def process_csv_lista_basica_reposicion_historico(
             'Importancia_Dinamica': 'Índice de Importancia',
             'Ventas_Total_Reciente': f'Ventas Recientes ({final_dias_recientes}d) (Unds)',
             'Ventas_Total_General' : f'Ventas Periodo General ({final_dias_general}d) (Unds)',
-            'debug_margen_lista': '[Debug] Margen s/ P. Lista',
-            'debug_margen_promedio': '[Debug] Margen s/ P. Promedio',
-            precio_venta_prom_col: '[Debug] Precio Venta Promedio',
-            precio_venta_actual_col_stock: '[Debug] Precio Venta Lista',
+            # 'debug_margen_lista': '[Debug] Margen s/ P. Lista',
+            # 'debug_margen_promedio': '[Debug] Margen s/ P. Promedio',
+            # precio_venta_prom_col: '[Debug] Precio Venta Promedio',
+            # precio_venta_actual_col_stock: '[Debug] Precio Venta Lista',
         }
         df_resultado_final.rename(columns=column_rename_map, inplace=True)
 

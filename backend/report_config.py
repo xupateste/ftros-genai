@@ -45,6 +45,13 @@ REPORTS_CONFIG = {
     "endpoint": '/diagnostico-stock-muerto',
     # "key": 'ReporteStockMuerto',
     "categoria": "🧠 Diagnósticos generales",
+    "accionable_columns": [
+        "SKU / Código de producto",
+        "Nombre del producto",
+        "Stock Actual (Unds)",
+        "Valor stock (S/.)",
+        "Días sin venta"
+    ],
     "isPro": False,
     "costo": 5,
     "basic_parameters": []
@@ -228,6 +235,14 @@ REPORTS_CONFIG = {
     "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido",
     "isPro": False,
     "costo": 8,
+    "accionable_columns": [
+        "SKU / Código de producto",
+        "Nombre del producto",
+        "Precio Compra Actual (S/.)",
+        "Stock Actual (Unds)",
+        "Punto de Alerta Mínimo (Unds)",
+        "Pedido Ideal Sugerido (Unds)"
+    ],
     "basic_parameters": [
       { "name": 'ordenar_por', "label": 'Ordenar reporte por', "type": 'select', "tooltip_key": "ordenar_por",
         "options": [

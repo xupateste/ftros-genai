@@ -3,7 +3,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
-import * as XLSX from 'xlsx';
+// import * as XLSX from 'xlsx';
+// import XLSX from 'xlsx-style';
+import ExcelJS from 'exceljs';
+import { saveAs } from 'file-saver';
+
 import { useStrategy } from '../context/StrategyProvider';
 import { useConfig } from '../context/ConfigProvider';
 import api from '../utils/api';
@@ -135,90 +139,227 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     setModalParams(prev => ({ ...prev, ...advancedDefaults }));
   };
 
-  // const handleDownloadExcel = (type) => {
-  //   if (!analysisResult || !filteredData) {
-  //       alert("No hay datos de análisis para descargar.");
-  //       return;
-  //   }
+  const handleOpenPDF = () => {
+    const dataToUse = filteredData; // Usamos los datos ya filtrados por la búsqueda
+    if (!dataToUse || dataToUse.length === 0) {
+      alert("No hay datos para generar el PDF.");
+      return;
+    }
 
-  //   let dataToExport = filteredData;
-  //   let filename = `FerreteroIA_${analysisResult.report_key}.xlsx`;
-  //   let ws_name = "Reporte";
+    // 1. Leemos las instrucciones desde la configuración del reporte
+    const headers = reportConfig.accionable_columns || [];
+    if (headers.length === 0) {
+        alert("Este reporte no tiene una versión accionable definida.");
+        return;
+    }
 
-  //   // Lógica para crear el reporte accionable
-  //   if (type === 'accionable') {
-  //       const columnasAccionables = [
-  //           'SKU / Código de producto', 'Nombre del producto', 
-  //           'Precio Compra Actual (S/.)', 'Stock Actual (Unds)', 
-  //           'Stock Mínimo Sugerido (Unds)'
-  //       ];
+    // 2. Añadimos las columnas de interacción para la versión impresa
+    const finalHeaders = [...headers, 'Check'];
 
-  //       dataToExport = filteredData.map(row => {
-  //           let newRow = {};
-  //           columnasAccionables.forEach(col => {
-  //               if (row[col] !== undefined) newRow[col] = row[col];
-  //           });
-  //           // Añadimos las columnas vacías que pediste para imprimir
-  //           newRow['Check ✓'] = '';
-  //           return newRow;
-  //       });
-  //       filename = `FerreteroIA_${analysisResult.report_key}_Accionable.xlsx`;
-  //       ws_name = "Accionable";
-  //   }
+    // 3. Mapeamos los datos, seleccionando solo las columnas especificadas
+    const body = dataToUse.map(row => {
+        const rowData = headers.map(header => row[header] || ''); // Obtenemos el valor de cada columna
+        rowData.push(''); // Añadimos el valor vacío para 'Check ✓'
+        return rowData;
+    });
 
-  //   // Usamos la librería xlsx para crear el archivo desde el JSON
-  //   const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-  //   const workbook = XLSX.utils.book_new();
-  //   XLSX.utils.book_append_sheet(workbook, worksheet, ws_name);
+    const doc = new jsPDF({ orientation: "portrait" });
+    doc.text(`Reporte Accionable: ${reportConfig.label}`, 14, 15);
+    autoTable(doc, {
+        head: [finalHeaders],
+        body: body,
+        startY: 20,
+        styles: { fontSize: 8 },
+        headStyles: { fillColor: [67, 56, 202] }
+    });
     
-  //   // Disparamos la descarga
-  //   XLSX.writeFile(workbook, filename);
-  // };
+    // Abre el PDF en una nueva pestaña
+    // const pdfBlob = doc.output('pdfobjectnewwindow');
+    doc.output('bloburl', { filename: `FerreteroIA_${reportConfig.key}_Accionable.pdf` });
+    window.open(doc.output('bloburl'), '_blank');
+  };
 
-  // --- LÓGICA DE DESCARGA MEJORADA ---
-  const handleDownload = (type) => {
-    const dataToUse = filteredData; // Siempre usamos los datos filtrados
+  const handleDownloadExcel = async () => {
+    const dataToUse = filteredData;
     if (!dataToUse || dataToUse.length === 0) {
       alert("No hay datos para descargar.");
       return;
     }
 
-    let headers, dataForSheet, filename;
+    const filename = `FerreteroIA_${analysisResult.report_key}_Detallado.xlsx`;
+    
+    // 1. Creamos un nuevo libro de trabajo
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet("Análisis Detallado");
 
-    if (type === 'accionable') {
-      headers = ['SKU', 'Nombre del Producto', 'Stock Actual', 'Sugerencia de Pedido', 'Check ✓', 'Cant. Final'];
-      dataForSheet = dataToUse.map(row => ({
-        'SKU': row['SKU / Código de producto'],
-        'Nombre del Producto': row['Nombre del producto'],
-        'Stock Actual': row['Stock Actual (Unds)'],
-        'Sugerencia de Pedido': row['Pedido Ideal Sugerido (Unds)'],
-        'Check ✓': '',
-        'Cant. Final': ''
-      }));
-      filename = `FerreteroIA_${analysisResult.report_key}_Accionable.pdf`;
-      
-      // Generación de PDF
-      const doc = new jsPDF();
-      doc.text(`Reporte Accionable: \n ${reportConfig.label}\n`, 14, 15);
-      autoTable(doc, {
-        head: [headers],
-        body: dataForSheet.map(Object.values),
-        startY: 30,
-      });
-      doc.save(filename);
+    // 2. Definimos las columnas y sus encabezados
+    // Esto también nos permite controlar el orden y el formato
+    const columns = Object.keys(dataToUse[0] || {}).map(key => ({
+      header: key,
+      key: key,
+      width: 10 // Ancho por defecto
+    }));
 
-    } else { // Detallado (Excel)
-      dataForSheet = dataToUse; // Usamos los datos filtrados con sus nombres originales
-      filename = `FerreteroIA_${analysisResult.report_key}_Detallado.xlsx`;
-      
-      const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
-      // Lógica para anchos de columna (ejemplo)
-      worksheet['!cols'] = [ { wch: 15 }, { wch: 50 }, { wch: 25 }, { wch: 25 } ];
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Análisis Detallado");
-      XLSX.writeFile(workbook, filename);
+    // Aplicamos los anchos personalizados que definiste
+    const customWidths = {
+      'SKU / Código de producto': 10,
+      'Nombre del producto': 50,
+      'Categoría': 23,
+      'Subcategoría': 23
+    };
+
+    columns.forEach(col => {
+      if (customWidths[col.header]) {
+        col.width = customWidths[col.header];
+      }
+    });
+
+    worksheet.columns = columns;
+
+    worksheet.autoFilter = {
+      from: 'A1',
+      to: 'Z1',
     }
+
+    worksheet.views = [
+      {state: 'frozen', xSplit: 2, ySplit: 1}
+    ];
+
+
+    // 3. Aplicamos estilo al encabezado
+    worksheet.getRow(1).eachCell((cell) => {
+      cell.font = {
+        bold: true,
+        color: { argb: 'FFFFFFFF' } // Texto blanco
+      };
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF6B21A8' } // Fondo púrpura
+      };
+      cell.alignment = {
+        vertical: 'middle',
+        horizontal: 'center',
+        wrapText: true
+      };
+      cell.border = {
+        bottom: { style: 'thin', color: { argb: 'FFFFFFFF' } }
+      };
+    });
+    worksheet.getRow(1).height = 80; // Altura de la fila en puntos
+
+    // 4. Añadimos los datos
+    worksheet.addRows(dataToUse);
+
+    // 5. Generamos el buffer del archivo y disparamos la descarga
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    saveAs(blob, filename);
   };
+
+  // const handleDownloadExcel = () => {
+  //   const dataToUse = filteredData;
+  //   if (!dataToUse || dataToUse.length === 0) return;
+
+  //   const filename = `FerreteroIA_${analysisResult.report_key}_Detallado.xlsx`;
+  //   const worksheet = XLSX.utils.json_to_sheet(dataToUse);
+
+  //   const headerStyle = {
+  //     font: {
+  //       bold: true,
+  //       color: { rgb: "FFFFFF" } // Texto blanco
+  //     },
+  //     fill: {
+  //       fgColor: { rgb: "6B21A8" } // Fondo color púrpura oscuro (un tono de tu marca)
+  //     },
+  //     alignment: {
+  //       wrapText: true, // Ajuste de texto
+  //       vertical: "center",
+  //       horizontal: "center"
+  //     },
+  //     border: {
+  //       bottom: { style: "thin", color: { rgb: "FFFFFF" } }
+  //     }
+  //   };
+
+  //   // Obtenemos el rango de la hoja de cálculo
+  //   const range = XLSX.utils.decode_range(worksheet['!ref']);
+  //   // Iteramos solo sobre la primera fila (los encabezados)
+  //   for (let C = range.s.c; C <= range.e.c; ++C) {
+  //     const address = XLSX.utils.encode_cell({ r: 0, c: C });
+  //     if (!worksheet[address]) continue;
+  //     // Aplicamos el estilo a cada celda del encabezado
+  //     worksheet[address].s = headerStyle;
+  //   }
+
+  //   // Definimos la altura de la primera fila (en puntos, no píxeles)
+  //   worksheet['!rows'] = [{ hpt: 80 }]; // hpt = height in points
+
+  //   // Definimos los anchos de las columnas que pediste
+  //   worksheet['!cols'] = [
+  //     { wch: 8 },  // SKU / Código de producto
+  //     { wch: 50 }, // Nombre del producto
+  //     { wch: 24 }, // Categoría
+  //     { wch: 24 }, // Subcategoría
+  //     // El resto tomará un ancho por defecto de 13
+  //   ];
+  //   // Aplicamos el ancho por defecto al resto
+  //   for (let i = 4; i <= range.e.c; i++) {
+  //       if (!worksheet['!cols'][i]) {
+  //           worksheet['!cols'][i] = { wch: 13 };
+  //       }
+  //   }
+
+  //   // 3. Creamos el libro y disparamos la descarga
+  //   const workbook = XLSX.utils.book_new();
+  //   XLSX.utils.book_append_sheet(workbook, worksheet, "Análisis Detallado");
+  //   XLSX.writeFile(workbook, filename);
+  // };
+
+  // --- LÓGICA DE DESCARGA MEJORADA ---
+  // const handleDownload = (type) => {
+  //   const dataToUse = filteredData; // Siempre usamos los datos filtrados
+  //   if (!dataToUse || dataToUse.length === 0) {
+  //     alert("No hay datos para descargar.");
+  //     return;
+  //   }
+
+  //   let headers, dataForSheet, filename;
+
+  //   if (type === 'accionable') {
+  //     headers = ['SKU', 'Nombre del Producto', 'Stock Actual', 'Sugerencia de Pedido', 'Check ✓', 'Cant. Final'];
+  //     dataForSheet = dataToUse.map(row => ({
+  //       'SKU': row['SKU / Código de producto'],
+  //       'Nombre del Producto': row['Nombre del producto'],
+  //       'Stock Actual': row['Stock Actual (Unds)'],
+  //       'Sugerencia de Pedido': row['Pedido Ideal Sugerido (Unds)'],
+  //       'Check ✓': '',
+  //       'Cant. Final': ''
+  //     }));
+  //     filename = `FerreteroIA_${analysisResult.report_key}_Accionable.pdf`;
+      
+  //     // Generación de PDF
+  //     const doc = new jsPDF();
+  //     doc.text(`Reporte Accionable: \n ${reportConfig.label}\n`, 14, 15);
+  //     autoTable(doc, {
+  //       head: [headers],
+  //       body: dataForSheet.map(Object.values),
+  //       startY: 30,
+  //     });
+  //     doc.save(filename);
+
+  //   } else { // Detallado (Excel)
+  //     dataForSheet = dataToUse; // Usamos los datos filtrados con sus nombres originales
+  //     filename = `FerreteroIA_${analysisResult.report_key}_Detallado.xlsx`;
+      
+  //     const worksheet = XLSX.utils.json_to_sheet(dataForSheet);
+  //     // Lógica para anchos de columna (ejemplo)
+  //     worksheet['!cols'] = [ { wch: 15 }, { wch: 50 }, { wch: 25 }, { wch: 25 } ];
+  //     const workbook = XLSX.utils.book_new();
+  //     XLSX.utils.book_append_sheet(workbook, worksheet, "Análisis Detallado");
+  //     XLSX.writeFile(workbook, filename);
+  //   }
+  // };
 
   const handleTemporalAudit = async () => {
     console.log('Iniciando auditoría temporal...');
@@ -449,7 +590,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
                     {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
                     <div className="mb-6">
-                      <h4 className="font-semibold text-gray-700 mb-2">Resumen Ejecutivo</h4>
+                      <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
                       <div className="grid grid-cols-2 gap-4">
                         {analysisResult && analysisResult.kpis && 
                           Object.entries(analysisResult.kpis).map(([key, value]) => (
@@ -464,51 +605,53 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                         }
                       </div>
                     </div>
-
+                    <hr />
                     {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
-                    <div className="my-6">
-                      <h4 className="font-semibold text-gray-700 mb-2">Refina tu Análisis</h4>
-                      <div className="flex relative items-center">
-                        <FiSearch className="absolute left-4 text-gray-400" />
-                        <input
-                          id="search-results"
-                          type="text"
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          placeholder="Filtra tus resultados..."
-                          className="w-full bg-gray-100 text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
-                        />
+                    <div className="mt-6 mb-6">
+                      <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar resultados</h4>
+                      <div className="bg-gray-50 p-4 rounded-lg border">
+                        <div className="flex relative items-center mb-2">
+                          <FiSearch className="absolute left-4 text-gray-400" />
+                          <input
+                            id="search-results"
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Filtra tus resultados..."
+                            className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                          />
+                        </div>
+                        <div className="space-y-2 max-h-60 overflow-y-auto">
+                          {filteredData.slice(0, 5).map((item, index) => (
+                            <div key={index} className="p-3 bg-white rounded-md border">
+                              <p className="font-semibold text-sm text-gray-800">{item['Nombre del producto']}</p>
+                              <p className="text-xs text-gray-500 break-words truncate">SKU: {item['SKU / Código de producto']} | Marca: {item['Marca']} | Categoría: {item['Categoría']}</p>
+                            </div>
+                          ))}
+                        </div>
+                        {/* --- ECO INTELIGENTE --- */}
+                        <p className="text-xs text-center text-gray-500 mt-4 italic">
+                          {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
+                          {filteredData.length > 5 && `Mostrando 5 de ${filteredData.length} resultados...`}
+                        </p>
                       </div>
                     </div>
-                    <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
-                      {filteredData.slice(0, 3).map((item, index) => (
-                        <div key={index} className="p-3 bg-gray-50 rounded-md border">
-                          <p className="font-semibold text-sm text-gray-800">{item['Nombre del producto']}</p>
-                          <p className="text-xs text-gray-500">SKU: {item['SKU / Código de producto']} | Marca: {item['Marca']}</p>
-                        </div>
-                      ))}
-                    </div>
-                    {/* --- ECO INTELIGENTE --- */}
-                    <p className="text-xs text-center text-gray-500 mt-2 italic">
-                      {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
-                      {filteredData.length > 3 && `Mostrando 3 de ${filteredData.length} resultados...`}
-                    </p>
                   </div>
                 )}
               </div>
-
+              <hr />
               <div className="mt-6 space-y-3">
                 <h4 className="font-semibold text-gray-700">Descarga tus reportes:</h4>
                 <div className="flex gap-3 w-full justify-center">
-                  <button onClick={() => handleDownload('accionable')} className="flex-col bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
-                    <FiFileText className="text-2xl" />
+                  <button onClick={() => handleOpenPDF()} className="flex-col bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
+                    <FiFileText className="text-4xl" />
                     <div>
                       <span className="font-bold">Accionable (PDF)</span>
                       <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span>
                     </div>
                   </button>
-                  <button onClick={() => handleDownload('detallado')} className="flex-col bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
-                    <FiTable className="text-2xl" />
+                  <button onClick={() => handleDownloadExcel()} className="flex-col bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+                    <FiTable className="text-4xl" />
                     <div>
                       <span className="font-bold">Detallado (Excel)</span>
                       <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span>

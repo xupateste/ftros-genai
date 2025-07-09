@@ -3,7 +3,7 @@ import axios from 'axios';
 // --- CONFIGURACIÓN DE LA URL BASE ---
 // Usamos una URL simple para evitar los errores de compilación con `import.meta.env`.
 // Si tu configuración de Vite/React lo permite, puedes volver a usar la variable de entorno.
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'https://localhost:8000';
 
 // 1. Creamos una instancia de Axios con configuración base.
 // Todas las peticiones hechas con `api` usarán esta URL como prefijo.
