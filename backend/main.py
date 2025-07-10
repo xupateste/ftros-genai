@@ -664,22 +664,39 @@ async def get_workspaces(current_user: dict = Depends(get_current_user)):
     """
     try:
         user_email = current_user.get("email")
-        # Apuntamos a la sub-colección 'espacios_trabajo' del usuario logueado
-        workspaces_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo')
         
-        # Le pedimos a Firestore que ordene por el timestamp
+        workspaces_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo')
+        # Ordenamos por el campo que ahora sabemos que existe y se actualiza
         query = workspaces_ref.order_by("fechaUltimoAcceso", direction=firestore.Query.DESCENDING)
         
-        workspaces = []
-        for doc in workspaces_ref.stream():
+        workspaces_list = []
+        for doc in query.stream():
             workspace_data = doc.to_dict()
-            workspace_data['id'] = doc.id # Es crucial añadir el ID del documento
-            if 'fechaCreacion' in workspace_data and isinstance(workspace_data['fechaCreacion'], datetime):
-                # Convertimos la fecha a un string en formato ISO 8601, que Javascript entiende
-                workspace_data['fechaCreacion'] = workspace_data['fechaCreacion'].isoformat()
-            workspaces.append(workspace_data)
+            workspace_data['id'] = doc.id
             
-        return workspaces
+            # --- CONVERSIÓN DE FECHAS COMPLETA Y ROBUSTA ---
+            # Iteramos sobre una lista de campos de fecha conocidos para convertirlos
+            date_fields_to_convert = ['fechaCreacion', 'fechaUltimoAcceso', 'fechaModificacion']
+            
+            for field in date_fields_to_convert:
+                if field in workspace_data and hasattr(workspace_data[field], 'isoformat'):
+                    workspace_data[field] = workspace_data[field].isoformat()
+            
+            workspaces_list.append(workspace_data)
+
+        # --- Lógica para obtener los créditos (sin cambios) ---
+        creditos_restantes = current_user.get("creditos_restantes", 0)
+        creditos_iniciales = current_user.get("creditos_iniciales", 50)
+        creditos_usados = creditos_iniciales - creditos_restantes
+
+        return JSONResponse(content={
+            "workspaces": workspaces_list,
+            "credits": {
+                "used": creditos_usados,
+                "remaining": creditos_restantes
+            }
+        })
+
     except Exception as e:
         print(f"🔥 Error al obtener workspaces para el usuario {user_email}: {e}")
         raise HTTPException(status_code=500, detail="No se pudieron obtener los espacios de trabajo.")
@@ -1990,6 +2007,7 @@ async def _handle_report_generation(
         if resultado_df is None or summary_data is None:
             raise ValueError("La función de procesamiento no devolvió la estructura de datos esperada.")
 
+        updated_credits = None
 
         # Verificamos si el DataFrame resultante está vacío
         if resultado_df.empty:
@@ -2058,6 +2076,18 @@ async def _handle_report_generation(
         
         # Usamos la `entity_ref` correcta para descontar créditos
         entity_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
+            
+        # --- CAMBIO CLAVE: Leemos el nuevo saldo DESPUÉS de la actualización ---
+        updated_doc = entity_ref.get()
+        updated_data = updated_doc.to_dict()
+        new_remaining = updated_data.get("creditos_restantes", 0)
+        initial_credits = updated_data.get("creditos_iniciales", 0)
+        
+        updated_credits = {
+            "used": initial_credits - new_remaining,
+            "remaining": new_remaining
+        }
+
         log_report_generation(
             user_id=user_id, workspace_id=workspace_id, session_id=session_id,
             report_name=report_key, params=full_params_for_logging,
@@ -2073,7 +2103,8 @@ async def _handle_report_generation(
             "insight": summary_data.get("insight"),
             "kpis": summary_data.get("kpis"),
             "data": data_for_frontend,
-            "report_key": report_key
+            "report_key": report_key,
+            "updated_credits": updated_credits
         })
 
     except Exception as e:

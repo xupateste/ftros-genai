@@ -16,34 +16,52 @@ export function WorkspaceProvider({ children }) {
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
   const { loadStrategy } = useStrategy();
+  // --- NUEVO ESTADO PARA LOS CRÉDITOS, AHORA VIVE AQUÍ ---
+  const [credits, setCredits] = useState(null);
 
   const fetchWorkspaces = useCallback(async () => {
     setIsLoading(true);
     try {
       const response = await api.get('/workspaces');
-      setWorkspaces(response.data);
+
+      const { workspaces: fetchedWorkspaces, credits: fetchedCredits } = response.data || {};
+
+      setWorkspaces(fetchedWorkspaces || []);
+      setCredits(fetchedCredits || { used: 0, remaining: 0 });
+      
       // Si hay workspaces, establecemos el primero como activo por defecto
-      if (response.data.length > 0) {
-        setActiveWorkspace(response.data[0]);
-        return response.data[0]; // Devolvemos el workspace activ
+      // Establece el primer espacio de trabajo como activo por defecto
+      if (fetchedWorkspaces && fetchedWorkspaces.length > 0) {
+        setActiveWorkspace(fetchedWorkspaces[0]);
       }
-      // loadStrategy()
-      return null; // Devolvemos null si no hay workspaces
+
+      return fetchedWorkspaces || [];
     } catch (error) {
-      console.error("Error al cargar los espacios de trabajo:", error);
+      console.error("Error al cargar el contexto del usuario:", error);
+      // En caso de error, reseteamos a un estado seguro
       setWorkspaces([]);
-      return null;
+      setCredits(null);
+      return [];
     } finally {
       setIsLoading(false);
+    }
+  }, []);
+
+  // --- NUEVA FUNCIÓN PARA ACTUALIZACIÓN QUIRÚRGICA ---
+  const updateCredits = useCallback((newCreditData) => {
+    if (newCreditData) {
+      console.log("Actualizando créditos en el contexto:", newCreditData);
+      setCredits(newCreditData);
     }
   }, []);
 
   // --- NUEVA FUNCIÓN PARA LIMPIAR EL ESTADO ---
   const clearWorkspaceContext = useCallback(() => {
     console.log("Limpiando contexto del espacio de trabajo...");
+    setIsLoading(false);
     setWorkspaces([]);
     setActiveWorkspace(null);
-    setIsLoading(false);
+    setCredits(null);
   }, []);
 
 
@@ -171,7 +189,9 @@ export function WorkspaceProvider({ children }) {
     isSwitching,
     togglePinWorkspace,
     touchWorkspace,
-    clearWorkspaceContext
+    clearWorkspaceContext,
+    updateCredits,
+    credits
   };
 
   return (

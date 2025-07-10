@@ -10,6 +10,8 @@ import { saveAs } from 'file-saver';
 
 import { useStrategy } from '../context/StrategyProvider';
 import { useConfig } from '../context/ConfigProvider';
+import { useWorkspace } from '../context/WorkspaceProvider';
+
 import api from '../utils/api';
 import { Tooltip } from './Tooltip';
 import { jsPDF } from "jspdf";
@@ -39,6 +41,7 @@ const KpiCard = ({ label, value, tooltipText }) => (
 export function ReportModal({ reportConfig, context, availableFilters, onClose, onAnalysisComplete }) {
   const { strategy } = useStrategy();
   const { tooltips, kpiTooltips } = useConfig();
+  const { updateCredits } = useWorkspace()
 
   // --- ESTADOS INTERNOS DEL MODAL ---
   const [modalView, setModalView] = useState('parameters'); // 'parameters', 'loading', 'results'
@@ -119,6 +122,10 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       // onStateUpdate(i => i + 1); // Notifica al workspace que debe refrescar créditos e historial
       if (onAnalysisComplete) {
         onAnalysisComplete();
+      }
+
+      if (response.data.updated_credits) {
+        updateCredits(response.data.updated_credits);
       }
     } catch (error) {
       console.error("Error al generar el reporte:", error);

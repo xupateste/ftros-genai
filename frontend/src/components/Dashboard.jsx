@@ -11,6 +11,8 @@ import { AnalysisWorkspace } from './AnalysisWorkspace'; // Importa el nuevo com
 import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el nuevo modal
 import { StrategyPanelModal } from './StrategyPanelModal'; // Importa el nuevo modal
 import { FerreterosLogo } from './FerreterosLogo'
+import { CreditsPanel } from './CreditsPanel'; // <-- 1. Importamos el panel
+import { CreditHistoryModal } from './CreditHistoryModal'; // <-- 2. Importamos el modal de historial
 
 // Este es el placeholder de tu vista de análisis. En el futuro, aquí
 // importarías el componente que contiene los CsvImporters y la lista de reportes.
@@ -28,7 +30,7 @@ const AnalysisView = ({ workspace, onBack }) => (
 
 
 export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
-  const { workspaces, togglePinWorkspace, activeWorkspace, setActiveWorkspace, createWorkspace, fetchWorkspaces, isLoading, touchWorkspace } = useWorkspace();
+  const { workspaces, togglePinWorkspace, activeWorkspace, setActiveWorkspace, createWorkspace, fetchWorkspaces, isLoading, touchWorkspace, credits } = useWorkspace();
   const [view, setView] = useState('dashboard'); // 'dashboard' o 'workspace'
   const [isCreating, setIsCreating] = useState(false);
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
@@ -102,29 +104,35 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
   // Si no, mostramos el dashboard principal
   return (
     <div className="min-h-screen w-full max-w-5xl mx-auto md:p-8 text-white animate-fade-in">
-      <header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900 sticky top-0 z-10">
-        <div className="flex gap-4 justify-center mb-2">
-          <h1 className="text-3xl md:text-5xl font-bold text-white">
-              <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
-          </h1>
-          <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiLogOut /> Cerrar Sesión</button>
-        </div>
-
-        <h1 className="flex text-3xl font-bold">Mis Espacios de Trabajo</h1>
-        <button onClick={() => setStrategyModalOpen(true)} className="flex gap-2 items-center justify-center">
-          <FiSettings /> Mi Estrategia Global
-        </button>
-      </header>
-
-      <div className="mb-10 p-6 bg-gray-800 ...">
+      {/*<header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900 sticky top-0 z-10">*/}
+        <div className="flex-col justify-center pt-4 px-4">
+          <div className="flex gap-4 justify-center mb-3">
+            <h1 className="text-3xl md:text-5xl font-bold text-white">
+                <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
+            </h1>
+            <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiLogOut /> Cerrar Sesión</button>
+          </div>
+          <CreditsPanel 
+            used={credits.used} 
+            remaining={credits.remaining}
+            // onHistoryClick={() => setActiveModal('history')}
+            onHistoryClick={() => {}}
+         />
+        </div> 
+        <div className="flex flex-col w-full justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-4 px-4 sticky top-0">
+          <h1 className="flex text-3xl font-bold">Mis Espacios de Trabajo</h1>
+          <button onClick={() => setStrategyModalOpen(true)} className="flex gap-2 items-center justify-center">
+            <FiSettings /> Mi Estrategia Global
+          </button>
           <button 
               onClick={() => setIsCreateModalOpen(true)}
-              className="w-full flex items-center justify-center gap-2 px-6 py-3 font-bold bg-purple-600 hover:bg-purple-700 rounded-lg">
+              className="w-full flex items-center max-w-xl justify-center gap-2 px-6 py-3 font-bold bg-purple-600 hover:bg-purple-700 rounded-lg">
               <FiPlusCircle /> Crear Nuevo Espacio de Trabajo
           </button>
-      </div>
+        </div>
+      {/*</header>*/}
 
-      <div>
+      <div className="mt-8">
         {isLoading ? (
           // Mientras carga, muestra un spinner o un mensaje simple
           <div className="text-center p-10">
