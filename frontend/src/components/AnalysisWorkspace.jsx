@@ -380,50 +380,37 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   return (
     <div className="min-h-screen w-full max-w-5xl mx-auto md:p-8 text-white animate-fade-in">
-      {/* Tu encabezado ahora puede usar `context` para mostrar la información correcta */}
-      {/*<header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900">*/}
-        {/*<div className="flex flex-col">*/}
-          <div className="flex gap-4 justify-center mt-4">
-            <h1 className="text-3xl md:text-5xl font-bold text-white">
-                <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
-            </h1>
-            {/* Botón de Login solo para usuarios anónimos */}
-            {context.type === 'anonymous'
-              ? <button onClick={() => setActiveModal('login')} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiLogIn /> Iniciar Sesión</button>
-              : <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiLogOut /> Cerrar Sesión</button>
-            }
-          </div>
-          {/* Solo se muestra si es un usuario registrado */}
-          {/*{context.type === 'user' && (
-              <button onClick={onBackToDashboard} className="text-xs text-purple-400 hover:text-white mb-1">
-                  &larr; Mis Espacios de Trabajo
-              </button>
-          )}*/}
-          {context.type === 'anonymous' &&
-            <p className="text-xs mt-3 text-white flex justify-center text-center items-center font-mono gap-4">
-              <span>Modo: Sesión Anónima <br/> {context.id}</span>
-            </p>
+        <div className="flex gap-4 justify-center mt-4">
+          <h1 className="text-3xl md:text-5xl font-bold text-white">
+              <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
+          </h1>
+          {/* Botón de Login solo para usuarios anónimos */}
+          {context.type === 'anonymous'
+            ? <button onClick={() => setActiveModal('login')} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiLogIn /> Iniciar Sesión</button>
+            : <button onClick={onLogout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiLogOut /> Cerrar Sesión</button>
           }
-        {/*</div>*/}
-        <div className="flex flex-col w-full justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
-          {/*<div className="flex items-center gap-6">*/}
-           <CreditsPanel 
-              used={credits.used} 
-              remaining={credits.remaining}
-              onHistoryClick={() => setActiveModal('history')}
-           />
-          {/*</div>*/}
-          {context.type === 'user' && (
-            <WorkspaceSelector
-              workspaces={workspaces}
-              activeWorkspace={activeWorkspace}
-              onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
-              onCreateNew={() => setIsCreateModalOpen(true)}
-              onBackToDashboard={ onBackToDashboard }
-            />
-          )}
         </div>
-      {/*</header>*/}
+        {context.type === 'anonymous' &&
+          <p className="text-xs mt-3 text-white flex justify-center text-center items-center font-mono gap-4">
+            <span>Modo: Sesión Anónima <br/> {context.id}</span>
+          </p>
+        }
+      <div className="flex flex-col w-full justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
+         <CreditsPanel 
+            used={credits.used} 
+            remaining={credits.remaining}
+            onHistoryClick={() => setActiveModal('history')}
+         />
+        {context.type === 'user' && (
+          <WorkspaceSelector
+            workspaces={workspaces}
+            activeWorkspace={activeWorkspace}
+            onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
+            onCreateNew={() => setIsCreateModalOpen(true)}
+            onBackToDashboard={ onBackToDashboard }
+          />
+        )}
+      </div>
 
       <main className="flex-1 overflow-y-auto pb-4 w-full">
         <div className='w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>

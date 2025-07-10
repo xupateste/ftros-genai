@@ -52,6 +52,12 @@ REPORTS_CONFIG = {
         "Valor stock (S/.)",
         "Días sin venta"
     ],
+    "preview_details": [
+        { "label": "Días sin Venta", "data_key": "Días sin venta", "suffix": " días" },
+        { "label": "Valor Inmovilizado", "data_key": "Valor stock (S/.)", "prefix": "S/ " },
+        { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
+        { "label": "Diagnóstico", "data_key": "Clasificación Diagnóstica", "prefix": "", "suffix": "" }
+    ],
     "isPro": False,
     "costo": 5,
     "basic_parameters": []
@@ -242,6 +248,12 @@ REPORTS_CONFIG = {
         "Stock Actual (Unds)",
         "Punto de Alerta Mínimo (Unds)",
         "Pedido Ideal Sugerido (Unds)"
+    ],
+    "preview_details": [
+        { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
+        { "label": "Stock Mínimo Sugerido", "data_key": "Stock Mínimo Sugerido (Unds)", "suffix": " Unds" },
+        { "label": "Precio de Compra", "data_key": "Precio Compra Actual (S/.)", "prefix": "S/ " },
+        { "label": "Sugerencia de Pedido", "data_key": "Pedido Ideal Sugerido (Unds)", "suffix": " Unds" }
     ],
     "basic_parameters": [
       { "name": 'ordenar_por', "label": 'Ordenar reporte por', "type": 'select', "tooltip_key": "ordenar_por",

@@ -105,7 +105,7 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
   return (
     <div className="min-h-screen w-full max-w-5xl mx-auto md:p-8 text-white animate-fade-in">
       {/*<header className="flex flex-col items-center gap-2 py-3 px-4 sm:px-6 lg:px-8 text-white w-full border-b border-gray-700 bg-neutral-900 sticky top-0 z-10">*/}
-        <div className="flex-col justify-center pt-4 px-4">
+        <div className="flex-col justify-center pt-4 px-4 pb-1">
           <div className="flex gap-4 justify-center mb-3">
             <h1 className="text-3xl md:text-5xl font-bold text-white">
                 <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>

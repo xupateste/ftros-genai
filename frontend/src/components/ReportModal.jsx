@@ -16,10 +16,11 @@ import api from '../utils/api';
 import { Tooltip } from './Tooltip';
 import { jsPDF } from "jspdf";
 // import "jspdf-autotable";
+import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 
 import { autoTable } from 'jspdf-autotable';
 
-
+import { ResultListItem } from './ResultListItem';
 // Importa los iconos que necesitas
 import { FiX, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
@@ -49,6 +50,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   const [analysisResult, setAnalysisResult] = useState(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeModal, setActiveModal] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
 
@@ -129,6 +131,28 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       }
     } catch (error) {
       console.error("Error al generar el reporte:", error);
+      // Verificamos si el error es por falta de créditos (código 402)
+      if (error.response?.status === 402) {
+          // Obtenemos la información necesaria para el modal
+          // const required = selectedReport?.costo || 0;
+          // const remaining = credits.remaining || 0;
+          // setCreditsInfo({ required, remaining });
+          
+          // Mostramos el modal específico de créditos insuficientes
+          // setShowCreditsModal(true);
+          setActiveModal('creditsOffer')
+      } else {
+          // Para cualquier otro error, mantenemos la lógica genérica
+          let errorMessage = "Ocurrió un error al generar el reporte.";
+          if (error.response?.data && error.response.data instanceof Blob) {
+              try {
+                  const errorText = await error.response.data.text();
+                  const errorJson = JSON.parse(errorText);
+                  errorMessage = errorJson.detail || errorMessage;
+              } catch (e) { /* Mantener mensaje genérico */ }
+          }
+          alert(errorMessage);
+      }
       alert(error.response?.data?.detail || "Ocurrió un error.");
       setModalView('parameters'); // Vuelve a la vista de parámetros si hay error
       if (onAnalysisComplete) {
@@ -161,22 +185,21 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     }
 
     // 2. Añadimos las columnas de interacción para la versión impresa
-    const finalHeaders = [...headers, 'Check'];
+    const finalHeaders = [...headers];
 
     // 3. Mapeamos los datos, seleccionando solo las columnas especificadas
     const body = dataToUse.map(row => {
         const rowData = headers.map(header => row[header] || ''); // Obtenemos el valor de cada columna
-        rowData.push(''); // Añadimos el valor vacío para 'Check ✓'
         return rowData;
     });
 
     const doc = new jsPDF({ orientation: "portrait" });
-    doc.text(`Reporte Accionable: ${reportConfig.label}`, 14, 15);
+    doc.text(`Reporte Accionable: \n${reportConfig.label}`, 14, 15);
     autoTable(doc, {
         head: [finalHeaders],
         body: body,
-        startY: 20,
-        styles: { fontSize: 8 },
+        startY: 30,
+        styles: { fontSize: 11, valign: 'middle'},
         headStyles: { fillColor: [67, 56, 202] }
     });
     
@@ -479,88 +502,80 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                       <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
                       {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
                     </div>
-                    {Object.entries(analysisResult.kpis).length > 0 && (
-                      <>
-                        <hr />
-                        {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
-                        <div className="mb-6 mt-6">
-                          <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            {analysisResult && analysisResult.kpis && 
-                              Object.entries(analysisResult.kpis).map(([key, value]) => (
-                                <KpiCard 
-                                  key={key} 
-                                  label={key} 
-                                  value={value}
-                                  // Buscamos el texto del tooltip en nuestro glosario
-                                  tooltipText={kpiTooltips[key]} 
-                                />
-                              ))
-                            }
-                          </div>
+                    <hr />
+                    {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
+                    <div className="mb-6 mt-6">
+                      <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {analysisResult && analysisResult.kpis && 
+                          Object.entries(analysisResult.kpis).map(([key, value]) => (
+                            <KpiCard 
+                              key={key} 
+                              label={key} 
+                              value={value}
+                              // Buscamos el texto del tooltip en nuestro glosario
+                              tooltipText={kpiTooltips[key]} 
+                            />
+                          ))
+                        }
+                      </div>
+                    </div>
+                    <hr />
+                    {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
+                    <div className="mt-6 mb-6">
+                      <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
+                      <div className="bg-purple-100 p-4 rounded-lg border">
+                        <div className="flex relative items-center mb-2">
+                          <FiSearch className="absolute left-4 text-gray-400" />
+                          <input
+                            id="search-results"
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Filtra tus resultados..."
+                            className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                          />
                         </div>
-                      </>
-                    )}
-                    {filteredData.length > 0 && (
-                      <>
-                        <hr />
-                        {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
-                        <div className="mt-6 mb-6">
-                          <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar resultados</h4>
-                          <div className="bg-gray-50 p-4 rounded-lg border">
-                            <div className="flex relative items-center mb-2">
-                              <FiSearch className="absolute left-4 text-gray-400" />
-                              <input
-                                id="search-results"
-                                type="text"
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                placeholder="Filtra tus resultados..."
-                                className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+                        {/* --- LISTA ENRIQUECIDA E INTERACTIVA --- */}
+                        <div className="space-y-2">
+                          {filteredData.length > 0 && (
+                            filteredData.slice(0, 5).map((item, index) => (
+                              <ResultListItem 
+                                key={item['SKU / Código de producto'] || index} 
+                                itemData={item}
+                                detailInstructions={reportConfig.preview_details}
                               />
-                            </div>
-                            <div className="space-y-2 max-h-60 overflow-y-auto">
-                              {filteredData.slice(0, 5).map((item, index) => (
-                                <div key={index} className="p-3 bg-white rounded-md border">
-                                  <p className="font-semibold text-sm text-gray-800">{item['Nombre del producto']}</p>
-                                  <p className="text-xs text-gray-500 break-words truncate">SKU: {item['SKU / Código de producto']} | Marca: {item['Marca']} | Categoría: {item['Categoría']}</p>
-                                </div>
-                              ))}
-                            </div>
-                            {/* --- ECO INTELIGENTE --- */}
-                            <p className="text-xs text-center text-gray-500 mt-4 italic">
-                              {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
-                              {filteredData.length > 5 && `Mostrando 5 de ${filteredData.length} resultados...`}
-                            </p>
-                          </div>
-                        </div>    
-                      </>
-                    )}
+                            ))
+                          )}
+                        </div>
+                        {/* --- ECO INTELIGENTE --- */}
+                        <p className="text-sm text-center text-gray-500 mt-4 italic">
+                          {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
+                          {filteredData.length > 5 && `Mostrando 5 de ${filteredData.length} resultados...`}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
-              {filteredData.length > 0 && (
-                <>
-                  <hr />
-                  <div className="mt-6 space-y-3 mb-10">
-                    <h4 className="font-semibold text-gray-700 text-left">⬇️ Descarga tus reportes:</h4>
-                      <button onClick={() => handleOpenPDF()} className="w-full flex-row bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
-                        <FiFileText className="text-4xl" />
-                        <div className="text-left">
-                          <span className="font-bold">Reporte Imprimible (PDF)</span>
-                          <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
-                        </div>
-                      </button>
-                      <button onClick={() => handleDownloadExcel()} className="w-full flex-row bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
-                        <FiTable className="text-4xl" />
-                        <div className="text-left">
-                          <span className="font-bold">Reporte Detallado (Excel)</span>
-                          <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
-                        </div>
-                      </button>
-                  </div>
-                </>
-              )}
+              <hr />
+              <div className="mt-6 space-y-3 mb-10">
+                <h4 className="font-semibold text-gray-700 text-left">⬇️ Descarga tus reportes:</h4>
+                  <button onClick={() => handleOpenPDF()} className="w-full flex-row bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
+                    <FiFileText className="text-4xl" />
+                    <div className="text-left">
+                      <span className="font-bold">Reporte Imprimible (PDF)</span>
+                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
+                    </div>
+                  </button>
+                  <button onClick={() => handleDownloadExcel()} className="w-full flex-row bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+                    <FiTable className="text-4xl" />
+                    <div className="text-left">
+                      <span className="font-bold">Reporte Detallado (Excel)</span>
+                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
+                    </div>
+                  </button>
+              </div>
             </div>
           )}
         </div>
@@ -610,6 +625,16 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
             <button onClick={() => setModalView('parameters')} className="w-full text-lg px-4 py-2">‹ Volver a Parámetros</button>
           )}
         </div>
+        {/*{showCreditsModal && ()}*/}
+        {activeModal === 'creditsOffer' && (
+          <InsufficientCreditsModal
+            required={10}
+            remaining={5}
+            onClose={() => setActiveModal(null)}
+            onRegister={() => {}}
+            onNewSession={() => {}}
+          />
+        )}
       </div>
     </div>
   );
