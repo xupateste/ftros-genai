@@ -95,6 +95,97 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     setModalParams(prev => ({ ...prev, [paramName]: value }));
   };
 
+  // --- FUNCIÓN PARA RENDERIZAR PARÁMETROS DE FORMA DINÁMICA ---
+  const renderParameter = (param) => {
+    switch (param.type) {
+      case 'text':
+        return (
+          <div key={param.name} className="mb-4 text-left">
+            <label htmlFor={param.name} className="flex items-center text-sm font-medium text-gray-600 mb-1">
+              {param.label}: <Tooltip text={tooltips[param.tooltip_key]} />
+            </label>
+            <input type="text" id={param.name} name={param.name} value={modalParams[param.name] || ''} onChange={e => handleParamChange(param.name, e.target.value)} placeholder={param.placeholder || ''} className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm" />
+          </div>
+        );
+      
+      case 'select':
+        return (
+          <div key={param.name} className="mb-4">
+            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+              {param.label}:
+              <Tooltip text={tooltips[param.tooltip_key]} />
+            </label>
+            <select
+              id={param.name}
+              name={param.name}
+              value={modalParams[param.name] || ''}
+              onChange={e => handleParamChange(param.name, e.target.value)}
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+            >
+              {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
+        );;
+
+      case 'multi-select':
+        {
+          // 1. Obtenemos las opciones del estado `availableFilters`
+          const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
+          // 2. Obtenemos el valor actual del estado `modalParams`
+          const currentValue = modalParams[param.name] || [];
+          // 3. Convertimos el valor actual al formato que `react-select` espera
+          const valueForSelect = currentValue.map(val => ({ value: val, label: val }));
+          return (
+            <div key={param.name} className="mb-4 text-left">
+              <label className="block text-sm font-medium text-gray-600 mb-1">
+                {param.label}:
+                <Tooltip text={tooltips[param.tooltip_key]} />
+              </label>
+              <Select
+                isMulti
+                name={param.name}
+                options={options}
+                className="mt-1 block w-full basic-multi-select"
+                classNamePrefix="select"
+                value={valueForSelect} // <-- Usamos el valor formateado
+                placeholder="Selecciona..."
+                onChange={(selectedOptions) => {
+                  // Al cambiar, extraemos solo los valores (strings) para guardarlos en el estado
+                  const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
+                  handleParamChange(param.name, values);
+                }}
+              />
+            </div>
+          );
+        }
+
+      // --- NUEVO CASO PARA INPUTS NUMÉRICOS ---
+      case 'number':
+        return (
+          <div key={param.name} className="mb-4 text-left">
+            <label htmlFor={param.name} className="flex items-center text-sm font-medium text-gray-600 mb-1">
+              {param.label}: <Tooltip text={tooltips[param.tooltip_key]} />
+            </label>
+            <input
+              type="number"
+              id={param.name}
+              name={param.name}
+              value={modalParams[param.name] || ''}
+              onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
+              min={param.min}
+              max={param.max}
+              step={param.step || 'any'} // Permite decimales por defecto
+              placeholder={param.placeholder || ''}
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+            />
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
   const handleGenerateAnalysis = async () => {
     setModalView('loading');
     const formData = new FormData();
@@ -199,7 +290,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         head: [finalHeaders],
         body: body,
         startY: 30,
-        styles: { fontSize: 11, valign: 'middle'},
+        styles: { fontSize: 10, valign: 'middle'},
         headStyles: { fillColor: [67, 56, 202] }
     });
     
@@ -342,81 +433,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                     <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
                     
                     {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
-                    {reportConfig.basic_parameters?.map((param) => {
-                      // Lógica de renderizado para select y multi-select
-                      if (param.type === 'select') {
-                        return (
-                          <div key={param.name} className="mb-4">
-                            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-                              {param.label}:
-                              <Tooltip text={tooltips[param.tooltip_key]} />
-                            </label>
-                            <select
-                              id={param.name}
-                              name={param.name}
-                              value={modalParams[param.name] || ''}
-                              onChange={e => handleParamChange(param.name, e.target.value)}
-                              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                            >
-                              {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                            </select>
-                          </div>
-                        );
-                      }
-                      if (param.type === 'multi-select') {
-                        // 1. Obtenemos las opciones del estado `availableFilters`
-                        const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-                        // 2. Obtenemos el valor actual del estado `modalParams`
-                        const currentValue = modalParams[param.name] || [];
-                        // 3. Convertimos el valor actual al formato que `react-select` espera
-                        const valueForSelect = currentValue.map(val => ({ value: val, label: val }));
-                        return (
-                          <div key={param.name} className="mb-4 text-left">
-                            <label className="block text-sm font-medium text-gray-600 mb-1">
-                              {param.label}:
-                              <Tooltip text={tooltips[param.tooltip_key]} />
-                            </label>
-                            <Select
-                              isMulti
-                              name={param.name}
-                              options={options}
-                              className="mt-1 block w-full basic-multi-select"
-                              classNamePrefix="select"
-                              value={valueForSelect} // <-- Usamos el valor formateado
-                              placeholder="Selecciona..."
-                              onChange={(selectedOptions) => {
-                                // Al cambiar, extraemos solo los valores (strings) para guardarlos en el estado
-                                const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-                                handleParamChange(param.name, values);
-                              }}
-                            />
-                          </div>
-                        );
-                      }
-
-                      if (param.type === 'text') {
-                      return (
-                        <div key={param.name} className="mb-4 text-left">
-                          <label htmlFor={param.name} className="flex items-center text-sm font-medium text-gray-600 mb-1">
-                            {param.label}:
-                            <Tooltip text={tooltips[param.tooltip_key]} />
-                          </label>
-                          <input
-                            type="text"
-                            id={param.name}
-                            name={param.name}
-                            value={modalParams[param.name] || ''}
-                            onChange={e => handleParamChange(param.name, e.target.value)}
-                            placeholder={param.placeholder || ''}
-                            className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                          />
-                        </div>
-                      );
-                    }
-
-                    return null;
-
-                    })}
+                    {/* Renderizado de parámetros básicos */}
+                    {(reportConfig.basic_parameters || []).map(renderParameter)}
 
                     {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
                     {(reportConfig.advanced_parameters && reportConfig.advanced_parameters.length > 0) && (
@@ -524,7 +542,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                     {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
                     <div className="mt-6 mb-6">
                       <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
-                      <div className="bg-purple-100 p-4 rounded-lg border">
+                      <div className="bg-purple-50 p-4 rounded-lg border">
                         <div className="flex relative items-center mb-2">
                           <FiSearch className="absolute left-4 text-gray-400" />
                           <input

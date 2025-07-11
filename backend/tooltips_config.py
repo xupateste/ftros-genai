@@ -1,12 +1,15 @@
 TOOLTIPS_GLOSSARY = {
+    
     "filtro_texto": "Busca coincidencias en el SKU, Nombre, Categoría o Marca del producto. Ideal para encontrar rápidamente un item específico dentro de los resultados.",
     # --- Parámetros de Análisis ABC ---
     "periodo_abc": "Define el rango de tiempo de las ventas que se usarán para calcular la importancia de cada producto. '6 meses' es un buen balance entre datos recientes y estabilidad.",
     "criterio_abc": "Elige la métrica principal para clasificar tus productos. 'Margen' se enfoca en la rentabilidad, 'Ingresos' en la facturación, y 'Unidades' en la popularidad.",
     
     # --- Parámetros de Análisis de Salud y Stock Muerto ---
-    "dias_sin_venta_muerto": "Número de días sin vender un producto para que sea considerado 'Stock Muerto'. Un valor más alto es más conservador.",
-    "meses_analisis_salud": "Define cuántos meses de ventas recientes se usarán para calcular la 'salud' o velocidad de rotación de un producto.",
+    "dias_sin_venta_muerto": "Define el número mínimo de días sin una sola venta para que un producto con stock sea clasificado como 'Stock Muerto'. Un valor más bajo es más agresivo y te alertará antes.",
+    "umbral_valor_stock": "Filtra los resultados para mostrar solo los productos cuyo valor total de stock inmovilizado supere este monto en S/.",
+    "ordenar_stock_muerto_por": "Elige el criterio principal para ordenar la lista de stock muerto, permitiéndote priorizar el problema desde diferentes ángulos: financiero, logístico o por antigüedad.",
+    "filtro_categorias_json": "Permite enfocar el diagnóstico únicamente en las familias de productos que te interesan, ideal para analizar el rendimiento de una línea de producto específica.",
 
     # --- Parámetros de Pesos para Criterio Combinado/Dinámico ---
     "peso_margen": "Asigna la importancia que tiene el margen de ganancia en el cálculo del 'Índice de Importancia' ponderado.",
@@ -32,13 +35,28 @@ TOOLTIPS_GLOSSARY = {
     # --- Parámetros de Filtro Avanzado ---
     "min_importancia": "Filtra el reporte para mostrar únicamente los productos que superen este umbral de importancia (de 0 a 1).",
     "max_dias_cobertura": "Filtra el reporte para encontrar productos con bajo stock, mostrando solo aquellos cuya cobertura sea menor o igual a este número de días.",
-    "min_dias_cobertura": "Filtra el reporte para encontrar productos con exceso de stock, mostrando solo aquellos cuya cobertura sea mayor o igual a este número de días."
+    "min_dias_cobertura": "Filtra el reporte para encontrar productos con exceso de stock, mostrando solo aquellos cuya cobertura sea mayor o igual a este número de días.",
+    "dias_sin_venta_muerto": "Define el número mínimo de días sin una sola venta para que un producto con stock sea clasificado como 'Stock Muerto'. Un valor más bajo es más agresivo y te alertará antes.",
+    "umbral_valor_stock": "Filtra los resultados para mostrar solo los productos cuyo valor total de stock inmovilizado supere este monto en S/."
 }
 
 KPI_TOOLTIPS_GLOSSARY = {
+    # --- Tooltips para Lista basica reposicion historica) ---
     "Inversión Total Sugerida": "El monto total en soles (S/.) que necesitas invertir para comprar todas las unidades sugeridas en este reporte. Te ayuda a planificar tu flujo de caja.",
     "SKUs a Reponer": "El número total de productos únicos (diferentes códigos SKU) que la herramienta recomienda reponer. Te da una idea de la variedad de tu próximo pedido.",
     "Unidades Totales a Pedir": "La suma de todas las unidades individuales que se sugieren pedir en este reporte. Útil para la logística y la negociación por volumen con tus proveedores.",
     "Margen Potencial de la Compra": "La ganancia bruta estimada que obtendrías al vender todas las unidades sugeridas en esta compra, considerando solo los productos con margen de venta positivo.",
-    "Productos con Pérdida": "El número de productos que, según los datos de ventas recientes, se están vendiendo por debajo de su costo actual. ¡Requieren atención inmediata!"
+    "Productos con Pérdida": "El número de productos que, según los datos de ventas recientes, se están vendiendo por debajo de su costo actual. ¡Requieren atención inmediata!",
+
+    # --- Tooltips para Reporte de Reposición (ya existentes) ---
+    "Inversión Total Sugerida": "El monto total en soles (S/.) que necesitas invertir para comprar todas las unidades sugeridas en este reporte. Te ayuda a planificar tu flujo de caja.",
+    "SKUs a Reponer": "El número total de productos únicos (diferentes códigos SKU) que la herramienta recomienda reponer. Te da una idea de la variedad de tu próximo pedido.",
+    "Unidades Totales a Pedir": "La suma de todas las unidades individuales que se sugieren pedir en este reporte. Útil para la logística y la negociación por volumen con tus proveedores.",
+    "Margen Potencial de la Compra": "La ganancia bruta estimada que obtendrías al vender todas las unidades sugeridas en esta compra, considerando solo los productos con margen de venta positivo.",
+    
+    # --- NUEVOS TOOLTIPS PARA DIAGNÓSTICO DE STOCK MUERTO ---
+    "Valor Total en Stock Muerto": "La suma total del costo de tu inventario que está clasificado como 'Stock Muerto' y 'Nunca Vendido con Stock'. Es el capital que tienes inmovilizado y en riesgo.",
+    "% del Inventario Afectado": "Qué porcentaje del valor total de tu inventario está compuesto por stock muerto. Te ayuda a entender la magnitud del problema.",
+    "SKUs en Riesgo": "La cantidad de productos únicos diferentes que han sido clasificados como 'Stock Muerto' y 'Nunca Vendido con Stock'. Te indica si el problema está concentrado en pocos items o distribuido en muchos.",
+    "Producto Más Antiguo": "Muestra los días sin venta del 'peor infractor', el producto que lleva más tiempo sin venderse en todo tu inventario."
 }

@@ -1899,12 +1899,18 @@ def process_csv_lista_basica_reposicion_historico(
 def procesar_stock_muerto(
     df_ventas: pd.DataFrame,
     df_inventario: pd.DataFrame,
-    meses_analisis: Optional[int] = None,
-    dias_sin_venta_baja: Optional[int] = None,
-    dias_sin_venta_muerto: Optional[int] = None,
-    dps_umbral_exceso_stock: Optional[int] = None,
-    umbral_valor_stock_alto: float = 3000.0
-) -> pd.DataFrame:
+    # --- Parámetros actualizados que vienen desde la UI ---
+    dias_sin_venta_muerto: Optional[int] = 180,
+    umbral_valor_stock: Optional[float] = 0.0,
+    # Mantenemos los otros por si se usan en el futuro
+    meses_analisis: Optional[int] = 3,
+    dias_sin_venta_baja: Optional[int] = 90,
+    dps_umbral_exceso_stock: Optional[int] = 120,
+    ordenar_por: str = 'valor_stock_s',
+    incluir_solo_categorias: Optional[List[str]] = None,
+    incluir_solo_marcas: Optional[List[str]] = None,
+    **kwargs # Acepta argumentos extra para compatibilidad
+) -> Dict[str, Any]:
     """
     Calcula el análisis de diagnóstico de baja rotación y stock muerto.
     Los parámetros clave de análisis (meses, días sin venta) pueden ser 
@@ -1917,12 +1923,13 @@ def procesar_stock_muerto(
         dias_sin_venta_baja: (Opcional) Umbral para "Baja Rotación". Si es None, se calcula dinámicamente.
         dias_sin_venta_muerto: (Opcional) Umbral para "Stock Muerto". Si es None, se calcula dinámicamente.
         dps_umbral_exceso_stock: (Opcional) Umbral de DPS para "Exceso de Stock". Si es None, se calcula dinámicamente.
-        umbral_valor_stock_alto: Umbral en S/. para destacar inventario inmovilizado.
+        umbral_valor_stock: Umbral en S/. para destacar inventario inmovilizado.
 
     Returns:
         DataFrame con el análisis completo.
     """
 
+    # --- PASO 1: Definición de Nombres de Columna y Pre-procesamiento ---
     # --- 0. Renombrar y Preprocesar Datos ---
     df_ventas = df_ventas.rename(columns={
         'Fecha de venta': 'fecha_venta',
@@ -1935,8 +1942,12 @@ def procesar_stock_muerto(
         'Cantidad en stock actual': 'stock_actual_unds',
         'Precio de compra actual (S/.)': 'precio_compra_actual',
         'Categoría': 'categoria',
-        'Subcategoría': 'subcategoria'
+        'Subcategoría': 'subcategoria',
+        'Marca': 'marca'
     })
+
+    categoria_col_stock = 'Categoría'
+    marca_col_stock = 'Marca'
 
     df_ventas['fecha_venta'] = pd.to_datetime(df_ventas['fecha_venta'], format='%d/%m/%Y', errors='coerce')
     df_ventas = df_ventas.dropna(subset=['fecha_venta', 'sku'])
@@ -1964,6 +1975,7 @@ def procesar_stock_muerto(
     df_ventas_recientes = df_ventas[df_ventas['fecha_venta'] >= fecha_inicio_analisis_reciente]
     ventas_ultimos_x_meses_sku = df_ventas_recientes.groupby('sku')['cantidad_vendida'].sum().reset_index(name=col_ventas_recientes_nombre)
 
+    # --- PASO 2: Cálculo de Métricas y Clasificación ---
     # --- 3. Combinar datos y Calcular Métricas Derivadas ---
     df_resultado = pd.merge(df_inventario, ventas_totales_sku, on='sku', how='left')
     df_resultado = pd.merge(df_resultado, ultima_venta_sku, on='sku', how='left')
@@ -1976,7 +1988,7 @@ def procesar_stock_muerto(
     df_resultado['precio_compra_actual'] = pd.to_numeric(df_resultado['precio_compra_actual'], errors='coerce').fillna(0)
     
     # Calcular métricas
-    df_resultado['valor_stock_s'] = df_resultado['stock_actual_unds'] * df_resultado['precio_compra_actual']
+    df_resultado['valor_stock_s'] = (df_resultado['stock_actual_unds'] * df_resultado['precio_compra_actual']).round(2)
     df_resultado['dias_sin_venta'] = (hoy - df_resultado['ultima_venta']).dt.days
 
     # Calcular Días para Agotar Stock (DPS)
@@ -2033,7 +2045,88 @@ def procesar_stock_muerto(
 
     df_resultado['prioridad_accion_dps'] = df_resultado.apply(generar_accion, axis=1)
     
-    # --- 6. Formatear DataFrame de Salida ---
+    # --- PASO 3: Filtrado Principal (El Corazón del Reporte) ---
+    valor_total_inventario_antes_de_filtros = df_resultado['valor_stock_s'].sum()
+
+    print(f"Filtrando por productos con más de {dias_sin_venta_muerto} días sin venta.")
+    # df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
+    df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
+
+    # Aplicamos el filtro de valor si el usuario lo especificó
+    if umbral_valor_stock and umbral_valor_stock > 0:
+        print(f"Filtrando adicionalmente por valor de stock >= S/ {umbral_valor_stock}")
+        df_resultado = df_resultado[df_resultado['valor_stock_s'] >= umbral_valor_stock]
+
+    if incluir_solo_categorias and "categoria" in df_resultado.columns:
+        # Normalizamos la lista de categorías a minúsculas y sin espacios
+        categorias_normalizadas = [cat.strip().lower() for cat in incluir_solo_categorias]
+        
+        # Comparamos contra la columna del DataFrame también normalizada
+        # El .str.lower() y .str.strip() se aplican a cada valor de la columna antes de la comparación
+        df_resultado = df_resultado[
+            df_resultado["categoria"].str.strip().str.lower().isin(categorias_normalizadas)
+        ].copy()
+    print(f"DEBUG: 3. Después de filtrar por categorías, quedan {len(df_resultado)} filas.")
+
+    if incluir_solo_marcas and "marca" in df_resultado.columns:
+        # Normalizamos la lista de marcas
+        marcas_normalizadas = [marca.strip().lower() for marca in incluir_solo_marcas]
+        
+        # Comparamos contra la columna de marcas normalizada
+        df_resultado = df_resultado[
+            df_resultado["marca"].str.strip().str.lower().isin(marcas_normalizadas)
+        ].copy()
+    print(f"DEBUG: 4. Después de filtrar por marcas, quedan {len(df_resultado)} filas.")
+    
+
+    # --- PASO 4: CÁLCULO DE KPIs Y RESUMEN (Ahora se hace sobre los datos ya filtrados) ---
+    valor_total_muerto = df_muerto['valor_stock_s'].sum()
+    # Para el %, necesitamos el valor total del inventario ANTES de filtrar
+    valor_total_inventario = valor_total_inventario_antes_de_filtros
+    # valor_total_inventario = df_resultado['valor_stock_s'].sum()
+    skus_en_riesgo = int(df_muerto['sku'].nunique())
+    
+    porcentaje_afectado = (valor_total_muerto / valor_total_inventario * 100) if valor_total_inventario > 0 else 0
+    producto_mas_antiguo = int(df_muerto['dias_sin_venta'].max()) if not df_muerto.empty else 0
+
+    insight_text = f"¡Alerta! Se detectaron S/ {valor_total_muerto:,.2f} en capital inmovilizado ({porcentaje_afectado:.1f}% del total), afectando a {skus_en_riesgo} productos distintos."
+    if skus_en_riesgo == 0:
+        insight_text = "¡Felicidades! No se ha detectado stock muerto significativo con los criterios actuales."
+
+    kpis = {
+        "Valor Total en Stock Muerto": f"S/ {valor_total_muerto:,.2f}",
+        "% del Inventario Afectado": f"{porcentaje_afectado:.1f}%",
+        "SKUs en Riesgo": skus_en_riesgo,
+        "Producto Más Antiguo": f"{producto_mas_antiguo} días"
+    }
+
+
+    # --- PASO 5: ORDENAMIENTO DINÁMICO (Ahora se aplica sobre el resultado filtrado) ---
+    print(f"Ordenando resultados por: '{ordenar_por}'")
+    # Definimos la dirección del ordenamiento para cada criterio
+    ascending_map = {
+        'valor_stock_s': False,       # Mayor valor primero
+        'dias_sin_venta': False,      # Más antiguo primero
+        'stock_actual_unds': False,   # Mayor cantidad primero
+        'categoria': True             # Alfabético A-Z
+    }
+    
+    # Usamos el valor por defecto si el criterio no está en el mapa
+    is_ascending = ascending_map.get(ordenar_por, False)
+    
+    # Nos aseguramos de que la columna de ordenamiento exista antes de usarla
+    if ordenar_por in df_resultado.columns:
+        # Para categoría, usamos un ordenamiento secundario para consistencia
+        if ordenar_por == 'categoria':
+            df_resultado.sort_values(by=['categoria', 'valor_stock_s'], ascending=[True, False], inplace=True)
+        else:
+            df_resultado.sort_values(by=ordenar_por, ascending=is_ascending, inplace=True)
+    else:
+        # Si la columna no existe, usamos un ordenamiento por defecto seguro
+        df_resultado.sort_values(by='valor_stock_s', ascending=False, inplace=True)
+
+
+    # --- PASO 6: FORMATEO FINAL DE SALIDA ---
     col_dps_nombre_final = f'Días para Agotar Stock (Est.{meses_analisis_calc}m)'
     col_prioridad_nombre_final = f'Prioridad y Acción (DAS {meses_analisis_calc}m)'
     col_ventas_recientes_final = f'Ventas últimos {meses_analisis_calc}m (Unds)'
@@ -2052,17 +2145,17 @@ def procesar_stock_muerto(
     df_resultado[col_dps_nombre_final] = df_resultado[col_dps_nombre_final].apply(format_dps_display)
     
     columnas_finales = [
-        'sku', 'nombre_producto', 'categoria', 'subcategoria',
+        'sku', 'nombre_producto', 'categoria', 'subcategoria', 'marca',
         'precio_compra_actual', 'stock_actual_unds', 'valor_stock_s',
         'ventas_totales_unds', col_ventas_recientes_final,
         'ultima_venta', 'dias_sin_venta',
         col_dps_nombre_final,
         'clasificacion', col_prioridad_nombre_final
     ]
-    # Añadir columnas opcionales si existen en el dataframe de inventario
-    for col_opcional in ['Marca', 'Rol de categoría', 'Rol del producto']:
-        if col_opcional in df_resultado.columns and col_opcional not in columnas_finales:
-            columnas_finales.insert(4, col_opcional)
+    # # Añadir columnas opcionales si existen en el dataframe de inventario
+    # for col_opcional in ['Marca']:
+    #     if col_opcional in df_resultado.columns and col_opcional not in columnas_finales:
+    #         columnas_finales.insert(4, col_opcional)
 
     df_final = df_resultado[[col for col in columnas_finales if col in df_resultado.columns]].copy()
     
@@ -2071,6 +2164,7 @@ def procesar_stock_muerto(
         'sku': 'SKU / Código de producto',
         'nombre_producto': 'Nombre del producto',
         'categoria': 'Categoría',
+        'marca': 'Marca',
         'subcategoria': 'Subcategoría',
         'precio_compra_actual': 'Precio de compra actual (S/.)',
         'stock_actual_unds': 'Stock Actual (Unds)',
@@ -2083,23 +2177,25 @@ def procesar_stock_muerto(
 
     df_final['Última venta'] = pd.to_datetime(df_final['Última venta'], errors='coerce').dt.strftime('%Y-%m-%d').fillna('Nunca vendido')
     df_final['Días sin venta'] = df_final['Días sin venta'].astype('Int64')
-    df_final = df_final.sort_values(by='Valor stock (S/.)', ascending=False, na_position='last')
-
-    # --- NUEVO PASO FINAL: LIMPIEZA PARA COMPATIBILIDAD CON JSON ---
-    print("Limpiando DataFrame de stock muerto para JSON...")
-
-    # Si el dataframe está vacío, lo devolvemos tal cual.
-    if df_final.empty:
-        return df_final
-
-    # 1. Reemplazar valores infinitos (inf, -inf) con NaN, que es más fácil de manejar.
-    df_limpio = df_final.replace([np.inf, -np.inf], np.nan)
-
-    # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
-    # El método .where() es muy eficiente para esto.
-    resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
     
-    return resultado_final_json_safe
+    # --- PASO 7: LIMPIEZA PARA JSON (El último paso antes de devolver) ---
+    print("Limpiando DataFrame de stock muerto para JSON...")
+    if not df_final.empty:
+        df_final = df_final.replace([np.inf, -np.inf], np.nan).where(pd.notna(df_final), None)
+    
+    return {
+        "data": df_final,
+        "summary": {
+            "insight": insight_text,
+            "kpis": kpis
+        }
+    }
+
+    # # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
+    # # El método .where() es muy eficiente para esto.
+    # resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
+    
+    # return resultado_final_json_safe
 
 
 # ----------------------------------------------------------

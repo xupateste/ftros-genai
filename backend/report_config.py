@@ -45,22 +45,57 @@ REPORTS_CONFIG = {
     "endpoint": '/diagnostico-stock-muerto',
     # "key": 'ReporteStockMuerto',
     "categoria": "🧠 Diagnósticos generales",
+    "isPro": False,
+    "costo": 5,
+    "basic_parameters": [
+        { 
+            "name": "dias_sin_venta_muerto", 
+            "label": "Considerar 'Stock Muerto' después de (días)", 
+            "type": "number", 
+            "defaultValue": 180,
+            "placeholder": "Ej: 180",
+            "tooltip_key": "dias_sin_venta_muerto"
+        },
+        {
+            "name": "ordenar_por",
+            "label": "Ordenar resultados por",
+            "type": "select",
+            "defaultValue": "valor_stock_s",
+            "tooltip_key": "ordenar_stock_muerto_por",
+            "options": [
+                { "value": "valor_stock_s", "label": "Mayor Valor Inmovilizado" },
+                { "value": "dias_sin_venta", "label": "Más Antiguo (Días sin Venta)" },
+                { "value": "stock_actual_unds", "label": "Mayor Cantidad en Stock" },
+                { "value": "categoria", "label": "Categoría (A-Z)" }
+            ]
+        },
+        { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "incluir_solo_categorias", "optionsKey": 'categorias', "defaultValue": [] },
+        { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "incluir_solo_marcas", "optionsKey": 'marcas', "defaultValue": [] }
+    ],
+    "advanced_parameters": [
+        { 
+            "name": "umbral_valor_stock", 
+            "label": "Mostrar solo si el valor del stock supera (S/.)", 
+            "type": "number", 
+            "defaultValue": 0,
+            "placeholder": "Ej: 500",
+            "tooltip_key": "umbral_valor_stock"
+        }
+    ],
     "accionable_columns": [
         "SKU / Código de producto",
         "Nombre del producto",
         "Stock Actual (Unds)",
         "Valor stock (S/.)",
-        "Días sin venta"
+        "Días sin venta",
+        "Clasificación Diagnóstica"
     ],
     "preview_details": [
         { "label": "Días sin Venta", "data_key": "Días sin venta", "suffix": " días" },
         { "label": "Valor Inmovilizado", "data_key": "Valor stock (S/.)", "prefix": "S/ " },
         { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
-        { "label": "Diagnóstico", "data_key": "Clasificación Diagnóstica", "prefix": "", "suffix": "" }
-    ],
-    "isPro": False,
-    "costo": 5,
-    "basic_parameters": []
+        { "label": "Diagnóstico", "data_key": "Prioridad y Acción (DAS 3m)" }
+    ]
   },
   "ReporteMaestro": {
     "label": "⭐ Reporte Maestro de Inventario (Recomendado)",
@@ -244,9 +279,9 @@ REPORTS_CONFIG = {
     "accionable_columns": [
         "SKU / Código de producto",
         "Nombre del producto",
-        "Precio Compra Actual (S/.)",
         "Stock Actual (Unds)",
-        "Punto de Alerta Mínimo (Unds)",
+        "Stock Mínimo Sugerido (Unds)",
+        "Precio Compra Actual (S/.)",
         "Pedido Ideal Sugerido (Unds)"
     ],
     "preview_details": [

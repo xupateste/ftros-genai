@@ -1433,7 +1433,7 @@ async def run_analisis_estrategico_rotacion(
     )
 
 
-@app.post("/diagnostico-stock-muerto")
+@app.post("/diagnostico-stock-muerto", summary="Genera el reporte de Diagnóstico de Stock Muerto", tags=["Reportes"])
 async def diagnostico_stock_muerto(
     # Inyectamos el request para el logging
     request: Request, 
@@ -1444,8 +1444,13 @@ async def diagnostico_stock_muerto(
     # Definimos explícitamente los parámetros que la LÓGICA necesit
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
-    # meses_analisis: int = Form(...)
-    # meses: int = Query(6, description="Cantidad de meses hacia atrás para analizar")
+
+    # --- Recibimos los nuevos parámetros del formulario ---
+    dias_sin_venta_muerto: int = Form(180),
+    umbral_valor_stock: float = Form(0.0),
+    ordenar_por: str = Form(...),
+    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas.")
 ):
     # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
     # --- Determinación del Contexto ---
@@ -1470,21 +1475,35 @@ async def diagnostico_stock_muerto(
         # CASO 3: No hay identificador, denegamos el acceso
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
-    processing_params = {}
+    try:
+        # Parseamos los strings JSON para convertirlos en listas de Python
+        categorias_list = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        marcas_list = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
+
+    processing_params = {
+        "dias_sin_venta_muerto": dias_sin_venta_muerto,
+        "umbral_valor_stock": umbral_valor_stock,
+        "ordenar_por": ordenar_por,
+        "incluir_solo_categorias": categorias_list,
+        "incluir_solo_marcas": marcas_list
+    }
+
     full_params_for_logging = dict(await request.form())
 
     return await _handle_report_generation(
         full_params_for_logging=full_params_for_logging,
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id,
         report_key="ReporteDiagnosticoStockMuerto",
         processing_function=procesar_stock_muerto,
         processing_params=processing_params,
-        output_filename="ReporteDiagnosticoStockMuerto.xlsx",
+        output_filename="Diagnostico_Stock_Muerto.xlsx",
         # --- Pasamos el contexto correcto al manejador ---
         user_id=user_id,
         workspace_id=workspace_id,
         session_id=log_session_id,
-        ventas_file_id=ventas_file_id,
-        inventario_file_id=inventario_file_id
     )
 
 @app.post("/reporte-maestro-inventario")

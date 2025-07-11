@@ -7,7 +7,7 @@ import { FiChevronDown, FiChevronUp } from 'react-icons/fi';
 const DetailRow = ({ label, value, prefix = '', suffix = '' }) => (
   <div className="flex justify-between text-xs py-1 border-b border-gray-200">
     <span className="text-gray-500">{label}:</span>
-    <span className="font-semibold text-gray-700">{prefix}{value}{suffix}</span>
+    <span className="font-semibold text-gray-700 text-right">{prefix}{value}{suffix}</span>
   </div>
 );
 
