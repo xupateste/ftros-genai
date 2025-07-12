@@ -628,10 +628,10 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         <div className="p-2 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
           {modalView === 'results' ? (
             <div className="flex gap-2">
-              <button onClick={() => handleDownload('accionable')} className="flex-1 bg-gray-600 text-white font-bold py-2 px-2 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
+              <button onClick={handleOpenPDF} className="flex-1 bg-gray-600 text-white font-bold py-2 px-2 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
                 <FiFileText className="text-5xl md:text-4xl" /> <div><span>Imprimible (PDF)</span><span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span></div>
               </button>
-              <button onClick={() => handleDownload('detallado')} className="flex-1 bg-purple-600 text-white font-bold py-2 px-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+              <button onClick={handleDownloadExcel} className="flex-1 bg-purple-600 text-white font-bold py-2 px-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
                 <FiTable className="text-5xl md:text-4xl" /> <div><span>Detallado (Excel)</span><span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span></div>
               </button>
             </div>
