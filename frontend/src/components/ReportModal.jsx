@@ -560,7 +560,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
             <div className="h-full flex flex-col">
               {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
               <div className="p-4 sm:p-6 text-left">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>
+                {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}
                 {/* Insight Clave */}
                 <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
                   <p className="text-md font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
