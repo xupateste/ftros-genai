@@ -151,26 +151,17 @@ def process_csv_abc(
     df_inventario: pd.DataFrame,
     criterio_abc: str,
     periodo_abc: int,
-    pesos_combinado: Optional[Dict[str, float]] = None
-) -> pd.DataFrame:
+    # --- CAMBIO CLAVE: Recibimos los scores en lugar de los pesos ---
+    score_ventas: int = 8,
+    score_ingreso: int = 6,
+    score_margen: int = 4,
+    # Mantenemos pesos_combinado por si se usa en otro lugar, pero priorizamos los scores
+    # pesos_combinado: Optional[Dict[str, float]] = None,
+    **kwargs # Acepta argumentos extra para compatibilidad
+) -> Dict[str, Any]:
     """
-    Procesa los DataFrames de ventas e inventario para realizar un análisis ABC.
-
-    Args:
-        df_ventas: DataFrame con datos de ventas.
-                   Columnas esperadas: 'SKU / Código de producto', 'Nombre del producto',
-                                     'Fecha de venta', 'Cantidad vendida', 
-                                     'Precio de venta unitario (S/.)'.
-        df_inventario: DataFrame con datos de inventario.
-                       Columnas esperadas: 'SKU / Código de producto', 'Precio de compra actual (S/.)',
-                                         'Categoría', 'Subcategoría'.
-        criterio_abc: Criterio para el análisis ('ingresos', 'unidades', 'margen', 'combinado').
-        periodo_abc: Número de meses hacia atrás para el análisis (0 para todo el historial).
-        pesos_combinado: Diccionario con pesos si criterio_abc es 'combinado'.
-                         Ej: {"ingresos": 0.5, "margen": 0.3, "unidades": 0.2}
-
-    Returns:
-        DataFrame con el análisis ABC.
+    Procesa los datos para realizar un análisis ABC, ahora calculando los
+    pesos para el criterio 'combinado' a partir de los scores de la estrategia.
     """
 
     # --- 1. Limpieza Inicial de Nombres de Columnas ---
@@ -184,7 +175,7 @@ def process_csv_abc(
             raise ValueError(f"Columna requerida '{col}' no encontrada en el archivo de ventas.")
 
     # Verificar columnas requeridas en df_inventario
-    required_inventory_cols = ['SKU / Código de producto', 'Precio de compra actual (S/.)', 'Categoría', 'Subcategoría']
+    required_inventory_cols = ['SKU / Código de producto', 'Precio de compra actual (S/.)', 'Categoría', 'Subcategoría', 'Marca']
     for col in required_inventory_cols:
         if col not in df_inventario.columns:
             raise ValueError(f"Columna requerida '{col}' no encontrada en el archivo de inventario.")
@@ -244,7 +235,8 @@ def process_csv_abc(
         'Cantidad vendida': 'sum',
         'Margen total': 'sum',
         'Categoría': 'first', # Tomar la primera categoría (debería ser única por SKU)
-        'Subcategoría': 'first' # Tomar la primera subcategoría
+        'Subcategoría': 'first', # Tomar la primera subcategoría
+        'Marca': 'first'
     }
     ventas_agrupadas = df_merged.groupby(
         ['SKU / Código de producto', 'Nombre del producto'], as_index=False
@@ -267,8 +259,18 @@ def process_csv_abc(
         ventas_agrupadas['valor_criterio'] = ventas_agrupadas['Margen total']
         columna_criterio_display_name = 'Margen Total (S/.)'
     elif criterio_abc == 'combinado':
-        if not pesos_combinado or not all(k in pesos_combinado for k in ['ingresos', 'margen', 'unidades']):
-            raise ValueError("Pesos para criterio combinado no provistos o incompletos.")
+        total_scores = score_ventas + score_ingreso + score_margen
+        if total_scores == 0: # Evitar división por cero
+            pesos_calculados = {'unidades': 0.33, 'ingresos': 0.33, 'margen': 0.34}
+        else:
+            pesos_calculados = {
+                'unidades': score_ventas / total_scores,
+                'ingresos': score_ingreso / total_scores,
+                'margen': score_margen / total_scores
+            }
+
+        # if not pesos_combinado or not all(k in pesos_combinado for k in ['ingresos', 'margen', 'unidades']):
+        #     raise ValueError("Pesos para criterio combinado no provistos o incompletos.")
         
         # Normalización Min-Max para cada métrica
         for col_norm in ['Venta total', 'Cantidad vendida', 'Margen total']:
@@ -280,11 +282,11 @@ def process_csv_abc(
                 ventas_agrupadas[f'{col_norm}_norm'] = (ventas_agrupadas[col_norm] - min_val) / (max_val - min_val)
         
         ventas_agrupadas['valor_criterio'] = (
-            pesos_combinado['ingresos'] * ventas_agrupadas['Venta total_norm'] +
-            pesos_combinado['margen'] * ventas_agrupadas['Margen total_norm'] +
-            pesos_combinado['unidades'] * ventas_agrupadas['Cantidad vendida_norm']
+            pesos_calculados['ingresos'] * ventas_agrupadas['Venta total_norm'] +
+            pesos_calculados['margen'] * ventas_agrupadas['Margen total_norm'] +
+            pesos_calculados['unidades'] * ventas_agrupadas['Cantidad vendida_norm']
         )
-        columna_criterio_display_name = 'Valor Ponderado (ABC)'
+        columna_criterio_display_name = 'Valor Ponderado (Estrategia)'
     else:
         raise ValueError(f"Criterio ABC '{criterio_abc}' no reconocido.")
 
@@ -317,6 +319,7 @@ def process_csv_abc(
         'Nombre del producto',
         'Categoría',
         'Subcategoría',
+        'Marca',
         columna_criterio_display_name, # La métrica principal del ABC
     ]
     # Añadir otras métricas relevantes para contexto, si no son la principal
@@ -358,7 +361,50 @@ def process_csv_abc(
         resultado['Cantidad Vendida (Und)'] = resultado['Cantidad Vendida (Und)'].round(0).astype(int)
 
 
-    return resultado
+    # --- PASO 8: CÁLCULO DE KPIs Y RESUMEN ---
+    
+    # Calculamos la distribución para el insight
+    total_productos = len(resultado)
+    productos_a = resultado[resultado['Clasificación ABC'] == 'A']
+    productos_c = resultado[resultado['Clasificación ABC'] == 'C']
+    
+    porcentaje_skus_a = (len(productos_a) / total_productos * 100) if total_productos > 0 else 0
+    porcentaje_skus_c = (len(productos_c) / total_productos * 100) if total_productos > 0 else 0
+    
+    # Usamos la columna del criterio principal para el valor
+    col_valor = columna_criterio_display_name
+    porcentaje_valor_a = (productos_a[col_valor].sum() / resultado[col_valor].sum() * 100) if resultado[col_valor].sum() > 0 else 0
+    porcentaje_valor_c = (productos_c[col_valor].sum() / resultado[col_valor].sum() * 100) if resultado[col_valor].sum() > 0 else 0
+
+    insight_text = (
+        f"Tu inventario se distribuye así: "
+        f"el {porcentaje_skus_a:.0f}% de tus productos (Clase A) generan el {porcentaje_valor_a:.0f}% de tu valor, "
+        f"mientras que el {porcentaje_skus_c:.0f}% de tus productos (Clase C) solo aportan el {porcentaje_valor_c:.0f}%."
+    )
+    if total_productos == 0:
+        insight_text = "No se encontraron datos de ventas para realizar el análisis ABC con los filtros seleccionados."
+
+    kpis = {
+        "SKUs Clase A (Vitales)": len(productos_a),
+        f"% del Valor (Clase A)": f"{porcentaje_valor_a:.1f}%",
+        "SKUs Clase C (Triviales)": len(productos_c),
+        f"% del Valor (Clase C)": f"{porcentaje_valor_c:.1f}%"
+    }
+
+    # --- PASO 9: LIMPIEZA FINAL PARA JSON ---
+    if not resultado.empty:
+        resultado = resultado.replace([np.inf, -np.inf], np.nan).where(pd.notna(resultado), None)
+
+    # --- FIN DE LA NUEVA LÓGICA ---
+
+    # Devolvemos la estructura de diccionario estandarizada
+    return {
+        "data": resultado,
+        "summary": {
+            "insight": insight_text,
+            "kpis": kpis
+        }
+    }
 
 
 def generar_reporte_maestro_inventario(

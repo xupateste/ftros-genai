@@ -2,9 +2,10 @@ TOOLTIPS_GLOSSARY = {
     
     "filtro_texto": "Busca coincidencias en el SKU, Nombre, Categoría o Marca del producto. Ideal para encontrar rápidamente un item específico dentro de los resultados.",
     # --- Parámetros de Análisis ABC ---
-    "periodo_abc": "Define el rango de tiempo de las ventas que se usarán para calcular la importancia de cada producto. '6 meses' es un buen balance entre datos recientes y estabilidad.",
-    "criterio_abc": "Elige la métrica principal para clasificar tus productos. 'Margen' se enfoca en la rentabilidad, 'Ingresos' en la facturación, y 'Unidades' en la popularidad.",
-    
+    "abc_criterio": "Elige la métrica que define la 'importancia' de un producto. 'Margen' se enfoca en los más rentables, 'Ingresos' en los que más facturan, y 'Unidades' en los más populares.",
+    "abc_periodo": "Define el rango de tiempo de las ventas que se usarán para el análisis. Un período más corto refleja tendencias recientes, mientras que uno más largo muestra la estabilidad histórica.",
+    "abc_combinado": "Se utilizarán los pesos definidos en tu panel de 'Mi Estrategia' para este cálculo. Es la forma más completa de medir la importancia.",
+       
     # --- Parámetros de Análisis de Salud y Stock Muerto ---
     "dias_sin_venta_muerto": "Define el número mínimo de días sin una sola venta para que un producto con stock sea clasificado como 'Stock Muerto'. Un valor más bajo es más agresivo y te alertará antes.",
     "umbral_valor_stock": "Filtra los resultados para mostrar solo los productos cuyo valor total de stock inmovilizado supere este monto en S/.",
@@ -41,6 +42,12 @@ TOOLTIPS_GLOSSARY = {
 }
 
 KPI_TOOLTIPS_GLOSSARY = {
+    # --- Tooltips para Reporte ABC ---
+    "SKUs Clase A (Vitales)": "El número de productos que son críticos para tu negocio. Son pocos, pero generan la mayor parte de tu valor.",
+    "% del Valor (Clase A)": "El porcentaje del valor total (según tu criterio) que es generado por tus productos de Clase A. Idealmente, sigue la regla 80/20.",
+    "SKUs Clase C (Triviales)": "El gran número de productos que contribuyen poco al valor total. Son candidatos para optimizar o reducir su stock.",
+    "% del Valor (Clase C)": "El pequeño porcentaje del valor total que es generado por la mayoría de tus productos. Si este número es alto, podría indicar un problema.",
+
     # --- Tooltips para Lista basica reposicion historica) ---
     "Inversión Total Sugerida": "El monto total en soles (S/.) que necesitas invertir para comprar todas las unidades sugeridas en este reporte. Te ayuda a planificar tu flujo de caja.",
     "SKUs a Reponer": "El número total de productos únicos (diferentes códigos SKU) que la herramienta recomienda reponer. Te da una idea de la variedad de tu próximo pedido.",

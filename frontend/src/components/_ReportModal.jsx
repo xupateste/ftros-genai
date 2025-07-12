@@ -1,6 +1,6 @@
 // src/components/ReportModal.jsx
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 // import * as XLSX from 'xlsx';
@@ -22,7 +22,7 @@ import { autoTable } from 'jspdf-autotable';
 
 import { ResultListItem } from './ResultListItem';
 // Importa los iconos que necesitas
-import { FiX, FiCheck, FiChevronLeft, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
+import { FiX, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -53,7 +53,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   const [activeModal, setActiveModal] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [visibleItemsCount, setVisibleItemsCount] = useState(10); // Carga inicial de 15 items
+  const [visibleItemsCount, setVisibleItemsCount] = useState(15); // Carga inicial de 15 items
   const [confirmBack, setConfirmBack] = useState(false); // Para el botón de volver
   const backButtonTimer = useRef(null);
 
@@ -73,11 +73,6 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     });
     setModalParams(initialParams);
   }, [reportConfig, strategy]);
-
-  // useEffect(() => {
-  //   setVisibleItemsCount(10)
-  //   console.log('ms')
-  // }, [searchTerm])
 
   // --- LÓGICA DE FILTRADO EN TIEMPO REAL ---
   const filteredData = useMemo(() => {
@@ -452,20 +447,19 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
   return (
     <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
-      <div className="h-full flex flex-col bg-white rounded-lg max-w-lg w-full shadow-2xl relative">
-        <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0">
+      <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-center text-left">
+        <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0 text-black">
           <h2 className="text-xl font-bold text-gray-800">{reportConfig.label}</h2>
-          <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
         </div>
         
-        <div className="flex-1 min-h-0 overflow-y-auto relative">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {modalView === 'loading' && (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <FiLoader className="animate-spin text-4xl text-purple-600" />
               <p className="mt-4">Generando análisis...</p>
             </div>
           )}
-
+          
           {modalView === 'parameters' && (
             <div className="p-4 text-black">
               <div className="flex-1 min-h-0 gap-4 p-4 text-black">
@@ -556,95 +550,107 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
             </div>
           )}
 
-          {modalView === 'results' && analysisResult && (
-            <div className="h-full flex flex-col">
-              {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
-              <div className="p-4 sm:p-6 text-left">
-                <h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>
-                {/* Insight Clave */}
-                <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
-                  <p className="text-md font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
-                  <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
-                  {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
-                </div>
-              <hr/>
-                <div className="grid gap-4">
-                  {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
-                  <div className="mb-6 mt-6">
-                    <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {analysisResult && analysisResult.kpis && 
-                        Object.entries(analysisResult.kpis).map(([key, value]) => (
-                          <KpiCard 
-                            key={key} 
-                            label={key} 
-                            value={value}
-                            // Buscamos el texto del tooltip en nuestro glosario
-                            tooltipText={kpiTooltips[key]} 
+          {modalView === 'results' && (
+            <div className="p-6 text-center">
+              {/*<h3 className="text-lg font-bold text-gray-800 p-6">Análisis Completado</h3>*/}
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                {modalView === 'results' && analysisResult && (
+                  <div className="text-left animate-fade-in">
+                    
+                    {/* Insight Clave */}
+                    <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
+                      <p className="text-md font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
+                      <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
+                      {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
+                    </div>
+                    <hr />
+                    {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
+                    <div className="mb-6 mt-6">
+                      <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {analysisResult && analysisResult.kpis && 
+                          Object.entries(analysisResult.kpis).map(([key, value]) => (
+                            <KpiCard 
+                              key={key} 
+                              label={key} 
+                              value={value}
+                              // Buscamos el texto del tooltip en nuestro glosario
+                              tooltipText={kpiTooltips[key]} 
+                            />
+                          ))
+                        }
+                      </div>
+                    </div>
+                    <hr />
+                    {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
+                    <div className="mt-6 mb-6">
+                      <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
+                      <div className="bg-purple-50 p-4 rounded-lg border">
+                        <div className="flex relative items-center mb-2">
+                          <FiSearch className="absolute left-4 text-gray-400" />
+                          <input
+                            id="search-results"
+                            type="text"
+                            value={searchTerm}
+                            onChange={(e) => setSearchTerm(e.target.value)}
+                            placeholder="Filtra tus resultados..."
+                            className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
                           />
-                        ))
-                      }
+                        </div>
+                        {/* --- LISTA ENRIQUECIDA E INTERACTIVA --- */}
+                        <div className="space-y-2">
+                          {filteredData.length > 0 && (
+                            filteredData.slice(0, 5).map((item, index) => (
+                              <ResultListItem 
+                                key={item['SKU / Código de producto'] || index} 
+                                itemData={item}
+                                detailInstructions={reportConfig.preview_details}
+                              />
+                            ))
+                          )}
+                        </div>
+                        {/* --- ECO INTELIGENTE --- */}
+                        <p className="text-sm text-center text-gray-500 mt-4 italic">
+                          {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
+                          {filteredData.length > 5 && `Mostrando 5 de ${filteredData.length} resultados...`}
+                        </p>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
-              <hr/>
-              {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
-              <div className="flex-1 min-h-100 flex flex-col">
-                {/* --- Barra de Búsqueda "Pegajosa" --- */}
-                <div className="sticky top-0 bg-white z-10 p-4 border-b shadow-md shadow-gray-200">
-                  <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
-                  <div className="relative">
-                    {/*<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />*/}
-                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Filtra por SKU, nombre, categoría..." className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-4 pr-4 focus:ring-purple-500 focus:border-purple-500" />
-                  </div>
-                </div>
-                
-                {/* --- Lista de Resultados con Scroll Interno --- */}
-                <div className="bg-gray-100 overflow-y-auto p-4 space-y-2">
-                  {filteredData.length > 0 ? (
-                    filteredData.slice(0, visibleItemsCount).map((item, index) => (
-                      <ResultListItem key={item['SKU / Código de producto'] || index} itemData={item} detailInstructions={reportConfig.preview_details} />
-                    ))
-                  ) : (
-                    <p className="text-center text-gray-500 py-8">Ningún resultado encontrado.</p>
-                  )}
-                  
-                  {/* --- Botón "Cargar Más" --- */}
-                  {filteredData.length > visibleItemsCount && (
-                    <div className="text-center mt-4">
-                      <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
-                        Cargar 10 más...
-                      </button>
+              <hr />
+              <div className="mt-6 space-y-3 mb-10">
+                <h4 className="font-semibold text-gray-700 text-left">⬇️ Descarga tus reportes:</h4>
+                  <button onClick={() => handleOpenPDF()} className="w-full flex-row bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
+                    <FiFileText className="text-4xl" />
+                    <div className="text-left">
+                      <span className="font-bold">Reporte Imprimible (PDF)</span>
+                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
                     </div>
-                  )}
-                </div>
+                  </button>
+                  <button onClick={() => handleDownloadExcel()} className="w-full flex-row bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+                    <FiTable className="text-4xl" />
+                    <div className="text-left">
+                      <span className="font-bold">Reporte Detallado (Excel)</span>
+                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
+                    </div>
+                  </button>
               </div>
             </div>
           )}
         </div>
 
-        {/* --- FOOTER CON BOTONES DE ACCIÓN --- */}
-        <div className="p-2 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
-          {modalView === 'results' ? (
-            <div className="flex gap-2">
-              <button onClick={() => handleDownload('accionable')} className="flex-1 bg-gray-600 text-white font-bold py-2 px-2 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
-                <FiFileText className="text-5xl md:text-4xl" /> <div><span>Imprimible (PDF)</span><span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span></div>
-              </button>
-              <button onClick={() => handleDownload('detallado')} className="flex-1 bg-purple-600 text-white font-bold py-2 px-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
-                <FiTable className="text-5xl md:text-4xl" /> <div><span>Detallado (Excel)</span><span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span></div>
-              </button>
-            </div>
-          ) : (
-            // <button onClick={handleGenerateAnalysis} className="w-full flex-row bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">🚀 Ejecutar Análisis</button>
+        <div className="p-4 w-full z-10 shadow text-center sticky bottom-0 text-gray-800">
+          {modalView === 'parameters' && (
             <>
               <button
                 onClick={ handleGenerateAnalysis }
-                disabled={ modalView === 'loading' }
+                disabled={ isLoading }
                 className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
                     ${
                         // Lógica de estilos condicional
-                        modalView === 'loading' ? 'bg-gray-200 text-gray-500 cursor-wait' : 'text-transparent border-purple-700'
+                        isLoading ? 'bg-gray-200 text-gray-500 cursor-wait' : 'text-transparent border-purple-700'
                     }`
                 }
                 style={{
@@ -657,17 +663,11 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                           <FiLoader className="animate-spin h-5 w-5" />
                           <span>Cargando parametros...</span>
                       </>
-                  ) : modalView === 'loading' ? (
-                      <>
-                          <FiLoader className="animate-spin h-5 w-5" />
-                          <span>Generando...</span>
-                      </>
-                  ) : (
-                      <>
+                  ) : <>
                           <span className="text-black font-bold text-xl">🚀</span>
+                          {/* El texto cambia si ya existe una caché pero es obsoleta */}
                           <span className="text-lg font-bold">Ejecutar Análisis</span>
                       </>
-                  )
                 }
               </button>
               <button
@@ -682,20 +682,19 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
               </button>
             </>
           )}
+          {modalView === 'results' && (
+            <button onClick={() => setModalView('parameters')} className="w-full text-lg px-4 py-2">‹ Volver a Parámetros</button>
+          )}
         </div>
-
-        {/* --- BOTÓN FLOTANTE PARA VOLVER --- */}
-        {modalView === 'results' && (
-          <button 
-            onClick={handleBackToParamsClick}
-            className={`absolute bottom-28 right-5 z-20 flex items-center justify-center h-14 bg-gray-800 text-white rounded-full shadow-lg transition-all duration-200 ease-in-out hover:bg-gray-600 ${confirmBack ? 'w-48' : 'w-14'}`}
-          >
-            {confirmBack ? (
-              <span className="flex items-center gap-2 animate-fade-in-fast"><FiChevronLeft /> Regresar</span>
-            ) : (
-              <FiChevronLeft />
-            )}
-          </button>
+        {/*{showCreditsModal && ()}*/}
+        {activeModal === 'creditsOffer' && (
+          <InsufficientCreditsModal
+            required={10}
+            remaining={5}
+            onClose={() => setActiveModal(null)}
+            onRegister={() => {}}
+            onNewSession={() => {}}
+          />
         )}
       </div>
     </div>

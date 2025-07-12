@@ -20,7 +20,7 @@ export function ResultListItem({ itemData, detailInstructions }) {
   const marca = itemData['Marca'] || 'N/A';
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 transition-all duration-300">
+    <div className="bg-white rounded-lg border border-gray-200 transition-all duration-300 shadow-md shadow-gray-200">
       <button 
         onClick={() => setIsExpanded(!isExpanded)}
         className="w-full flex justify-between items-center p-3 text-left"

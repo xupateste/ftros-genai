@@ -29,15 +29,31 @@ REPORTS_CONFIG = {
         ],
         "defaultValue": '6'
       },
-      { "name": 'criterio_abc', "label": 'Criterio Principal ABC', "type": 'select', "tooltip_key": "criterio_abc",
+      { 
+        "name": 'criterio_abc', 
+        "label": 'Criterio Principal ABC', 
+        "type": 'select',
         "options": [
-          { "value": 'combinado', "label": 'Combinado o Ponderado' },
-          { "value": 'ingresos', "label": 'Por Ingresos' },
-          { "value": 'unidades', "label": 'Por Cantidad Vendida' },
-          { "value": 'margen', "label": 'Por Margen' }
+            { "value": 'combinado', "label": 'Según Mi Estrategia' },
+            { "value": 'ingresos', "label": 'Por Ingresos' },
+            { "value": 'unidades', "label": 'Por Cantidad Vendida' },
+            { "value": 'margen', "label": 'Por Margen' }
         ],
         "defaultValue": 'combinado'
       }
+    ],
+    "advanced_parameters": [],
+    "accionable_columns": [
+        "SKU / Código de producto",
+        "Nombre del producto",
+        "Clasificación ABC",
+        "Venta Total (S/.)"
+        # El nombre de la columna del criterio se añadirá dinámicamente
+    ],
+    "preview_details": [
+        { "label": "Clasificación", "data_key": "Clasificación ABC" },
+        { "label": "Aporte al Criterio", "data_key": "Venta Total (S/.)", "prefix": "S/ " },
+        { "label": "% del Total", "data_key": "% Participación", "suffix": "%" }
     ]
   },
   "ReporteDiagnosticoStockMuerto": {

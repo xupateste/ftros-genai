@@ -1290,9 +1290,12 @@ async def upload_csvs_abc_analysis(
     inventario_file_id: str = Form(...),
     criterio_abc: str = Form(..., description="Criterio para el análisis ABC: 'ingresos', 'unidades', 'margen', 'combinado'.", examples=["ingresos"]),
     periodo_abc: int = Form(..., description="Período de análisis en meses (0 para todo el historial, ej: 3, 6, 12).", examples=[6]),
-    peso_ingresos: Optional[float] = Form(0.5), # Recibimos los pesos opcionales
-    peso_margen: Optional[float] = Form(0.3),
-    peso_unidades: Optional[float] = Form(0.2)
+
+    # --- NUEVO: Recibimos los scores de la estrategia ---
+    score_ventas: Optional[int] = Form(None),
+    score_ingreso: Optional[int] = Form(None),
+    score_margen: Optional[int] = Form(None)
+
 ):
     user_id = None
     
@@ -1314,19 +1317,24 @@ async def upload_csvs_abc_analysis(
         # CASO 3: No hay identificador, denegamos el acceso
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
-    pesos_combinado_dict = None
-    if criterio_abc.lower() == "combinado":
-        pesos_combinado_dict = {
-            "ingresos": peso_ingresos,
-            "margen": peso_margen,
-            "unidades": peso_unidades
-        }
+    # pesos_combinado_dict = None
+    # if criterio_abc.lower() == "combinado":
+    #     pesos_combinado_dict = {
+    #         "ingresos": peso_ingresos,
+    #         "margen": peso_margen,
+    #         "unidades": score_ventas
+    #     }
     
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
         "criterio_abc": criterio_abc.lower(),
         "periodo_abc": periodo_abc,
-        "pesos_combinado": pesos_combinado_dict
+        # "pesos_combinado": pesos_combinado_dict,
+        "criterio_abc": criterio_abc,
+        "periodo_abc": periodo_abc,
+        "score_ventas": score_ventas,
+        "score_ingreso": score_ingreso,
+        "score_margen": score_margen
     }
 
     full_params_for_logging = dict(await request.form())
