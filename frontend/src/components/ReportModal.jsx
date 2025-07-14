@@ -39,7 +39,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // --- NUEVO COMPONENTE REUTILIZABLE PARA LAS TARJETAS DE KPI ---
 const KpiCard = ({ label, value, tooltipText }) => (
-  <div className="bg-white p-4 rounded-lg shadow border transform hover:scale-105">
+  <div className="bg-white p-4 rounded-lg shadow border transform hover:scale-103">
     <div className="flex items-center">
       <p className="text-sm text-gray-500">{label}</p>
       {/* El tooltip se renderiza aquí */}
@@ -340,6 +340,37 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         styles: { fontSize: 10, valign: 'middle'},
         headStyles: { fillColor: [67, 56, 202] }
     });
+
+    // --- NUEVA SECCIÓN: "ANUNCIO DE VALOR" EN EL PDF ---
+    // const finalY = doc.autoTable.previous.finalY; // Obtenemos la posición final de la tabla
+    doc.addPage();
+    const adY = 15; // Añadimos un espacio
+
+    // Dibujamos el cuadro de fondo
+    doc.setFillColor(243, 244, 246); // Un gris claro (bg-gray-100)
+    doc.rect(14, adY, doc.internal.pageSize.getWidth() - 28, 32, 'F');
+
+    // Añadimos el icono (estrella)
+    doc.setFontSize(20);
+    doc.setTextColor(251, 191, 36); // Color amarillo (text-yellow-500)
+    doc.text("⭐", 20, adY + 12);
+
+    // Añadimos el texto
+    doc.setFontSize(10);
+    doc.setTextColor(17, 24, 39); // Color de texto oscuro (text-gray-900)
+    doc.setFont("helvetica", "bold");
+    doc.text("Potencia tu Análisis con Gráficos Estratégicos", 30, adY + 8);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const adText = "Este reporte tiene una versión visual. Conviértete en un Ferretero Estratega para desbloquear gráficos interactivos que te ayudarán a identificar tendencias al instante y presentar tus resultados de forma más impactante.";
+    const splitText = doc.splitTextToSize(adText, doc.internal.pageSize.getWidth() - 60);
+    doc.text(splitText, 30, adY + 14);
+
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.text("Visita Ferretero.IA para mejorar tu plan y acceder a esta y otras herramientas Pro.", 30, adY + 28);
+    
     
     // Abre el PDF en una nueva pestaña
     // const pdfBlob = doc.output('pdfobjectnewwindow');
@@ -624,9 +655,9 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 </div>
                 {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
                 {/* Dentro de tu vista de resultados del ReportModal */}
-                <div className="p-6 bg-gray-100 rounded-lg text-center">
-                  <p className="font-semibold mb-2 text-gray-800">Gráfico Estadístico</p>
-                  <div className="h-30 bg-gray-200 rounded flex items-center justify-center animate-pulse">
+                <div className="p-4 bg-white shadow border rounded-lg text-center transform hover:scale-103">
+                  <p className="mb-2 text-md text-gray-500">Gráfico Estadístico</p>
+                  <div className="h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center animate-pulse">
                       <div role="status" className="relative w-full p-4 rounded-sm shadow-sm border-gray-700">
                         <div className="flex items-baseline">
                             <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-300"></div>
@@ -669,7 +700,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                   {/* --- Botón "Cargar Más" --- */}
                   {filteredData.length > visibleItemsCount && (
                     <div className="text-center mt-4">
-                      <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
+                      <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 mb-10">
                         Cargar 10 más...
                       </button>
                     </div>
@@ -768,6 +799,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         )}
         {activeModal === 'recharge' && <RechargeCreditsModal onClose={() => setActiveModal(null)} />}
         {activeModal === 'becomeStrategist' && <BecomeStrategistModal onClose={() => setActiveModal(null)} />}
+
         {activeModal === 'login' && (
           <LoginModal 
             onLoginSuccess={()=>{}} 

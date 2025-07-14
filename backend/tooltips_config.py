@@ -1,4 +1,5 @@
 TOOLTIPS_GLOSSARY = {
+    "chart_placeholder": "Visualiza tus datos para descubrir patrones y tendencias clave. Esta es una herramienta estratégica que te ayuda a interpretar los resultados de tu reporte de un solo vistazo, permitiéndote tomar decisiones más rápidas e informadas.",
     
     "filtro_texto": "Busca coincidencias en el SKU, Nombre, Categoría o Marca del producto. Ideal para encontrar rápidamente un item específico dentro de los resultados.",
     # --- Parámetros de Análisis ABC ---
