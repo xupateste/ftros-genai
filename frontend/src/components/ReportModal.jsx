@@ -21,6 +21,17 @@ import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { autoTable } from 'jspdf-autotable';
 
 import { ResultListItem } from './ResultListItem';
+
+// --- IMPORTAMOS LOS NUEVOS MODALES ---
+import { TruncatedResultModal } from './TruncatedResultModal';
+import { RechargeCreditsModal } from './RechargeCreditsModal';
+import { BecomeStrategistModal } from './BecomeStrategistModal';
+import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
+import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
+
+// --- IMPORTAMOS LOS NUEVOS MODALES ---
+import { RegisterToUnlockModal } from './RegisterToUnlockModal';
+
 // Importa los iconos que necesitas
 import { FiX, FiCheck, FiChevronLeft, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
@@ -28,7 +39,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // --- NUEVO COMPONENTE REUTILIZABLE PARA LAS TARJETAS DE KPI ---
 const KpiCard = ({ label, value, tooltipText }) => (
-  <div className="bg-white p-4 rounded-lg shadow border">
+  <div className="bg-white p-4 rounded-lg shadow border transform hover:scale-105">
     <div className="flex items-center">
       <p className="text-sm text-gray-500">{label}</p>
       {/* El tooltip se renderiza aquí */}
@@ -51,6 +62,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
+  const [truncationInfo, setTruncationInfo] = useState({ shown: 0, total: 0 });
+  const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleItemsCount, setVisibleItemsCount] = useState(10); // Carga inicial de 15 items
@@ -234,8 +247,17 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       });
       setAnalysisResult(response.data);
       setSearchTerm('');
+
+      // Lógica para mostrar el modal de resultado truncado para anónimos
+      if (context.type === 'anonymous' && response.is_truncated) {
+        setModalInfo({
+            title: "Desbloquea el Reporte Completo",
+            message: `Estás viendo los primeros ${response.data.length} de ${response.total_rows} resultados. Regístrate gratis para ver el análisis completo.`
+        });
+        setActiveModal('registerToUnlock');
+      }
+
       setModalView('results');
-      // onStateUpdate(i => i + 1); // Notifica al workspace que debe refrescar créditos e historial
       if (onAnalysisComplete) {
         onAnalysisComplete();
       }
@@ -244,35 +266,36 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         updateCredits(response.data.updated_credits);
       }
     } catch (error) {
-      console.error("Error al generar el reporte:", error);
-      // Verificamos si el error es por falta de créditos (código 402)
+      // --- BLOQUE CATCH REESTRUCTURADO ---
       if (error.response?.status === 402) {
-          // Obtenemos la información necesaria para el modal
-          // const required = selectedReport?.costo || 0;
-          // const remaining = credits.remaining || 0;
-          // setCreditsInfo({ required, remaining });
-          
-          // Mostramos el modal específico de créditos insuficientes
-          // setShowCreditsModal(true);
-          setActiveModal('creditsOffer')
+        // Si se acaban los créditos
+        if (context.type === 'user') {
+          // Para usuarios registrados, ofrecemos recarga
+          setActiveModal('recharge');
+        } else {
+          // Para anónimos, ofrecemos registro
+          setModalInfo({
+            title: "Créditos de Prueba Agotados",
+            message: "Has usado todos tus créditos de esta sesión. Regístrate gratis para obtener un bono de bienvenida y seguir analizando."
+          });
+          setActiveModal('registerToUnlock');
+        }
       } else {
-          // Para cualquier otro error, mantenemos la lógica genérica
-          // let errorMessage = "Ocurrió un error al generar el reporte.";
-          const errorDetail = error.response?.data?.detail;
-          let alertMessage = "Ocurrió un error al generar el reporte.";
-          if (typeof errorDetail === 'string') {
-            alertMessage = errorDetail;
-          } else if (Array.isArray(errorDetail)) {
-            // Formateamos los errores de validación de FastAPI
-            alertMessage = "Faltan parámetros requeridos: " + errorDetail.map(err => err.loc[1]).join(', ');
-          }
-          alert(alertMessage);
+        // Para cualquier otro error, mantenemos la lógica genérica
+        // let errorMessage = "Ocurrió un error al generar el reporte.";
+        const errorDetail = error.response?.data?.detail;
+        let alertMessage = "Ocurrió un error al generar el reporte.";
+        if (typeof errorDetail === 'string') {
+          alertMessage = errorDetail;
+        } else if (Array.isArray(errorDetail)) {
+          // Formateamos los errores de validación de FastAPI
+          alertMessage = "Faltan parámetros requeridos: " + errorDetail.map(err => err.loc[1]).join(', ');
+        }
+        // Para cualquier otro error
+        // alert(error.response?.data?.detail || "Ocurrió un error al procesar el reporte.");
+        alert(alertMessage)
       }
-      alert(error.response?.data?.detail || "Ocurrió un error.");
-      setModalView('parameters'); // Vuelve a la vista de parámetros si hay error
-      if (onAnalysisComplete) {
-        onAnalysisComplete();
-      }
+      setModalView('parameters'); // Siempre volvemos a la vista de parámetros
     }
   };
 
@@ -450,6 +473,18 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     }
   };
 
+  const handleChartPlaceholderClick = () => {
+    if (context.type === 'user') {
+      setActiveModal('becomeStrategist');
+    } else {
+      setModalInfo({
+        title: "Desbloquea Gráficos Estratégicos",
+        message: "Esta comparativa de mercado es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
+      });
+      setActiveModal('registerToUnlock');
+    }
+  };
+
   return (
     <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
       <div className="h-full flex flex-col bg-white rounded-lg max-w-lg w-full shadow-2xl relative">
@@ -587,6 +622,27 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                     </div>
                   </div>
                 </div>
+                {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
+                {/* Dentro de tu vista de resultados del ReportModal */}
+                <div className="p-6 bg-gray-100 rounded-lg text-center">
+                  <p className="font-semibold mb-2 text-gray-800">Gráfico Estadístico</p>
+                  <div className="h-30 bg-gray-200 rounded flex items-center justify-center animate-pulse">
+                      <div role="status" className="relative w-full p-4 rounded-sm shadow-sm border-gray-700">
+                        <div className="flex items-baseline">
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-300"></div>
+                            <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-300"></div>
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-300"></div>
+                            <div className="w-full h-24 sm:h-44 ms-4 rounded-t-lg bg-gray-300"></div>
+                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-300"></div>
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-300"></div>
+                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-300"></div>
+                        </div>
+                      </div>
+                      <button onClick={handleChartPlaceholderClick} className="absolute bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
+                        ⭐ Desbloquear Gráfico
+                      </button>
+                  </div>
+                </div>
               </div>
               <hr/>
               {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
@@ -696,6 +752,38 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
               <FiChevronLeft />
             )}
           </button>
+        )}
+
+        {/* --- RENDERIZADO CENTRALIZADO DE TODOS LOS MODALES --- */}
+        {activeModal === 'registerToUnlock' && (
+          <RegisterToUnlockModal 
+            {...modalInfo}
+            onRegister={() => {
+                setActiveModal(null);
+                setActiveModal('register');
+                // onSwitchToRegister(); // Llama a la función del padre para mostrar el modal de registro real
+            }}
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+        {activeModal === 'recharge' && <RechargeCreditsModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'becomeStrategist' && <BecomeStrategistModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'login' && (
+          <LoginModal 
+            onLoginSuccess={()=>{}} 
+            onSwitchToRegister={() => setActiveModal('register')}
+            onBackToAnalysis={() => setActiveModal(null)} 
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+
+        {activeModal === 'register' && (
+          <RegisterModal 
+            sessionId={context.id} 
+            onRegisterSuccess={() => setActiveModal('login')}
+            onSwitchToLogin={() => setActiveModal('login')}
+            onBackToLanding={() => setActiveModal(null)} 
+          />
         )}
       </div>
     </div>

@@ -2027,6 +2027,18 @@ async def _handle_report_generation(
         # Extraemos las partes del resultado
         resultado_df = processing_result.get("data")
         summary_data = processing_result.get("summary")
+
+         # --- INICIO DE LA NUEVA LÓGICA DE TRUNCADO ---
+        is_truncated = False
+        total_rows = 0
+
+        if user_id is None: # Si es un usuario anónimo
+            if not resultado_df.empty:
+                total_rows = len(resultado_df)
+                if total_rows > 15:
+                    print(f"Truncando resultado para sesión anónima. Mostrando 15 de {total_rows} filas.")
+                    resultado_df = resultado_df.head(15)
+                    is_truncated = True
         
         columnas = resultado_df.columns
         columnas_duplicadas = columnas[columnas.duplicated()].unique().tolist()
@@ -2054,7 +2066,9 @@ async def _handle_report_generation(
                 "insight": "No se encontraron productos que coincidan con los parámetros seleccionados.",
                 "kpis": {}, # Devolvemos un objeto de KPIs vacío
                 "data": [],  # Devolvemos una lista de datos vacía
-                "report_key": report_key
+                "report_key": report_key,
+                "is_truncated": is_truncated, # <-- Nuevo flag
+                "total_rows": total_rows  
             })
 
         # if columnas_duplicadas:
