@@ -33,13 +33,13 @@ import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal viv
 import { RegisterToUnlockModal } from './RegisterToUnlockModal';
 
 // Importa los iconos que necesitas
-import { FiX, FiCheck, FiChevronLeft, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
+import { FiX, FiCheck, FiChevronLeft, FiChevronRight, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // --- NUEVO COMPONENTE REUTILIZABLE PARA LAS TARJETAS DE KPI ---
 const KpiCard = ({ label, value, tooltipText }) => (
-  <div className="bg-white p-4 rounded-lg shadow border transform hover:scale-103">
+  <div className="bg-white p-4 rounded-lg shadow border transform hover:scale-105">
     <div className="flex items-center">
       <p className="text-sm text-gray-500">{label}</p>
       {/* El tooltip se renderiza aquí */}
@@ -500,7 +500,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       // Después de 3 segundos, vuelve al estado normal
       backButtonTimer.current = setTimeout(() => {
         setConfirmBack(false);
-      }, 3000);
+      }, 2500);
     }
   };
 
@@ -519,9 +519,9 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   return (
     <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
       <div className="h-full flex flex-col bg-white rounded-lg max-w-lg w-full shadow-2xl relative">
-        <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0">
-          <h2 className="text-xl font-bold text-gray-800">{reportConfig.label}</h2>
-          <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
+        <div className="p-4 border-b bg-white z-10 shadow text-center items-center sticky top-0">
+          <h2 className="text-xl font-bold text-gray-800 relative w-full pr-10 break-words truncate">{reportConfig.label}</h2>
+          <button onClick={onClose} className="absolute top-3 right-0 h-10 w-10 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
         </div>
         
         <div className="flex-1 min-h-0 overflow-y-auto relative">
@@ -655,18 +655,21 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 </div>
                 {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
                 {/* Dentro de tu vista de resultados del ReportModal */}
-                <div className="p-4 bg-white shadow border rounded-lg text-center transform hover:scale-103">
-                  <p className="mb-2 text-md text-gray-500">Gráfico Estadístico</p>
-                  <div className="h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center animate-pulse">
-                      <div role="status" className="relative w-full p-4 rounded-sm shadow-sm border-gray-700">
+                <div className="p-4 bg-white shadow border rounded-lg text-center transform hover:scale-104">
+                  <div className="flex items-center justify-center mb-2">
+                    <p className="text-sm text-gray-500">Gráfico Estadístico</p>
+                    <Tooltip text={tooltips['chart_placeholder']} />
+                  </div>
+                  <div className="h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center">
+                      <div role="status" className="relative w-full p-4 rounded-sm shadow-sm border-gray-700 animate-pulse">
                         <div className="flex items-baseline">
-                            <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-300"></div>
-                            <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-300"></div>
-                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-300"></div>
-                            <div className="w-full h-24 sm:h-44 ms-4 rounded-t-lg bg-gray-300"></div>
-                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-300"></div>
-                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-300"></div>
-                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-300"></div>
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-400"></div>
+                            <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-400"></div>
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
+                            <div className="w-full h-24 sm:h-44 ms-4 rounded-t-lg bg-gray-400"></div>
+                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
+                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
                         </div>
                       </div>
                       <button onClick={handleChartPlaceholderClick} className="absolute bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
@@ -677,7 +680,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
               </div>
               <hr/>
               {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
-              <div className="flex-1 min-h-100 flex flex-col">
+              <div className="flex-1 min-h-100 flex flex-col bg-gray-100">
                 {/* --- Barra de Búsqueda "Pegajosa" --- */}
                 <div className="sticky top-0 bg-white z-10 p-4 border-b shadow-md shadow-gray-200">
                   <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
@@ -688,7 +691,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 </div>
                 
                 {/* --- Lista de Resultados con Scroll Interno --- */}
-                <div className="bg-gray-100 overflow-y-auto p-4 space-y-2">
+                <div className="overflow-y-auto p-4 space-y-2 mb-10">
                   {filteredData.length > 0 ? (
                     filteredData.slice(0, visibleItemsCount).map((item, index) => (
                       <ResultListItem key={item['SKU / Código de producto'] || index} itemData={item} detailInstructions={reportConfig.preview_details} />
@@ -700,7 +703,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                   {/* --- Botón "Cargar Más" --- */}
                   {filteredData.length > visibleItemsCount && (
                     <div className="text-center mt-4">
-                      <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 mb-10">
+                      <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
                         Cargar 10 más...
                       </button>
                     </div>
@@ -773,16 +776,26 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
         {/* --- BOTÓN FLOTANTE PARA VOLVER --- */}
         {modalView === 'results' && (
-          <button 
-            onClick={handleBackToParamsClick}
-            className={`absolute bottom-28 right-5 z-20 flex items-center justify-center h-14 bg-gray-800 text-white rounded-full shadow-lg transition-all duration-200 ease-in-out hover:bg-gray-600 ${confirmBack ? 'w-48' : 'w-14'}`}
-          >
-            {confirmBack ? (
-              <span className="flex items-center gap-2 animate-fade-in-fast"><FiChevronLeft /> Regresar</span>
-            ) : (
-              <FiChevronLeft />
+          <>
+            <button 
+              onClick={handleBackToParamsClick}
+              className={`absolute bottom-28 z-20 flex items-center justify-center h-14 bg-gray-800 text-white rounded-full shadow-lg transition-all duration-200 ease-in-out hover:bg-gray-600 ${confirmBack ? 'w-64 right-1/8' : 'w-14 right-5'}`}
+            >
+              {confirmBack ? (
+                <span className="flex items-center gap-2 animate-fade-in-fast">Regresar a Parametros</span>
+              ) : (
+                <FiChevronLeft />
+              )}
+            </button>
+            {confirmBack && (
+              <button 
+                onClick={() => {setConfirmBack(false)}}
+                className={`absolute bottom-28 right-5 z-20 flex items-center justify-center h-14 bg-gray-800 text-white rounded-full shadow-lg transition-all duration-200 ease-in-out hover:bg-gray-600 w-14`}
+              >
+                <FiChevronRight />
+              </button>
             )}
-          </button>
+          </>
         )}
 
         {/* --- RENDERIZADO CENTRALIZADO DE TODOS LOS MODALES --- */}
