@@ -57,7 +57,7 @@ REPORTS_CONFIG = {
     ]
   },
   "ReporteDiagnosticoStockMuerto": {
-    "label": 'Diagnóstico de Stock Muerto ✓',
+    "label": 'Diagnóstico de Stock Muerto',
     "endpoint": '/diagnostico-stock-muerto',
     # "key": 'ReporteStockMuerto',
     "categoria": "🧠 Diagnósticos generales",
@@ -286,7 +286,7 @@ REPORTS_CONFIG = {
     ]
   },
   "ReporteListaBasicaReposicionHistorica": {
-    "label": 'Lista básica de reposición según histórico ✓',
+    "label": 'Lista básica de reposición según histórico',
     "endpoint": '/lista-basica-reposicion-historico',
     # "key": 'ReporteListaBasicaReposicionHistorica',
     "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido",

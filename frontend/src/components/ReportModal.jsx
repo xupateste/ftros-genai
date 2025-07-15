@@ -62,11 +62,12 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
-  const [truncationInfo, setTruncationInfo] = useState({ shown: 0, total: 0 });
+  // const [truncationInfo, setTruncationInfo] = useState({ shown: 0, total: 0 });
+  const [truncationInfo, setTruncationInfo] = useState(null);
   const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
 
   const [searchTerm, setSearchTerm] = useState('');
-  const [visibleItemsCount, setVisibleItemsCount] = useState(10); // Carga inicial de 15 items
+  const [visibleItemsCount, setVisibleItemsCount] = useState(15); // Carga inicial de 15 items
   const [confirmBack, setConfirmBack] = useState(false); // Para el botón de volver
   const backButtonTimer = useRef(null);
 
@@ -248,13 +249,14 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       setAnalysisResult(response.data);
       setSearchTerm('');
 
-      // Lógica para mostrar el modal de resultado truncado para anónimos
-      if (context.type === 'anonymous' && response.is_truncated) {
-        setModalInfo({
-            title: "Desbloquea el Reporte Completo",
-            message: `Estás viendo los primeros ${response.data.length} de ${response.total_rows} resultados. Regístrate gratis para ver el análisis completo.`
+     // --- LÓGICA PARA MANEJAR RESULTADOS TRUNCADOS ---
+      if (context.type === 'anonymous' && response.data.is_truncated) {
+        setTruncationInfo({
+          shown: response.data.data.length,
+          total: response.data.total_rows
         });
-        setActiveModal('registerToUnlock');
+      } else {
+        setTruncationInfo(null); // Reseteamos si no está truncado
       }
 
       setModalView('results');
@@ -701,13 +703,32 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                   )}
                   
                   {/* --- Botón "Cargar Más" --- */}
-                  {filteredData.length > visibleItemsCount && (
+                  {/*{filteredData.length > visibleItemsCount && (
                     <div className="text-center mt-4">
                       <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
                         Cargar 10 más...
                       </button>
                     </div>
-                  )}
+                  )}*/}
+                  {/* --- BOTÓN DE ACCIÓN CONTEXTUAL --- */}
+                  <div className="text-center mt-4">
+                    {context.type === 'anonymous' && truncationInfo ? (
+                      // Para anónimos con resultados truncados, mostramos el botón de desbloqueo
+                      <button 
+                        onClick={() => setActiveModal('register')} 
+                        className="font-semibold text-purple-600 hover:text-purple-800"
+                      >
+                        ⭐ Ver los {truncationInfo.total - truncationInfo.shown} resultados restantes
+                      </button>
+                    ) : (
+                      // Para usuarios registrados, mostramos el "Cargar más"
+                      filteredData.length > visibleItemsCount && (
+                        <button onClick={() => setVisibleItemsCount(prev => prev + 15)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
+                          Cargar 15 más...
+                        </button>
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

@@ -24,10 +24,12 @@ import { FiDownload, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSetting
 import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el modal
 import { Tooltip } from './Tooltip';
 import { FerreterosLogo } from './FerreterosLogo'
+import { UpgradeModal } from './UpgradeModal'; // <-- Importamos el nuevo modal
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
 import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
+// import { RegisterToUnlockModal } from './RegisterToUnlockModal';
 
 // Las plantillas ahora viven aquí, junto a la lógica que las usa
 const templateVentas = {
@@ -345,16 +347,27 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     // Lógica para la oferta Pro (se mantiene)
     if ( reportItem.isPro ) {
       setProReportClicked(reportItem);
-      setActiveModal('proOffer');
+      setActiveModal('upgrade'); // Abrimos el nuevo modal de "upgrade"
       return;
     }
     setSelectedReport(reportItem);
+    setActiveModal('reportParams');
   };
 
   const handleGoToRegister = () => {
       // Cerramos cualquier modal que esté abierto y cambiamos a la vista de registro
       setActiveModal(null); 
       // setAppState('registering');
+  };
+
+  const handleUpgradeAction = (action) => {
+    // Esta función decide qué hacer cuando el usuario hace clic en el CTA del UpgradeModal
+    // setActiveModal(null); // Cerramos el modal de upgrade
+    if (action === 'register') {
+      onSwitchToRegister(); // Llamamos a la función del padre para abrir el modal de registro
+    } else if (action === 'verify') {
+      alert("La verificación para el plan Estratega estará disponible próximamente.");
+    }
   };
 
   const handleLoginFromModal = (token) => {
@@ -549,10 +562,21 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           onClose={() => setActiveModal(null)} 
         />
       )}
+
       {isCreateModalOpen && (
         <CreateWorkspaceModal 
             onClose={() => setIsCreateModalOpen(false)}
             onSuccess={handleCreationSuccessAndSwitch} // Le pasamos la función de éxito específica
+        />
+      )}
+
+      {/* Renderizado del nuevo UpgradeModal */}
+      {activeModal === 'upgrade' && proReportClicked && (
+        <UpgradeModal
+          context={context}
+          reportItem={proReportClicked}
+          onClose={() => setActiveModal(null)}
+          onAction={handleUpgradeAction}
         />
       )}
     </div>

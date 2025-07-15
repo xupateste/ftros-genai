@@ -2145,7 +2145,9 @@ async def _handle_report_generation(
             "kpis": summary_data.get("kpis"),
             "data": data_for_frontend,
             "report_key": report_key,
-            "updated_credits": updated_credits
+            "updated_credits": updated_credits,
+            "is_truncated": is_truncated, # <-- Nuevo flag
+            "total_rows": total_rows  
         })
 
     except Exception as e:

@@ -1,6 +1,6 @@
 // src/components/ReportModal.jsx
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
 // import * as XLSX from 'xlsx';
@@ -21,14 +21,25 @@ import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { autoTable } from 'jspdf-autotable';
 
 import { ResultListItem } from './ResultListItem';
+
+// --- IMPORTAMOS LOS NUEVOS MODALES ---
+import { TruncatedResultModal } from './TruncatedResultModal';
+import { RechargeCreditsModal } from './RechargeCreditsModal';
+import { BecomeStrategistModal } from './BecomeStrategistModal';
+import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
+import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
+
+// --- IMPORTAMOS LOS NUEVOS MODALES ---
+import { RegisterToUnlockModal } from './RegisterToUnlockModal';
+
 // Importa los iconos que necesitas
-import { FiX, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
+import { FiX, FiCheck, FiChevronLeft, FiChevronRight, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // --- NUEVO COMPONENTE REUTILIZABLE PARA LAS TARJETAS DE KPI ---
 const KpiCard = ({ label, value, tooltipText }) => (
-  <div className="bg-white p-4 rounded-lg shadow border">
+  <div className="bg-white p-4 rounded-lg shadow border transform hover:scale-105">
     <div className="flex items-center">
       <p className="text-sm text-gray-500">{label}</p>
       {/* El tooltip se renderiza aquí */}
@@ -51,6 +62,9 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [activeModal, setActiveModal] = useState(null);
+  // const [truncationInfo, setTruncationInfo] = useState({ shown: 0, total: 0 });
+  const [truncationInfo, setTruncationInfo] = useState(null);
+  const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
 
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleItemsCount, setVisibleItemsCount] = useState(15); // Carga inicial de 15 items
@@ -73,6 +87,11 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     });
     setModalParams(initialParams);
   }, [reportConfig, strategy]);
+
+  // useEffect(() => {
+  //   setVisibleItemsCount(10)
+  //   console.log('ms')
+  // }, [searchTerm])
 
   // --- LÓGICA DE FILTRADO EN TIEMPO REAL ---
   const filteredData = useMemo(() => {
@@ -229,8 +248,18 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       });
       setAnalysisResult(response.data);
       setSearchTerm('');
+
+     // --- LÓGICA PARA MANEJAR RESULTADOS TRUNCADOS ---
+      if (context.type === 'anonymous' && response.data.is_truncated) {
+        setTruncationInfo({
+          shown: response.data.data.length,
+          total: response.data.total_rows
+        });
+      } else {
+        setTruncationInfo(null); // Reseteamos si no está truncado
+      }
+
       setModalView('results');
-      // onStateUpdate(i => i + 1); // Notifica al workspace que debe refrescar créditos e historial
       if (onAnalysisComplete) {
         onAnalysisComplete();
       }
@@ -239,35 +268,36 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         updateCredits(response.data.updated_credits);
       }
     } catch (error) {
-      console.error("Error al generar el reporte:", error);
-      // Verificamos si el error es por falta de créditos (código 402)
+      // --- BLOQUE CATCH REESTRUCTURADO ---
       if (error.response?.status === 402) {
-          // Obtenemos la información necesaria para el modal
-          // const required = selectedReport?.costo || 0;
-          // const remaining = credits.remaining || 0;
-          // setCreditsInfo({ required, remaining });
-          
-          // Mostramos el modal específico de créditos insuficientes
-          // setShowCreditsModal(true);
-          setActiveModal('creditsOffer')
+        // Si se acaban los créditos
+        if (context.type === 'user') {
+          // Para usuarios registrados, ofrecemos recarga
+          setActiveModal('recharge');
+        } else {
+          // Para anónimos, ofrecemos registro
+          setModalInfo({
+            title: "Créditos de Prueba Agotados",
+            message: "Has usado todos tus créditos de esta sesión. Regístrate gratis para obtener un bono de bienvenida y seguir analizando."
+          });
+          setActiveModal('registerToUnlock');
+        }
       } else {
-          // Para cualquier otro error, mantenemos la lógica genérica
-          // let errorMessage = "Ocurrió un error al generar el reporte.";
-          const errorDetail = error.response?.data?.detail;
-          let alertMessage = "Ocurrió un error al generar el reporte.";
-          if (typeof errorDetail === 'string') {
-            alertMessage = errorDetail;
-          } else if (Array.isArray(errorDetail)) {
-            // Formateamos los errores de validación de FastAPI
-            alertMessage = "Faltan parámetros requeridos: " + errorDetail.map(err => err.loc[1]).join(', ');
-          }
-          alert(alertMessage);
+        // Para cualquier otro error, mantenemos la lógica genérica
+        // let errorMessage = "Ocurrió un error al generar el reporte.";
+        const errorDetail = error.response?.data?.detail;
+        let alertMessage = "Ocurrió un error al generar el reporte.";
+        if (typeof errorDetail === 'string') {
+          alertMessage = errorDetail;
+        } else if (Array.isArray(errorDetail)) {
+          // Formateamos los errores de validación de FastAPI
+          alertMessage = "Faltan parámetros requeridos: " + errorDetail.map(err => err.loc[1]).join(', ');
+        }
+        // Para cualquier otro error
+        // alert(error.response?.data?.detail || "Ocurrió un error al procesar el reporte.");
+        alert(alertMessage)
       }
-      alert(error.response?.data?.detail || "Ocurrió un error.");
-      setModalView('parameters'); // Vuelve a la vista de parámetros si hay error
-      if (onAnalysisComplete) {
-        onAnalysisComplete();
-      }
+      setModalView('parameters'); // Siempre volvemos a la vista de parámetros
     }
   };
 
@@ -312,6 +342,37 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         styles: { fontSize: 10, valign: 'middle'},
         headStyles: { fillColor: [67, 56, 202] }
     });
+
+    // --- NUEVA SECCIÓN: "ANUNCIO DE VALOR" EN EL PDF ---
+    // const finalY = doc.autoTable.previous.finalY; // Obtenemos la posición final de la tabla
+    doc.addPage();
+    const adY = 15; // Añadimos un espacio
+
+    // Dibujamos el cuadro de fondo
+    doc.setFillColor(243, 244, 246); // Un gris claro (bg-gray-100)
+    doc.rect(14, adY, doc.internal.pageSize.getWidth() - 28, 32, 'F');
+
+    // Añadimos el icono (estrella)
+    doc.setFontSize(20);
+    doc.setTextColor(251, 191, 36); // Color amarillo (text-yellow-500)
+    doc.text("⭐", 20, adY + 12);
+
+    // Añadimos el texto
+    doc.setFontSize(10);
+    doc.setTextColor(17, 24, 39); // Color de texto oscuro (text-gray-900)
+    doc.setFont("helvetica", "bold");
+    doc.text("Potencia tu Análisis con Gráficos Estratégicos", 30, adY + 8);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const adText = "Este reporte tiene una versión visual. Conviértete en un Ferretero Estratega para desbloquear gráficos interactivos que te ayudarán a identificar tendencias al instante y presentar tus resultados de forma más impactante.";
+    const splitText = doc.splitTextToSize(adText, doc.internal.pageSize.getWidth() - 60);
+    doc.text(splitText, 30, adY + 14);
+
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.text("Visita Ferretero.IA para mejorar tu plan y acceder a esta y otras herramientas Pro.", 30, adY + 28);
+    
     
     // Abre el PDF en una nueva pestaña
     // const pdfBlob = doc.output('pdfobjectnewwindow');
@@ -441,25 +502,38 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       // Después de 3 segundos, vuelve al estado normal
       backButtonTimer.current = setTimeout(() => {
         setConfirmBack(false);
-      }, 3000);
+      }, 2500);
+    }
+  };
+
+  const handleChartPlaceholderClick = () => {
+    if (context.type === 'user') {
+      setActiveModal('becomeStrategist');
+    } else {
+      setModalInfo({
+        title: "Desbloquea Gráficos Estratégicos",
+        message: "Esta comparativa de mercado es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
+      });
+      setActiveModal('registerToUnlock');
     }
   };
 
   return (
     <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
-      <div className="h-full flex flex-col bg-white rounded-lg max-w-md w-full shadow-2xl relative text-center text-left">
-        <div className="p-4 border-b bg-white z-10 shadow text-center sticky top-0 text-black">
-          <h2 className="text-xl font-bold text-gray-800">{reportConfig.label}</h2>
+      <div className="h-full flex flex-col bg-white rounded-lg max-w-lg w-full shadow-2xl relative">
+        <div className="p-4 border-b bg-white z-10 shadow text-center items-center sticky top-0">
+          <h2 className="text-xl font-bold text-gray-800 relative w-full pr-10 break-words truncate">{reportConfig.label}</h2>
+          <button onClick={onClose} className="absolute top-3 right-0 h-10 w-10 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
         </div>
         
-        <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto relative">
           {modalView === 'loading' && (
             <div className="flex flex-col items-center justify-center h-full text-gray-500">
               <FiLoader className="animate-spin text-4xl text-purple-600" />
               <p className="mt-4">Generando análisis...</p>
             </div>
           )}
-          
+
           {modalView === 'parameters' && (
             <div className="p-4 text-black">
               <div className="flex-1 min-h-0 gap-4 p-4 text-black">
@@ -550,107 +624,138 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
             </div>
           )}
 
-          {modalView === 'results' && (
-            <div className="p-6 text-center">
-              {/*<h3 className="text-lg font-bold text-gray-800 p-6">Análisis Completado</h3>*/}
-              <div className="flex-1 min-h-0 overflow-y-auto">
-                {modalView === 'results' && analysisResult && (
-                  <div className="text-left animate-fade-in">
-                    
-                    {/* Insight Clave */}
-                    <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
-                      <p className="text-md font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
-                      <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
-                      {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
-                    </div>
-                    <hr />
-                    {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
-                    <div className="mb-6 mt-6">
-                      <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {analysisResult && analysisResult.kpis && 
-                          Object.entries(analysisResult.kpis).map(([key, value]) => (
-                            <KpiCard 
-                              key={key} 
-                              label={key} 
-                              value={value}
-                              // Buscamos el texto del tooltip en nuestro glosario
-                              tooltipText={kpiTooltips[key]} 
-                            />
-                          ))
-                        }
-                      </div>
-                    </div>
-                    <hr />
-                    {/* --- NUEVA BARRA DE BÚSQUEDA INTERACTIVA --- */}
-                    <div className="mt-6 mb-6">
-                      <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
-                      <div className="bg-purple-50 p-4 rounded-lg border">
-                        <div className="flex relative items-center mb-2">
-                          <FiSearch className="absolute left-4 text-gray-400" />
-                          <input
-                            id="search-results"
-                            type="text"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            placeholder="Filtra tus resultados..."
-                            className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-10 pr-4 focus:ring-purple-500 focus:border-purple-500"
+          {modalView === 'results' && analysisResult && (
+            <div className="h-full flex flex-col">
+              {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
+              <div className="p-4 sm:p-6 text-left">
+                {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}
+                {/* Insight Clave */}
+                <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
+                  <p className="text-md font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
+                  <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
+                  {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
+                </div>
+              <hr/>
+                <div className="grid gap-4">
+                  {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
+                  <div className="mb-6 mt-6">
+                    <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      {analysisResult && analysisResult.kpis && 
+                        Object.entries(analysisResult.kpis).map(([key, value]) => (
+                          <KpiCard 
+                            key={key} 
+                            label={key} 
+                            value={value}
+                            // Buscamos el texto del tooltip en nuestro glosario
+                            tooltipText={kpiTooltips[key]} 
                           />
-                        </div>
-                        {/* --- LISTA ENRIQUECIDA E INTERACTIVA --- */}
-                        <div className="space-y-2">
-                          {filteredData.length > 0 && (
-                            filteredData.slice(0, 5).map((item, index) => (
-                              <ResultListItem 
-                                key={item['SKU / Código de producto'] || index} 
-                                itemData={item}
-                                detailInstructions={reportConfig.preview_details}
-                              />
-                            ))
-                          )}
-                        </div>
-                        {/* --- ECO INTELIGENTE --- */}
-                        <p className="text-sm text-center text-gray-500 mt-4 italic">
-                          {filteredData.length === 0 && "Ningún resultado encontrado para tu búsqueda."}
-                          {filteredData.length > 5 && `Mostrando 5 de ${filteredData.length} resultados...`}
-                        </p>
-                      </div>
+                        ))
+                      }
                     </div>
                   </div>
-                )}
+                </div>
+                {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
+                {/* Dentro de tu vista de resultados del ReportModal */}
+                <div className="p-4 bg-white shadow border rounded-lg text-center transform hover:scale-104">
+                  <div className="flex items-center justify-center mb-2">
+                    <p className="text-sm text-gray-500">Gráfico Estadístico</p>
+                    <Tooltip text={tooltips['chart_placeholder']} />
+                  </div>
+                  <div className="h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center">
+                      <div role="status" className="relative w-full p-4 rounded-sm shadow-sm border-gray-700 animate-pulse">
+                        <div className="flex items-baseline">
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-400"></div>
+                            <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-400"></div>
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
+                            <div className="w-full h-24 sm:h-44 ms-4 rounded-t-lg bg-gray-400"></div>
+                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
+                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+                        </div>
+                      </div>
+                      <button onClick={handleChartPlaceholderClick} className="absolute bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
+                        ⭐ Desbloquear Gráfico
+                      </button>
+                  </div>
+                </div>
               </div>
-              <hr />
-              <div className="mt-6 space-y-3 mb-10">
-                <h4 className="font-semibold text-gray-700 text-left">⬇️ Descarga tus reportes:</h4>
-                  <button onClick={() => handleOpenPDF()} className="w-full flex-row bg-gray-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
-                    <FiFileText className="text-4xl" />
-                    <div className="text-left">
-                      <span className="font-bold">Reporte Imprimible (PDF)</span>
-                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
+              <hr/>
+              {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
+              <div className="flex-1 min-h-100 flex flex-col bg-gray-100">
+                {/* --- Barra de Búsqueda "Pegajosa" --- */}
+                <div className="sticky top-0 bg-white z-10 p-4 border-b shadow-md shadow-gray-200">
+                  <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
+                  <div className="relative">
+                    {/*<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />*/}
+                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Filtra por SKU, nombre, categoría..." className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-4 pr-4 focus:ring-purple-500 focus:border-purple-500" />
+                  </div>
+                </div>
+                
+                {/* --- Lista de Resultados con Scroll Interno --- */}
+                <div className="overflow-y-auto p-4 space-y-2 mb-10">
+                  {filteredData.length > 0 ? (
+                    filteredData.slice(0, visibleItemsCount).map((item, index) => (
+                      <ResultListItem key={item['SKU / Código de producto'] || index} itemData={item} detailInstructions={reportConfig.preview_details} />
+                    ))
+                  ) : (
+                    <p className="text-center text-gray-500 py-8">Ningún resultado encontrado.</p>
+                  )}
+                  
+                  {/* --- Botón "Cargar Más" --- */}
+                  {/*{filteredData.length > visibleItemsCount && (
+                    <div className="text-center mt-4">
+                      <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
+                        Cargar 10 más...
+                      </button>
                     </div>
-                  </button>
-                  <button onClick={() => handleDownloadExcel()} className="w-full flex-row bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
-                    <FiTable className="text-4xl" />
-                    <div className="text-left">
-                      <span className="font-bold">Reporte Detallado (Excel)</span>
-                      <span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length} items)` : `Completo (${analysisResult.data.length} items)`}</span>
-                    </div>
-                  </button>
+                  )}*/}
+                  {/* --- BOTÓN DE ACCIÓN CONTEXTUAL --- */}
+                  <div className="text-center mt-4">
+                    {context.type === 'anonymous' && truncationInfo ? (
+                      // Para anónimos con resultados truncados, mostramos el botón de desbloqueo
+                      <button 
+                        onClick={() => setActiveModal('register')} 
+                        className="font-semibold text-purple-600 hover:text-purple-800"
+                      >
+                        ⭐ Ver los {truncationInfo.total - truncationInfo.shown} resultados restantes
+                      </button>
+                    ) : (
+                      // Para usuarios registrados, mostramos el "Cargar más"
+                      filteredData.length > visibleItemsCount && (
+                        <button onClick={() => setVisibleItemsCount(prev => prev + 15)} className="...">
+                          Cargar 15 más...
+                        </button>
+                      )
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </div>
 
-        <div className="p-4 w-full z-10 shadow text-center sticky bottom-0 text-gray-800">
-          {modalView === 'parameters' && (
+        {/* --- FOOTER CON BOTONES DE ACCIÓN --- */}
+        <div className="p-2 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
+          {modalView === 'results' ? (
+            <div className="flex gap-2">
+              <button onClick={handleOpenPDF} className="flex-1 bg-gray-600 text-white font-bold py-2 px-2 rounded-lg hover:bg-gray-700 flex items-center justify-center gap-2">
+                <FiFileText className="text-5xl md:text-4xl" /> <div><span>Imprimible (PDF)</span><span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span></div>
+              </button>
+              <button onClick={handleDownloadExcel} className="flex-1 bg-purple-600 text-white font-bold py-2 px-2 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">
+                <FiTable className="text-5xl md:text-4xl" /> <div><span>Detallado (Excel)</span><span className="block text-xs opacity-80">{searchTerm ? `Filtrado (${filteredData.length})` : `Completo (${analysisResult.data.length})`}</span></div>
+              </button>
+            </div>
+          ) : (
+            // <button onClick={handleGenerateAnalysis} className="w-full flex-row bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">🚀 Ejecutar Análisis</button>
             <>
               <button
                 onClick={ handleGenerateAnalysis }
-                disabled={ isLoading }
+                disabled={ modalView === 'loading' }
                 className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
                     ${
                         // Lógica de estilos condicional
-                        isLoading ? 'bg-gray-200 text-gray-500 cursor-wait' : 'text-transparent border-purple-700'
+                        modalView === 'loading' ? 'bg-gray-200 text-gray-500 cursor-wait' : 'text-transparent border-purple-700'
                     }`
                 }
                 style={{
@@ -663,11 +768,17 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                           <FiLoader className="animate-spin h-5 w-5" />
                           <span>Cargando parametros...</span>
                       </>
-                  ) : <>
+                  ) : modalView === 'loading' ? (
+                      <>
+                          <FiLoader className="animate-spin h-5 w-5" />
+                          <span>Generando...</span>
+                      </>
+                  ) : (
+                      <>
                           <span className="text-black font-bold text-xl">🚀</span>
-                          {/* El texto cambia si ya existe una caché pero es obsoleta */}
                           <span className="text-lg font-bold">Ejecutar Análisis</span>
                       </>
+                  )
                 }
               </button>
               <button
@@ -682,18 +793,62 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
               </button>
             </>
           )}
-          {modalView === 'results' && (
-            <button onClick={() => setModalView('parameters')} className="w-full text-lg px-4 py-2">‹ Volver a Parámetros</button>
-          )}
         </div>
-        {/*{showCreditsModal && ()}*/}
-        {activeModal === 'creditsOffer' && (
-          <InsufficientCreditsModal
-            required={10}
-            remaining={5}
+
+        {/* --- BOTÓN FLOTANTE PARA VOLVER --- */}
+        {modalView === 'results' && (
+          <>
+            <button 
+              onClick={handleBackToParamsClick}
+              className={`absolute bottom-28 z-20 flex items-center justify-center h-14 bg-gray-800 text-white rounded-full shadow-lg transition-all duration-200 ease-in-out hover:bg-gray-600 ${confirmBack ? 'w-64 right-1/8' : 'w-14 right-5'}`}
+            >
+              {confirmBack ? (
+                <span className="flex items-center gap-2 animate-fade-in-fast">Regresar a Parametros</span>
+              ) : (
+                <FiChevronLeft />
+              )}
+            </button>
+            {confirmBack && (
+              <button 
+                onClick={() => {setConfirmBack(false)}}
+                className={`absolute bottom-28 right-5 z-20 flex items-center justify-center h-14 bg-gray-800 text-white rounded-full shadow-lg transition-all duration-200 ease-in-out hover:bg-gray-600 w-14`}
+              >
+                <FiChevronRight />
+              </button>
+            )}
+          </>
+        )}
+
+        {/* --- RENDERIZADO CENTRALIZADO DE TODOS LOS MODALES --- */}
+        {activeModal === 'registerToUnlock' && (
+          <RegisterToUnlockModal 
+            {...modalInfo}
+            onRegister={() => {
+                setActiveModal(null);
+                setActiveModal('register');
+                // onSwitchToRegister(); // Llama a la función del padre para mostrar el modal de registro real
+            }}
             onClose={() => setActiveModal(null)}
-            onRegister={() => {}}
-            onNewSession={() => {}}
+          />
+        )}
+        {activeModal === 'recharge' && <RechargeCreditsModal onClose={() => setActiveModal(null)} />}
+        {activeModal === 'becomeStrategist' && <BecomeStrategistModal onClose={() => setActiveModal(null)} />}
+
+        {activeModal === 'login' && (
+          <LoginModal 
+            onLoginSuccess={()=>{}} 
+            onSwitchToRegister={() => setActiveModal('register')}
+            onBackToAnalysis={() => setActiveModal(null)} 
+            onClose={() => setActiveModal(null)}
+          />
+        )}
+
+        {activeModal === 'register' && (
+          <RegisterModal 
+            sessionId={context.id} 
+            onRegisterSuccess={() => setActiveModal('login')}
+            onSwitchToLogin={() => setActiveModal('login')}
+            onBackToLanding={() => setActiveModal(null)} 
           />
         )}
       </div>
