@@ -21,7 +21,7 @@ import { StrategyPanelModal } from './StrategyPanelModal';
 import { RegisterPage } from './RegisterPage';
 import { WorkspaceSelector } from './WorkspaceSelector';
 import { LoadingScreen } from './LoadingScreen';
-import { FiDownload, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
+import { FiDownload, FiCalendar, FiStar, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el modal
 import { Tooltip } from './Tooltip';
 import { FerreterosLogo } from './FerreterosLogo'
@@ -168,6 +168,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [analysisResult, setAnalysisResult] = useState(null);
   const [dateRangeBounds, setDateRangeBounds] = useState(null); // Nuevo estado para los límites de fecha
   const [isDateModalOpen, setIsDateModalOpen] = useState(false); // Nuevo estado para controlar el modal
+  const [activeDateFilter, setActiveDateFilter] = useState(null);
 
 
   // --- ESTADOS Y CONTEXTO ---
@@ -408,6 +409,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   const handleApplyDateFilter = (selectedRange) => {
     console.log("Intento de aplicar filtro Pro con el rango:", selectedRange);
+    setIsDateModalOpen(false);
+
     // Aquí va la lógica para mostrar el modal de conversión
     if (context.type === 'user') {
       setActiveModal('becomeStrategist');
@@ -418,6 +421,21 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       });
       setActiveModal('registerToUnlock');
     }
+  };
+
+  const handleClearDateFilter = () => {
+    setActiveDateFilter(null);
+    // Aquí podrías añadir una lógica para re-ejecutar los reportes con el rango completo si fuera necesario
+  };
+
+  // --- Función para formatear el texto del botón ---
+  const getFilterButtonText = () => {
+    if (activeDateFilter) {
+      const start = new Date(activeDateFilter.startDate).toLocaleDateString('es-PE');
+      const end = new Date(activeDateFilter.endDate).toLocaleDateString('es-PE');
+      return `Rango: ${start} - ${end}`;
+    }
+    return "Analizando: Todo el Historial";
   };
 
   return (
@@ -474,7 +492,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           />
         </div>
         <div className="flex flex-row w-full justify-center items-center">
-          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
+          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
         </div>
 
         {/* --- RENDERIZADO CONDICIONAL DEL FILTRO DE FECHAS --- */}
@@ -492,17 +510,26 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           <p>Cargando reportes...</p>
         ) : filesReady ? (
           <>
-            {/* --- RENDERIZADO CONDICIONAL DEL BOTÓN DE FILTRO DE FECHAS --- */}
-            {dateRangeBounds && (
-              <div className="my-6 text-center">
+            {/* --- RENDERIZADO DEL NUEVO FILTRO INTERACTIVO --- */}
+            {uploadStatus.ventas === 'success' && dateRangeBounds && (
+              <div className="my-2 flex justify-center items-center gap-2">
                 <button 
                   onClick={() => setIsDateModalOpen(true)}
-                  className="text-purple-400 font-semibold hover:text-white border-2 border-dashed border-gray-600 rounded-lg px-4 py-2"
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 text-white rounded-lg shadow-md hover:bg-purple-700 transition-colors"
                 >
-                  📅 Analizar un Rango de Fechas Específico ⭐
+                  <FiCalendar />
+                  <span>{getFilterButtonText()}</span>
+                  <FiStar className="text-yellow-400" />
                 </button>
+                {/* Mostramos el botón de limpiar solo si hay un filtro activo */}
+                {activeDateFilter && (
+                  <button onClick={handleClearDateFilter} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-400">
+                    <FiX size={16} />
+                  </button>
+                )}
               </div>
             )}
+
             <div className="w-full space-y-8 px-4 mb-10">
               {Object.entries(reportData).map(([categoria, reportes]) => (
                 <div key={categoria} className="mb-6">
