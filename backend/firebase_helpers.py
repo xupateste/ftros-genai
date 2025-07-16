@@ -215,43 +215,84 @@ def log_analysis_in_firestore(
         raise e
 
 
-def descargar_contenido_de_storage(
-    user_email: Optional[str],
-    workspace_id: Optional[str],
-    session_id: str,
+async def descargar_contenido_de_storage(
+    user_id: Optional[str], 
+    workspace_id: Optional[str], 
+    session_id: Optional[str],
     file_id: str
 ) -> bytes:
     """
-    Descarga un archivo desde Storage, construyendo la ruta correcta
-    dependiendo si es un usuario registrado o una sesión anónima.
+    Descarga un archivo desde Storage de forma asíncrona, construyendo la ruta
+    correcta dependiendo si es un usuario registrado o una sesión anónima.
     """
-    if user_email and workspace_id:
-        # Ruta para usuarios registrados
-        base_path = db.collection('usuarios').document(user_email).collection('espacios_trabajo').document(workspace_id)
+    # La lógica para construir la ruta no cambia
+    if user_id and workspace_id:
+        base_path_firestore = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+        # Asumimos que la ruta en Storage también sigue esta estructura
+        base_path_storage = f"uploads/{user_id}/{workspace_id}/"
     elif session_id:
-        # Ruta para sesiones anónimas
-        base_path = db.collection('sesiones_anonimas').document(session_id)
+        base_path_firestore = db.collection('sesiones_anonimas').document(session_id)
+        base_path_storage = f"uploads/{session_id}/"
     else:
         raise ValueError("Se debe proporcionar un contexto (usuario/workspace o sesión).")
 
     try:
-        # 1. Obtener la ruta del archivo desde Firestore
-        file_ref = base_path.collection('archivos_cargados').document(file_id).get()
+        # Buscamos el documento en Firestore para obtener la ruta completa del archivo
+        file_ref = base_path_firestore.collection('archivos_cargados').document(file_id).get()
         if not file_ref.exists:
-            raise ValueError(f"No se encontró el archivo con ID '{file_id}' para esta sesión.")
+            raise ValueError(f"No se encontró el registro del archivo con ID '{file_id}' en Firestore.")
         
-        ruta_storage = file_ref.to_dict().get('rutaStorage')
+        file_data = file_ref.to_dict()
+        ruta_storage = file_data.get("rutaStorage")
+        
         if not ruta_storage:
-             raise ValueError(f"El registro del archivo con ID '{file_id}' no tiene una ruta de almacenamiento.")
+            raise ValueError(f"El registro del archivo '{file_id}' no contiene una ruta de Storage.")
 
-        # 2. Descargar el contenido desde Storage
+        print(f"Descargando archivo desde Storage: {ruta_storage}")
+        
         blob = bucket.blob(ruta_storage)
-        contents = blob.download_as_bytes()
-        return contents
+        
+        # La operación de descarga en sí misma es bloqueante, pero al envolverla
+        # en una función async, permitimos que `asyncio.gather` la maneje.
+        file_contents = blob.download_as_bytes()
+        
+        return file_contents
 
     except Exception as e:
         print(f"🔥 Error al descargar '{file_id}' desde Storage: {e}")
+        # Relanzamos el error para que el manejador principal lo capture
         raise e
+
+def get_context_state_from_firestore(user_id: Optional[str], workspace_id: Optional[str], session_id: Optional[str]) -> Dict[str, Any]:
+    """
+    Lee los metadatos cacheados directamente desde los documentos de Firestore
+    para una carga de estado ultra-rápida.
+    """
+    state = {
+        "files": {"ventas": None, "inventario": None},
+        "date_range_bounds": None,
+        "available_filters": {"categorias": [], "marcas": []},
+        "credits": {"used": 0, "remaining": 0},
+        "history": []
+    }
+    # ... (Tu lógica para determinar `base_ref` y obtener créditos e historial)
+
+    # Leemos los metadatos de los archivos directamente
+    files_ref = base_ref.collection('archivos_cargados')
+    last_venta_doc = next(files_ref.where("tipoArchivo", "==", "ventas").order_by("fechaCarga", direction="DESCENDING").limit(1).stream(), None)
+    if last_venta_doc:
+        state["files"]["ventas"] = last_venta_doc.id
+        metadata = last_venta_doc.to_dict().get("metadata", {})
+        if metadata.get("fecha_primera_venta"):
+            state["date_range_bounds"] = {"min_date": metadata["fecha_primera_venta"], "max_date": metadata["fecha_ultima_venta"]}
+            
+    last_inventario_doc = next(files_ref.where("tipoArchivo", "==", "inventario").order_by("fechaCarga", direction="DESCENDING").limit(1).stream(), None)
+    if last_inventario_doc:
+        state["files"]["inventario"] = last_inventario_doc.id
+        metadata = last_inventario_doc.to_dict().get("metadata", {})
+        state["available_filters"] = {"categorias": metadata.get("lista_completa_categorias", []), "marcas": metadata.get("lista_completa_marcas", [])}
+        
+    return state
 
 
 def log_report_generation(

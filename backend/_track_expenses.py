@@ -151,26 +151,17 @@ def process_csv_abc(
     df_inventario: pd.DataFrame,
     criterio_abc: str,
     periodo_abc: int,
-    pesos_combinado: Optional[Dict[str, float]] = None
-) -> pd.DataFrame:
+    # --- CAMBIO CLAVE: Recibimos los scores en lugar de los pesos ---
+    score_ventas: int = 8,
+    score_ingreso: int = 6,
+    score_margen: int = 4,
+    # Mantenemos pesos_combinado por si se usa en otro lugar, pero priorizamos los scores
+    # pesos_combinado: Optional[Dict[str, float]] = None,
+    **kwargs # Acepta argumentos extra para compatibilidad
+) -> Dict[str, Any]:
     """
-    Procesa los DataFrames de ventas e inventario para realizar un análisis ABC.
-
-    Args:
-        df_ventas: DataFrame con datos de ventas.
-                   Columnas esperadas: 'SKU / Código de producto', 'Nombre del producto',
-                                     'Fecha de venta', 'Cantidad vendida', 
-                                     'Precio de venta unitario (S/.)'.
-        df_inventario: DataFrame con datos de inventario.
-                       Columnas esperadas: 'SKU / Código de producto', 'Precio de compra actual (S/.)',
-                                         'Categoría', 'Subcategoría'.
-        criterio_abc: Criterio para el análisis ('ingresos', 'unidades', 'margen', 'combinado').
-        periodo_abc: Número de meses hacia atrás para el análisis (0 para todo el historial).
-        pesos_combinado: Diccionario con pesos si criterio_abc es 'combinado'.
-                         Ej: {"ingresos": 0.5, "margen": 0.3, "unidades": 0.2}
-
-    Returns:
-        DataFrame con el análisis ABC.
+    Procesa los datos para realizar un análisis ABC, ahora calculando los
+    pesos para el criterio 'combinado' a partir de los scores de la estrategia.
     """
 
     # --- 1. Limpieza Inicial de Nombres de Columnas ---
@@ -184,7 +175,7 @@ def process_csv_abc(
             raise ValueError(f"Columna requerida '{col}' no encontrada en el archivo de ventas.")
 
     # Verificar columnas requeridas en df_inventario
-    required_inventory_cols = ['SKU / Código de producto', 'Precio de compra actual (S/.)', 'Categoría', 'Subcategoría']
+    required_inventory_cols = ['SKU / Código de producto', 'Precio de compra actual (S/.)', 'Categoría', 'Subcategoría', 'Marca']
     for col in required_inventory_cols:
         if col not in df_inventario.columns:
             raise ValueError(f"Columna requerida '{col}' no encontrada en el archivo de inventario.")
@@ -244,7 +235,8 @@ def process_csv_abc(
         'Cantidad vendida': 'sum',
         'Margen total': 'sum',
         'Categoría': 'first', # Tomar la primera categoría (debería ser única por SKU)
-        'Subcategoría': 'first' # Tomar la primera subcategoría
+        'Subcategoría': 'first', # Tomar la primera subcategoría
+        'Marca': 'first'
     }
     ventas_agrupadas = df_merged.groupby(
         ['SKU / Código de producto', 'Nombre del producto'], as_index=False
@@ -267,8 +259,18 @@ def process_csv_abc(
         ventas_agrupadas['valor_criterio'] = ventas_agrupadas['Margen total']
         columna_criterio_display_name = 'Margen Total (S/.)'
     elif criterio_abc == 'combinado':
-        if not pesos_combinado or not all(k in pesos_combinado for k in ['ingresos', 'margen', 'unidades']):
-            raise ValueError("Pesos para criterio combinado no provistos o incompletos.")
+        total_scores = score_ventas + score_ingreso + score_margen
+        if total_scores == 0: # Evitar división por cero
+            pesos_calculados = {'unidades': 0.33, 'ingresos': 0.33, 'margen': 0.34}
+        else:
+            pesos_calculados = {
+                'unidades': score_ventas / total_scores,
+                'ingresos': score_ingreso / total_scores,
+                'margen': score_margen / total_scores
+            }
+
+        # if not pesos_combinado or not all(k in pesos_combinado for k in ['ingresos', 'margen', 'unidades']):
+        #     raise ValueError("Pesos para criterio combinado no provistos o incompletos.")
         
         # Normalización Min-Max para cada métrica
         for col_norm in ['Venta total', 'Cantidad vendida', 'Margen total']:
@@ -280,11 +282,11 @@ def process_csv_abc(
                 ventas_agrupadas[f'{col_norm}_norm'] = (ventas_agrupadas[col_norm] - min_val) / (max_val - min_val)
         
         ventas_agrupadas['valor_criterio'] = (
-            pesos_combinado['ingresos'] * ventas_agrupadas['Venta total_norm'] +
-            pesos_combinado['margen'] * ventas_agrupadas['Margen total_norm'] +
-            pesos_combinado['unidades'] * ventas_agrupadas['Cantidad vendida_norm']
+            pesos_calculados['ingresos'] * ventas_agrupadas['Venta total_norm'] +
+            pesos_calculados['margen'] * ventas_agrupadas['Margen total_norm'] +
+            pesos_calculados['unidades'] * ventas_agrupadas['Cantidad vendida_norm']
         )
-        columna_criterio_display_name = 'Valor Ponderado (ABC)'
+        columna_criterio_display_name = 'Valor Ponderado (Estrategia)'
     else:
         raise ValueError(f"Criterio ABC '{criterio_abc}' no reconocido.")
 
@@ -317,6 +319,7 @@ def process_csv_abc(
         'Nombre del producto',
         'Categoría',
         'Subcategoría',
+        'Marca',
         columna_criterio_display_name, # La métrica principal del ABC
     ]
     # Añadir otras métricas relevantes para contexto, si no son la principal
@@ -358,7 +361,50 @@ def process_csv_abc(
         resultado['Cantidad Vendida (Und)'] = resultado['Cantidad Vendida (Und)'].round(0).astype(int)
 
 
-    return resultado
+    # --- PASO 8: CÁLCULO DE KPIs Y RESUMEN ---
+    
+    # Calculamos la distribución para el insight
+    total_productos = len(resultado)
+    productos_a = resultado[resultado['Clasificación ABC'] == 'A']
+    productos_c = resultado[resultado['Clasificación ABC'] == 'C']
+    
+    porcentaje_skus_a = (len(productos_a) / total_productos * 100) if total_productos > 0 else 0
+    porcentaje_skus_c = (len(productos_c) / total_productos * 100) if total_productos > 0 else 0
+    
+    # Usamos la columna del criterio principal para el valor
+    col_valor = columna_criterio_display_name
+    porcentaje_valor_a = (productos_a[col_valor].sum() / resultado[col_valor].sum() * 100) if resultado[col_valor].sum() > 0 else 0
+    porcentaje_valor_c = (productos_c[col_valor].sum() / resultado[col_valor].sum() * 100) if resultado[col_valor].sum() > 0 else 0
+
+    insight_text = (
+        f"Tu inventario se distribuye así: "
+        f"el {porcentaje_skus_a:.0f}% de tus productos (Clase A) generan el {porcentaje_valor_a:.0f}% de tu valor, "
+        f"mientras que el {porcentaje_skus_c:.0f}% de tus productos (Clase C) solo aportan el {porcentaje_valor_c:.0f}%."
+    )
+    if total_productos == 0:
+        insight_text = "No se encontraron datos de ventas para realizar el análisis ABC con los filtros seleccionados."
+
+    kpis = {
+        "SKUs Clase A (Vitales)": len(productos_a),
+        f"% del Valor (Clase A)": f"{porcentaje_valor_a:.1f}%",
+        "SKUs Clase C (Triviales)": len(productos_c),
+        f"% del Valor (Clase C)": f"{porcentaje_valor_c:.1f}%"
+    }
+
+    # --- PASO 9: LIMPIEZA FINAL PARA JSON ---
+    if not resultado.empty:
+        resultado = resultado.replace([np.inf, -np.inf], np.nan).where(pd.notna(resultado), None)
+
+    # --- FIN DE LA NUEVA LÓGICA ---
+
+    # Devolvemos la estructura de diccionario estandarizada
+    return {
+        "data": resultado,
+        "summary": {
+            "insight": insight_text,
+            "kpis": kpis
+        }
+    }
 
 
 def generar_reporte_maestro_inventario(
@@ -1529,17 +1575,7 @@ def process_csv_lista_basica_reposicion_historico(
     incluir_solo_marcas: Optional[List[str]] = None,
     ordenar_por: str = 'Importancia'
 ) -> pd.DataFrame:
-    # --- 1. Definición de Nombres de Columna Internos ---
-    # Usar constantes evita errores de tipeo y hace el código más mantenible.
-    SKU_COL = 'SKU / Código de producto'
-    CANTIDAD_VENTA_COL = 'Cantidad vendida'
-    PRECIO_VENTA_COL = 'Precio de venta unitario (S/.)'
-    STOCK_ACTUAL_COL = 'Cantidad en stock actual'
-    PRECIO_COMPRA_COL = 'Precio de compra actual (S/.)'
-    SUGERENCIA_IDEAL_COL = 'Sugerencia_Pedido_Ideal_Unds'
-    PRECIO_VENTA_PROM_COL = 'Precio_Venta_Prom_Reciente'
-    PRECIO_VENTA_ACTUAL_COL = 'Precio de venta actual (S/.)'
-
+    # --- 1. Definición de Nombres de Columna Única y Clara ---
     sku_col = 'SKU / Código de producto'
     fecha_col_ventas = 'Fecha de venta'
     cantidad_col_ventas = 'Cantidad vendida'
@@ -1550,15 +1586,37 @@ def process_csv_lista_basica_reposicion_historico(
     categoria_col_stock = 'Categoría'
     subcategoria_col_stock = 'Subcategoría'
     precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
+    precio_venta_actual_col_stock = 'Precio de venta actual (S/.)' # Columna del inventario
     
+    # Nombres para columnas calculadas
+    precio_venta_prom_col = 'Precio_Venta_Prom_Reciente'
+    sugerencia_ideal_col = 'Sugerencia_Pedido_Ideal_Unds'
+
+    # --- 2. Pre-procesamiento y Estandarización de Tipos ---
     df_ventas_proc = df_ventas.copy()
     df_inventario_proc = df_inventario.copy()
+
+    # Forzamos la columna de unión a ser string
     df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
     df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
-    df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
-    df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
-    df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
-    df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
+
+
+    # Forzamos las columnas numéricas a un tipo que soporta negativos (float)
+    numeric_cols_inv = [stock_actual_col_stock, precio_compra_actual_col_stock, precio_venta_actual_col_stock]
+    for col in numeric_cols_inv:
+        if col in df_inventario_proc.columns:
+            df_inventario_proc[col] = pd.to_numeric(df_inventario_proc[col], errors='coerce')
+
+    numeric_cols_ventas = [cantidad_col_ventas, precio_venta_col_ventas]
+    for col in numeric_cols_ventas:
+        if col in df_ventas_proc.columns:
+            df_ventas_proc[col] = pd.to_numeric(df_ventas_proc[col], errors='coerce')
+    
+    # df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
+    # df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
+    # df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
+    # df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
+
     df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
     df_ventas_proc.dropna(subset=[fecha_col_ventas], inplace=True)
     if df_ventas_proc.empty: return pd.DataFrame()
@@ -1624,7 +1682,14 @@ def process_csv_lista_basica_reposicion_historico(
     
     if df_analisis.empty:
         # print("❌ DEBUG: El DataFrame está vacío ANTES del último filtro. La función terminará aquí.")
-        return pd.DataFrame()
+        # return pd.DataFrame()
+        return {
+            "data": pd.DataFrame(),
+            "summary": {
+                "insight": "No se encontraron productos que coincidan con los filtros aplicados.",
+                "kpis": {}
+            }
+        }
     
     df_analisis['Margen_Bruto_con_PCA'] = df_analisis['Precio_Venta_Prom_Reciente'] - df_analisis[precio_compra_actual_col_stock]
     df_analisis['Ingreso_Total_Reciente'] = df_analisis['Ventas_Total_Reciente'] * df_analisis['Precio_Venta_Prom_Reciente']
@@ -1753,39 +1818,40 @@ def process_csv_lista_basica_reposicion_historico(
 
     # --- PASO 9: CÁLCULO Y EXPOSICIÓN DE MÁRGENES PARA DEBUG ---
     print("Calculando márgenes detallados para auditoría...")
-    
-    # Asegurarnos de que las columnas necesarias existen y son numéricas
-    for col in [PRECIO_VENTA_ACTUAL_COL, PRECIO_COMPRA_COL, PRECIO_VENTA_PROM_COL]:
+
+    # Aseguramos que las columnas necesarias existan y sean numéricas antes de usarlas
+    for col in [precio_venta_actual_col_stock, precio_compra_actual_col_stock, precio_venta_prom_col]:
         if col in df_resultado.columns:
             df_resultado[col] = pd.to_numeric(df_resultado[col], errors='coerce').fillna(0)
         else:
             df_resultado[col] = 0 # Si no existe, la creamos con ceros para evitar errores
 
     # Margen Teórico: Basado en el precio de lista actual del inventario.
-    df_resultado['debug_margen_lista'] = df_resultado[PRECIO_VENTA_ACTUAL_COL] - df_resultado[PRECIO_COMPRA_COL]
+    df_resultado['debug_margen_lista'] = df_resultado[precio_venta_actual_col_stock] - df_resultado[precio_compra_actual_col_stock]
     
     # Margen Real: Basado en el precio promedio de las ventas recientes.
-    # Esta columna ya se calculaba como 'Margen_Bruto_con_PCA', aquí la hacemos explícita para la auditoría.
-    df_resultado['debug_margen_promedio'] = df_resultado[PRECIO_VENTA_PROM_COL] - df_resultado[PRECIO_COMPRA_COL]
+    df_resultado['debug_margen_promedio'] = df_resultado[precio_venta_prom_col] - df_resultado[precio_compra_actual_col_stock]
+
 
     # --- PASO 10: CÁLCULO DE KPIs Y RESUMEN (usando los márgenes auditados) ---
     
-    col_sugerencia_ideal = 'Sugerencia_Pedido_Ideal_Unds'
-    df_a_reponer = df_resultado[df_resultado[col_sugerencia_ideal] > 0].copy()
+    df_a_reponer = df_resultado[df_resultado[sugerencia_ideal_col] > 0].copy()
 
     if not df_a_reponer.empty:
-        inversion_total = (df_a_reponer[col_sugerencia_ideal] * df_a_reponer[PRECIO_COMPRA_COL]).sum()
-        skus_a_reponer = int(df_a_reponer[SKU_COL].nunique())
-        unidades_a_pedir = int(df_a_reponer[col_sugerencia_ideal].sum())
+        inversion_total = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer[precio_compra_actual_col_stock]).sum()
+        skus_a_reponer = int(df_a_reponer[sku_col].nunique())
+        unidades_a_pedir = int(df_a_reponer[sugerencia_ideal_col].sum())
         
-        # Para el margen potencial, solo sumamos los productos que generan ganancia real
-        margen_potencial = (df_a_reponer[col_sugerencia_ideal] * df_a_reponer['debug_margen_promedio'].clip(lower=0)).sum()
+        # CÁLCULO CORREGIDO: Para el margen potencial, solo sumamos los productos que generan ganancia real.
+        # Usamos .clip(lower=0) para tratar cualquier margen negativo como 0 en la suma.
+        # margen_potencial = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer['debug_margen_promedio'].clip(lower=0)).sum()
+        margen_potencial = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer['debug_margen_lista'].clip(lower=0)).sum()
     else:
         inversion_total, skus_a_reponer, unidades_a_pedir, margen_potencial = 0, 0, 0, 0
 
     insight_text = f"Hemos identificado {skus_a_reponer} productos que necesitan una inversión de S/ {inversion_total:,.2f} para optimizar tu inventario."
     if skus_a_reponer == 0:
-        insight_text = "¡Buen trabajo! Tu inventario parece estar bien abastecido con los parámetros actuales."
+        insight_text = "¡Buen trabajo! Tu inventario parece estar bien abastecido."
 
     kpis = {
         "Inversión Total Sugerida": f"S/ {inversion_total:,.2f}",
@@ -1805,18 +1871,21 @@ def process_csv_lista_basica_reposicion_historico(
         'Stock_Minimo_Unds', 'Stock_Ideal_Unds', 
         'Sugerencia_Pedido_Minimo_Unds', 'Sugerencia_Pedido_Ideal_Unds', 
         'Importancia_Dinamica', 'PDA_Final',
-        'Ventas_Total_General', 'Ventas_Total_Reciente',
-        'debug_margen_lista',
-        'debug_margen_promedio',
-        'Margen_Bruto_con_PCA'
+        'Ventas_Total_General', 'Ventas_Total_Reciente'
+        # precio_venta_prom_col,
+        # 'debug_margen_promedio',
+        # precio_venta_actual_col_stock,
+        # 'debug_margen_lista'
     ]
     
-    columnas_finales_presentes = [col for col in columnas_salida_deseadas if col in df_resultado.columns]
-    df_resultado_final = df_resultado[columnas_finales_presentes].copy()
+    # columnas_finales_presentes = [col for col in columnas_salida_deseadas if col in df_resultado.columns]
+    # df_resultado_final = df_resultado[columnas_finales_presentes].copy()
+    
+    df_resultado_final = df_resultado[[col for col in columnas_salida_deseadas if col in df_resultado.columns]].copy()
     
     if 'temp_sort_col' in df_resultado_final.columns:
         df_resultado_final = df_resultado_final.drop(columns=['temp_sort_col'])
-
+    
     if not df_resultado_final.empty:
         column_rename_map = {
             stock_actual_col_stock: 'Stock Actual (Unds)',
@@ -1834,8 +1903,10 @@ def process_csv_lista_basica_reposicion_historico(
             'Importancia_Dinamica': 'Índice de Importancia',
             'Ventas_Total_Reciente': f'Ventas Recientes ({final_dias_recientes}d) (Unds)',
             'Ventas_Total_General' : f'Ventas Periodo General ({final_dias_general}d) (Unds)',
-            'debug_margen_lista': '[Debug] Margen s/ P. Lista',
-            'debug_margen_promedio': '[Debug] Margen s/ P. Promedio',
+            # 'debug_margen_lista': '[Debug] Margen s/ P. Lista',
+            # 'debug_margen_promedio': '[Debug] Margen s/ P. Promedio',
+            # precio_venta_prom_col: '[Debug] Precio Venta Promedio',
+            # precio_venta_actual_col_stock: '[Debug] Precio Venta Lista',
         }
         df_resultado_final.rename(columns=column_rename_map, inplace=True)
 
@@ -1851,12 +1922,14 @@ def process_csv_lista_basica_reposicion_historico(
     # # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
     # resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
 
-    # Limpieza final para compatibilidad con JSON
+    # --- PASO 11: LIMPIEZA FINAL PARA COMPATIBILIDAD CON JSON ---
+    # Este bloque ahora se aplica de forma segura al final.
     if not df_resultado_final.empty:
+        # Reemplazamos infinitos con NaN
         df_resultado_final = df_resultado_final.replace([np.inf, -np.inf], np.nan)
+        # Reemplazamos NaN con None, que es compatible con JSON (se convierte en 'null')
         df_resultado_final = df_resultado_final.where(pd.notna(df_resultado_final), None)
-    
-
+   
     # return resultado_final_json_safe
     return {
         "data": df_resultado_final,
@@ -1872,12 +1945,18 @@ def process_csv_lista_basica_reposicion_historico(
 def procesar_stock_muerto(
     df_ventas: pd.DataFrame,
     df_inventario: pd.DataFrame,
-    meses_analisis: Optional[int] = None,
-    dias_sin_venta_baja: Optional[int] = None,
-    dias_sin_venta_muerto: Optional[int] = None,
-    dps_umbral_exceso_stock: Optional[int] = None,
-    umbral_valor_stock_alto: float = 3000.0
-) -> pd.DataFrame:
+    # --- Parámetros actualizados que vienen desde la UI ---
+    dias_sin_venta_muerto: Optional[int] = 180,
+    umbral_valor_stock: Optional[float] = 0.0,
+    # Mantenemos los otros por si se usan en el futuro
+    meses_analisis: Optional[int] = 3,
+    dias_sin_venta_baja: Optional[int] = 90,
+    dps_umbral_exceso_stock: Optional[int] = 120,
+    ordenar_por: str = 'valor_stock_s',
+    incluir_solo_categorias: Optional[List[str]] = None,
+    incluir_solo_marcas: Optional[List[str]] = None,
+    **kwargs # Acepta argumentos extra para compatibilidad
+) -> Dict[str, Any]:
     """
     Calcula el análisis de diagnóstico de baja rotación y stock muerto.
     Los parámetros clave de análisis (meses, días sin venta) pueden ser 
@@ -1890,12 +1969,13 @@ def procesar_stock_muerto(
         dias_sin_venta_baja: (Opcional) Umbral para "Baja Rotación". Si es None, se calcula dinámicamente.
         dias_sin_venta_muerto: (Opcional) Umbral para "Stock Muerto". Si es None, se calcula dinámicamente.
         dps_umbral_exceso_stock: (Opcional) Umbral de DPS para "Exceso de Stock". Si es None, se calcula dinámicamente.
-        umbral_valor_stock_alto: Umbral en S/. para destacar inventario inmovilizado.
+        umbral_valor_stock: Umbral en S/. para destacar inventario inmovilizado.
 
     Returns:
         DataFrame con el análisis completo.
     """
 
+    # --- PASO 1: Definición de Nombres de Columna y Pre-procesamiento ---
     # --- 0. Renombrar y Preprocesar Datos ---
     df_ventas = df_ventas.rename(columns={
         'Fecha de venta': 'fecha_venta',
@@ -1908,8 +1988,12 @@ def procesar_stock_muerto(
         'Cantidad en stock actual': 'stock_actual_unds',
         'Precio de compra actual (S/.)': 'precio_compra_actual',
         'Categoría': 'categoria',
-        'Subcategoría': 'subcategoria'
+        'Subcategoría': 'subcategoria',
+        'Marca': 'marca'
     })
+
+    categoria_col_stock = 'Categoría'
+    marca_col_stock = 'Marca'
 
     df_ventas['fecha_venta'] = pd.to_datetime(df_ventas['fecha_venta'], format='%d/%m/%Y', errors='coerce')
     df_ventas = df_ventas.dropna(subset=['fecha_venta', 'sku'])
@@ -1937,6 +2021,7 @@ def procesar_stock_muerto(
     df_ventas_recientes = df_ventas[df_ventas['fecha_venta'] >= fecha_inicio_analisis_reciente]
     ventas_ultimos_x_meses_sku = df_ventas_recientes.groupby('sku')['cantidad_vendida'].sum().reset_index(name=col_ventas_recientes_nombre)
 
+    # --- PASO 2: Cálculo de Métricas y Clasificación ---
     # --- 3. Combinar datos y Calcular Métricas Derivadas ---
     df_resultado = pd.merge(df_inventario, ventas_totales_sku, on='sku', how='left')
     df_resultado = pd.merge(df_resultado, ultima_venta_sku, on='sku', how='left')
@@ -1949,7 +2034,7 @@ def procesar_stock_muerto(
     df_resultado['precio_compra_actual'] = pd.to_numeric(df_resultado['precio_compra_actual'], errors='coerce').fillna(0)
     
     # Calcular métricas
-    df_resultado['valor_stock_s'] = df_resultado['stock_actual_unds'] * df_resultado['precio_compra_actual']
+    df_resultado['valor_stock_s'] = (df_resultado['stock_actual_unds'] * df_resultado['precio_compra_actual']).round(2)
     df_resultado['dias_sin_venta'] = (hoy - df_resultado['ultima_venta']).dt.days
 
     # Calcular Días para Agotar Stock (DPS)
@@ -2006,7 +2091,88 @@ def procesar_stock_muerto(
 
     df_resultado['prioridad_accion_dps'] = df_resultado.apply(generar_accion, axis=1)
     
-    # --- 6. Formatear DataFrame de Salida ---
+    # --- PASO 3: Filtrado Principal (El Corazón del Reporte) ---
+    valor_total_inventario_antes_de_filtros = df_resultado['valor_stock_s'].sum()
+
+    print(f"Filtrando por productos con más de {dias_sin_venta_muerto} días sin venta.")
+    # df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
+    df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
+
+    # Aplicamos el filtro de valor si el usuario lo especificó
+    if umbral_valor_stock and umbral_valor_stock > 0:
+        print(f"Filtrando adicionalmente por valor de stock >= S/ {umbral_valor_stock}")
+        df_resultado = df_resultado[df_resultado['valor_stock_s'] >= umbral_valor_stock]
+
+    if incluir_solo_categorias and "categoria" in df_resultado.columns:
+        # Normalizamos la lista de categorías a minúsculas y sin espacios
+        categorias_normalizadas = [cat.strip().lower() for cat in incluir_solo_categorias]
+        
+        # Comparamos contra la columna del DataFrame también normalizada
+        # El .str.lower() y .str.strip() se aplican a cada valor de la columna antes de la comparación
+        df_resultado = df_resultado[
+            df_resultado["categoria"].str.strip().str.lower().isin(categorias_normalizadas)
+        ].copy()
+    print(f"DEBUG: 3. Después de filtrar por categorías, quedan {len(df_resultado)} filas.")
+
+    if incluir_solo_marcas and "marca" in df_resultado.columns:
+        # Normalizamos la lista de marcas
+        marcas_normalizadas = [marca.strip().lower() for marca in incluir_solo_marcas]
+        
+        # Comparamos contra la columna de marcas normalizada
+        df_resultado = df_resultado[
+            df_resultado["marca"].str.strip().str.lower().isin(marcas_normalizadas)
+        ].copy()
+    print(f"DEBUG: 4. Después de filtrar por marcas, quedan {len(df_resultado)} filas.")
+    
+
+    # --- PASO 4: CÁLCULO DE KPIs Y RESUMEN (Ahora se hace sobre los datos ya filtrados) ---
+    valor_total_muerto = df_muerto['valor_stock_s'].sum()
+    # Para el %, necesitamos el valor total del inventario ANTES de filtrar
+    valor_total_inventario = valor_total_inventario_antes_de_filtros
+    # valor_total_inventario = df_resultado['valor_stock_s'].sum()
+    skus_en_riesgo = int(df_muerto['sku'].nunique())
+    
+    porcentaje_afectado = (valor_total_muerto / valor_total_inventario * 100) if valor_total_inventario > 0 else 0
+    producto_mas_antiguo = int(df_muerto['dias_sin_venta'].max()) if not df_muerto.empty else 0
+
+    insight_text = f"¡Alerta! Se detectaron S/ {valor_total_muerto:,.2f} en capital inmovilizado ({porcentaje_afectado:.1f}% del total), afectando a {skus_en_riesgo} productos distintos."
+    if skus_en_riesgo == 0:
+        insight_text = "¡Felicidades! No se ha detectado stock muerto significativo con los criterios actuales."
+
+    kpis = {
+        "Valor Total en Stock Muerto": f"S/ {valor_total_muerto:,.2f}",
+        "% del Inventario Afectado": f"{porcentaje_afectado:.1f}%",
+        "SKUs en Riesgo": skus_en_riesgo,
+        "Producto Más Antiguo": f"{producto_mas_antiguo} días"
+    }
+
+
+    # --- PASO 5: ORDENAMIENTO DINÁMICO (Ahora se aplica sobre el resultado filtrado) ---
+    print(f"Ordenando resultados por: '{ordenar_por}'")
+    # Definimos la dirección del ordenamiento para cada criterio
+    ascending_map = {
+        'valor_stock_s': False,       # Mayor valor primero
+        'dias_sin_venta': False,      # Más antiguo primero
+        'stock_actual_unds': False,   # Mayor cantidad primero
+        'categoria': True             # Alfabético A-Z
+    }
+    
+    # Usamos el valor por defecto si el criterio no está en el mapa
+    is_ascending = ascending_map.get(ordenar_por, False)
+    
+    # Nos aseguramos de que la columna de ordenamiento exista antes de usarla
+    if ordenar_por in df_resultado.columns:
+        # Para categoría, usamos un ordenamiento secundario para consistencia
+        if ordenar_por == 'categoria':
+            df_resultado.sort_values(by=['categoria', 'valor_stock_s'], ascending=[True, False], inplace=True)
+        else:
+            df_resultado.sort_values(by=ordenar_por, ascending=is_ascending, inplace=True)
+    else:
+        # Si la columna no existe, usamos un ordenamiento por defecto seguro
+        df_resultado.sort_values(by='valor_stock_s', ascending=False, inplace=True)
+
+
+    # --- PASO 6: FORMATEO FINAL DE SALIDA ---
     col_dps_nombre_final = f'Días para Agotar Stock (Est.{meses_analisis_calc}m)'
     col_prioridad_nombre_final = f'Prioridad y Acción (DAS {meses_analisis_calc}m)'
     col_ventas_recientes_final = f'Ventas últimos {meses_analisis_calc}m (Unds)'
@@ -2025,17 +2191,17 @@ def procesar_stock_muerto(
     df_resultado[col_dps_nombre_final] = df_resultado[col_dps_nombre_final].apply(format_dps_display)
     
     columnas_finales = [
-        'sku', 'nombre_producto', 'categoria', 'subcategoria',
+        'sku', 'nombre_producto', 'categoria', 'subcategoria', 'marca',
         'precio_compra_actual', 'stock_actual_unds', 'valor_stock_s',
         'ventas_totales_unds', col_ventas_recientes_final,
         'ultima_venta', 'dias_sin_venta',
         col_dps_nombre_final,
         'clasificacion', col_prioridad_nombre_final
     ]
-    # Añadir columnas opcionales si existen en el dataframe de inventario
-    for col_opcional in ['Marca', 'Rol de categoría', 'Rol del producto']:
-        if col_opcional in df_resultado.columns and col_opcional not in columnas_finales:
-            columnas_finales.insert(4, col_opcional)
+    # # Añadir columnas opcionales si existen en el dataframe de inventario
+    # for col_opcional in ['Marca']:
+    #     if col_opcional in df_resultado.columns and col_opcional not in columnas_finales:
+    #         columnas_finales.insert(4, col_opcional)
 
     df_final = df_resultado[[col for col in columnas_finales if col in df_resultado.columns]].copy()
     
@@ -2044,6 +2210,7 @@ def procesar_stock_muerto(
         'sku': 'SKU / Código de producto',
         'nombre_producto': 'Nombre del producto',
         'categoria': 'Categoría',
+        'marca': 'Marca',
         'subcategoria': 'Subcategoría',
         'precio_compra_actual': 'Precio de compra actual (S/.)',
         'stock_actual_unds': 'Stock Actual (Unds)',
@@ -2056,23 +2223,25 @@ def procesar_stock_muerto(
 
     df_final['Última venta'] = pd.to_datetime(df_final['Última venta'], errors='coerce').dt.strftime('%Y-%m-%d').fillna('Nunca vendido')
     df_final['Días sin venta'] = df_final['Días sin venta'].astype('Int64')
-    df_final = df_final.sort_values(by='Valor stock (S/.)', ascending=False, na_position='last')
-
-    # --- NUEVO PASO FINAL: LIMPIEZA PARA COMPATIBILIDAD CON JSON ---
-    print("Limpiando DataFrame de stock muerto para JSON...")
-
-    # Si el dataframe está vacío, lo devolvemos tal cual.
-    if df_final.empty:
-        return df_final
-
-    # 1. Reemplazar valores infinitos (inf, -inf) con NaN, que es más fácil de manejar.
-    df_limpio = df_final.replace([np.inf, -np.inf], np.nan)
-
-    # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
-    # El método .where() es muy eficiente para esto.
-    resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
     
-    return resultado_final_json_safe
+    # --- PASO 7: LIMPIEZA PARA JSON (El último paso antes de devolver) ---
+    print("Limpiando DataFrame de stock muerto para JSON...")
+    if not df_final.empty:
+        df_final = df_final.replace([np.inf, -np.inf], np.nan).where(pd.notna(df_final), None)
+    
+    return {
+        "data": df_final,
+        "summary": {
+            "insight": insight_text,
+            "kpis": kpis
+        }
+    }
+
+    # # 2. Reemplazar todos los NaN restantes con None (que se convierte en 'null' en JSON).
+    # # El método .where() es muy eficiente para esto.
+    # resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
+    
+    # return resultado_final_json_safe
 
 
 # ----------------------------------------------------------
@@ -2311,10 +2480,23 @@ def auditar_margenes_de_productos(
     df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
     df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
     
-    for col in [cantidad_col_ventas, precio_venta_col_ventas]:
-        df_ventas_proc[col] = pd.to_numeric(df_ventas_proc[col], errors='coerce')
-    for col in [precio_compra_actual_col_stock, precio_venta_actual_col_stock]:
-        df_inventario_proc[col] = pd.to_numeric(df_inventario_proc[col], errors='coerce')
+    numeric_cols_inv = [
+        'Cantidad en stock actual', 
+        'Precio de compra actual (S/.)', 
+        'Precio de venta actual (S/.)'
+    ]
+    for col in numeric_cols_inv:
+        if col in df_inventario_proc.columns:
+            df_inventario_proc[col] = pd.to_numeric(df_inventario_proc[col], errors='coerce')
+
+    numeric_cols_ventas = [
+        'Cantidad vendida',
+        'Precio de venta unitario (S/.)'
+    ]
+    for col in numeric_cols_ventas:
+        if col in df_ventas_proc.columns:
+            df_ventas_proc[col] = pd.to_numeric(df_ventas_proc[col], errors='coerce')
+
 
     # --- 3. Cálculo del Precio de Venta Promedio ---
     df_ventas_proc['ingreso_total_linea'] = df_ventas_proc[cantidad_col_ventas] * df_ventas_proc[precio_venta_col_ventas]

@@ -664,22 +664,39 @@ async def get_workspaces(current_user: dict = Depends(get_current_user)):
     """
     try:
         user_email = current_user.get("email")
-        # Apuntamos a la sub-colección 'espacios_trabajo' del usuario logueado
-        workspaces_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo')
         
-        # Le pedimos a Firestore que ordene por el timestamp
+        workspaces_ref = db.collection('usuarios').document(user_email).collection('espacios_trabajo')
+        # Ordenamos por el campo que ahora sabemos que existe y se actualiza
         query = workspaces_ref.order_by("fechaUltimoAcceso", direction=firestore.Query.DESCENDING)
         
-        workspaces = []
-        for doc in workspaces_ref.stream():
+        workspaces_list = []
+        for doc in query.stream():
             workspace_data = doc.to_dict()
-            workspace_data['id'] = doc.id # Es crucial añadir el ID del documento
-            if 'fechaCreacion' in workspace_data and isinstance(workspace_data['fechaCreacion'], datetime):
-                # Convertimos la fecha a un string en formato ISO 8601, que Javascript entiende
-                workspace_data['fechaCreacion'] = workspace_data['fechaCreacion'].isoformat()
-            workspaces.append(workspace_data)
+            workspace_data['id'] = doc.id
             
-        return workspaces
+            # --- CONVERSIÓN DE FECHAS COMPLETA Y ROBUSTA ---
+            # Iteramos sobre una lista de campos de fecha conocidos para convertirlos
+            date_fields_to_convert = ['fechaCreacion', 'fechaUltimoAcceso', 'fechaModificacion']
+            
+            for field in date_fields_to_convert:
+                if field in workspace_data and hasattr(workspace_data[field], 'isoformat'):
+                    workspace_data[field] = workspace_data[field].isoformat()
+            
+            workspaces_list.append(workspace_data)
+
+        # --- Lógica para obtener los créditos (sin cambios) ---
+        creditos_restantes = current_user.get("creditos_restantes", 0)
+        creditos_iniciales = current_user.get("creditos_iniciales", 50)
+        creditos_usados = creditos_iniciales - creditos_restantes
+
+        return JSONResponse(content={
+            "workspaces": workspaces_list,
+            "credits": {
+                "used": creditos_usados,
+                "remaining": creditos_restantes
+            }
+        })
+
     except Exception as e:
         print(f"🔥 Error al obtener workspaces para el usuario {user_email}: {e}")
         raise HTTPException(status_code=500, detail="No se pudieron obtener los espacios de trabajo.")
@@ -1160,6 +1177,15 @@ async def upload_file(
             "tipo_archivo": tipo_archivo,
             "nombre_original": file.filename
         }
+        
+        # --- CAMBIO CLAVE: Añadimos el rango de fechas a la respuesta ---
+        if tipo_archivo == 'ventas':
+            if metadata.get("fecha_primera_venta") and metadata.get("fecha_ultima_venta"):
+                response_content["date_range_bounds"] = {
+                    "min_date": metadata["fecha_primera_venta"].isoformat(),
+                    "max_date": metadata["fecha_ultima_venta"].isoformat()
+                }
+
         # Si es un inventario (para cualquier tipo de usuario), devolvemos los filtros para uso inmediato
         if tipo_archivo == 'inventario':
             response_content["available_filters"] = {
@@ -1273,9 +1299,12 @@ async def upload_csvs_abc_analysis(
     inventario_file_id: str = Form(...),
     criterio_abc: str = Form(..., description="Criterio para el análisis ABC: 'ingresos', 'unidades', 'margen', 'combinado'.", examples=["ingresos"]),
     periodo_abc: int = Form(..., description="Período de análisis en meses (0 para todo el historial, ej: 3, 6, 12).", examples=[6]),
-    peso_ingresos: Optional[float] = Form(0.5), # Recibimos los pesos opcionales
-    peso_margen: Optional[float] = Form(0.3),
-    peso_unidades: Optional[float] = Form(0.2)
+
+    # --- NUEVO: Recibimos los scores de la estrategia ---
+    score_ventas: Optional[int] = Form(None),
+    score_ingreso: Optional[int] = Form(None),
+    score_margen: Optional[int] = Form(None)
+
 ):
     user_id = None
     
@@ -1297,19 +1326,24 @@ async def upload_csvs_abc_analysis(
         # CASO 3: No hay identificador, denegamos el acceso
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
-    pesos_combinado_dict = None
-    if criterio_abc.lower() == "combinado":
-        pesos_combinado_dict = {
-            "ingresos": peso_ingresos,
-            "margen": peso_margen,
-            "unidades": peso_unidades
-        }
+    # pesos_combinado_dict = None
+    # if criterio_abc.lower() == "combinado":
+    #     pesos_combinado_dict = {
+    #         "ingresos": peso_ingresos,
+    #         "margen": peso_margen,
+    #         "unidades": score_ventas
+    #     }
     
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
         "criterio_abc": criterio_abc.lower(),
         "periodo_abc": periodo_abc,
-        "pesos_combinado": pesos_combinado_dict
+        # "pesos_combinado": pesos_combinado_dict,
+        "criterio_abc": criterio_abc,
+        "periodo_abc": periodo_abc,
+        "score_ventas": score_ventas,
+        "score_ingreso": score_ingreso,
+        "score_margen": score_margen
     }
 
     full_params_for_logging = dict(await request.form())
@@ -1416,7 +1450,7 @@ async def run_analisis_estrategico_rotacion(
     )
 
 
-@app.post("/diagnostico-stock-muerto")
+@app.post("/diagnostico-stock-muerto", summary="Genera el reporte de Diagnóstico de Stock Muerto", tags=["Reportes"])
 async def diagnostico_stock_muerto(
     # Inyectamos el request para el logging
     request: Request, 
@@ -1427,8 +1461,13 @@ async def diagnostico_stock_muerto(
     # Definimos explícitamente los parámetros que la LÓGICA necesit
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
-    # meses_analisis: int = Form(...)
-    # meses: int = Query(6, description="Cantidad de meses hacia atrás para analizar")
+
+    # --- Recibimos los nuevos parámetros del formulario ---
+    dias_sin_venta_muerto: int = Form(180),
+    umbral_valor_stock: float = Form(0.0),
+    ordenar_por: str = Form(...),
+    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas.")
 ):
     # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
     # --- Determinación del Contexto ---
@@ -1453,21 +1492,35 @@ async def diagnostico_stock_muerto(
         # CASO 3: No hay identificador, denegamos el acceso
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
-    processing_params = {}
+    try:
+        # Parseamos los strings JSON para convertirlos en listas de Python
+        categorias_list = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        marcas_list = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
+
+    processing_params = {
+        "dias_sin_venta_muerto": dias_sin_venta_muerto,
+        "umbral_valor_stock": umbral_valor_stock,
+        "ordenar_por": ordenar_por,
+        "incluir_solo_categorias": categorias_list,
+        "incluir_solo_marcas": marcas_list
+    }
+
     full_params_for_logging = dict(await request.form())
 
     return await _handle_report_generation(
         full_params_for_logging=full_params_for_logging,
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id,
         report_key="ReporteDiagnosticoStockMuerto",
         processing_function=procesar_stock_muerto,
         processing_params=processing_params,
-        output_filename="ReporteDiagnosticoStockMuerto.xlsx",
+        output_filename="Diagnostico_Stock_Muerto.xlsx",
         # --- Pasamos el contexto correcto al manejador ---
         user_id=user_id,
         workspace_id=workspace_id,
         session_id=log_session_id,
-        ventas_file_id=ventas_file_id,
-        inventario_file_id=inventario_file_id
     )
 
 @app.post("/reporte-maestro-inventario")
@@ -1983,6 +2036,18 @@ async def _handle_report_generation(
         # Extraemos las partes del resultado
         resultado_df = processing_result.get("data")
         summary_data = processing_result.get("summary")
+
+         # --- INICIO DE LA NUEVA LÓGICA DE TRUNCADO ---
+        is_truncated = False
+        total_rows = 0
+
+        if user_id is None: # Si es un usuario anónimo
+            if not resultado_df.empty:
+                total_rows = len(resultado_df)
+                if total_rows > 15:
+                    print(f"Truncando resultado para sesión anónima. Mostrando 15 de {total_rows} filas.")
+                    resultado_df = resultado_df.head(15)
+                    is_truncated = True
         
         columnas = resultado_df.columns
         columnas_duplicadas = columnas[columnas.duplicated()].unique().tolist()
@@ -1990,6 +2055,30 @@ async def _handle_report_generation(
         if resultado_df is None or summary_data is None:
             raise ValueError("La función de procesamiento no devolvió la estructura de datos esperada.")
 
+        updated_credits = None
+
+        # Verificamos si el DataFrame resultante está vacío
+        if resultado_df.empty:
+            print(f"⚠️ Reporte '{report_key}' generado pero sin resultados. No se cobrarán créditos.")
+            
+            # Registramos el evento con costo 0 y un estado claro.
+            log_report_generation(
+                user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+                report_name=report_key, params=full_params_for_logging,
+                ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+                creditos_consumidos=0, estado="exitoso_vacio"
+            )
+
+            # Devolvemos una respuesta JSON exitosa (200 OK) pero con datos vacíos
+            # y un insight que explica la situación.
+            return JSONResponse(content={
+                "insight": "No se encontraron productos que coincidan con los parámetros seleccionados.",
+                "kpis": {}, # Devolvemos un objeto de KPIs vacío
+                "data": [],  # Devolvemos una lista de datos vacía
+                "report_key": report_key,
+                "is_truncated": is_truncated, # <-- Nuevo flag
+                "total_rows": total_rows  
+            })
 
         # if columnas_duplicadas:
         #     print("\n--- 🕵️  DEBUG: ¡ADVERTENCIA DE COLUMNAS DUPLICADAS! ---")
@@ -2026,23 +2115,35 @@ async def _handle_report_generation(
         # Convertimos el DataFrame a un formato JSON (lista de diccionarios)
         # data_for_frontend = resultado_df.to_dict(orient='records')
         
-        # --- Transacción Final ---
-        if not data_for_frontend:
-            log_report_generation(
-                user_id=user_id, workspace_id=workspace_id, session_id=session_id,
-                report_name=report_key, params=full_params_for_logging,
-                ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
-                creditos_consumidos=0, estado="exitoso_vacio"
-            )
-        else:
-            # Usamos la `entity_ref` correcta para descontar créditos
-            entity_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
-            log_report_generation(
-                user_id=user_id, workspace_id=workspace_id, session_id=session_id,
-                report_name=report_key, params=full_params_for_logging,
-                ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
-                creditos_consumidos=report_cost, estado="exitoso"
-            )
+        # # --- Transacción Final ---
+        # if not data_for_frontend:
+        #     log_report_generation(
+        #         user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+        #         report_name=report_key, params=full_params_for_logging,
+        #         ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+        #         creditos_consumidos=0, estado="exitoso_vacio"
+        #     )
+        
+        # Usamos la `entity_ref` correcta para descontar créditos
+        entity_ref.update({"creditos_restantes": firestore.Increment(-report_cost)})
+            
+        # --- CAMBIO CLAVE: Leemos el nuevo saldo DESPUÉS de la actualización ---
+        updated_doc = entity_ref.get()
+        updated_data = updated_doc.to_dict()
+        new_remaining = updated_data.get("creditos_restantes", 0)
+        initial_credits = updated_data.get("creditos_iniciales", 0)
+        
+        updated_credits = {
+            "used": initial_credits - new_remaining,
+            "remaining": new_remaining
+        }
+
+        log_report_generation(
+            user_id=user_id, workspace_id=workspace_id, session_id=session_id,
+            report_name=report_key, params=full_params_for_logging,
+            ventas_file_id=ventas_file_id, inventario_file_id=inventario_file_id,
+            creditos_consumidos=report_cost, estado="exitoso"
+        )
 
         if user_id and workspace_id:
             workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
@@ -2052,7 +2153,10 @@ async def _handle_report_generation(
             "insight": summary_data.get("insight"),
             "kpis": summary_data.get("kpis"),
             "data": data_for_frontend,
-            "report_key": report_key
+            "report_key": report_key,
+            "updated_credits": updated_credits,
+            "is_truncated": is_truncated, # <-- Nuevo flag
+            "total_rows": total_rows  
         })
 
     except Exception as e:

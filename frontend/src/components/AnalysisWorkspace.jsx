@@ -8,6 +8,7 @@ import { useWorkspace } from '../context/WorkspaceProvider';
 import { useConfig } from '../context/ConfigProvider';
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
+import { DateRangeFilter } from './DateRangeFilter'; // <-- Importamos el nuevo componente
 
 // Importa todos los componentes visuales y de iconos que este workspace necesita
 import { ReportModal } from './ReportModal'; 
@@ -25,11 +26,14 @@ import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el mod
 import { Tooltip } from './Tooltip';
 import { FerreterosLogo } from './FerreterosLogo'
 import { UpgradeModal } from './UpgradeModal'; // <-- Importamos el nuevo modal
+import { DateRangePickerModal } from './DateRangePickerModal'; // <-- Importamos el nuevo modal
+import { RechargeCreditsModal } from './RechargeCreditsModal';
+import { BecomeStrategistModal } from './BecomeStrategistModal';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
 import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
-// import { RegisterToUnlockModal } from './RegisterToUnlockModal';
+import { RegisterToUnlockModal } from './RegisterToUnlockModal';
 
 // Las plantillas ahora viven aquí, junto a la lógica que las usa
 const templateVentas = {
@@ -162,6 +166,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   // 3. ESTADOS DE LA UI
   const [activeModal, setActiveModal] = useState(null);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [dateRangeBounds, setDateRangeBounds] = useState(null); // Nuevo estado para los límites de fecha
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false); // Nuevo estado para controlar el modal
 
 
   // --- ESTADOS Y CONTEXTO ---
@@ -179,6 +185,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
+  const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
 
   // --- ESTADOS SIMPLIFICADOS ---
   // El estado del modal de reporte ahora es mucho más simple
@@ -209,7 +216,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           loadStrategy(context)
         ]);
 
-        const { credits, history, files, available_filters } = stateResponse.data || {};
+        const { credits, history, files, available_filters, date_range_bounds } = stateResponse.data || {};
         setCredits(credits || { used: 0, remaining: 20 });
         setCreditHistory(history || []);
         setUploadedFileIds(files || { ventas: null, inventario: null });
@@ -219,7 +226,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         
         const loadedFiles = files || { ventas: null, inventario: null };
         setUploadedFileIds(loadedFiles);
-
+        setDateRangeBounds(date_range_bounds || null );
         setUploadStatus({
           ventas: loadedFiles.ventas ? 'success' : 'idle',
           inventario: loadedFiles.inventario ? 'success' : 'idle'
@@ -282,6 +289,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const resetWorkspaceState = () => {
     setUploadedFileIds({ ventas: null, inventario: null });
     setUploadStatus({ ventas: 'idle', inventario: 'idle' });
+    setDateRangeBounds(null);
     setAnalysisResult(null);
   };
 
@@ -320,6 +328,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           categorias: response.data.available_filters.categorias || [],
           marcas: response.data.available_filters.marcas || []
         });
+      }
+
+      if (fileType === 'ventas' && response.data.date_range_bounds) {
+        setDateRangeBounds(response.data.date_range_bounds);
       }
 
     } catch (error) {
@@ -391,6 +403,20 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   //   return <LoadingScreen message="Cargando..." />;
   // }
 
+  const handleApplyDateFilter = (selectedRange) => {
+    console.log("Intento de aplicar filtro Pro con el rango:", selectedRange);
+    // Aquí va la lógica para mostrar el modal de conversión
+    if (context.type === 'user') {
+      setActiveModal('becomeStrategist');
+    } else {
+      setModalInfo({
+        title: "Desbloquea el Análisis por Rango de Fechas",
+        message: "Esta comparativa de mercado es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
+      });
+      setActiveModal('registerToUnlock');
+    }
+  };
+
   return (
     <div className="min-h-screen w-full max-w-5xl mx-auto md:p-8 text-white animate-fade-in">
         <div className="flex gap-4 justify-center mt-4">
@@ -445,41 +471,65 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         <div className="flex flex-row w-full justify-center items-center">
           <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-600 text-white hover:bg-gray-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
         </div>
+
+        {/* --- RENDERIZADO CONDICIONAL DEL FILTRO DE FECHAS --- */}
+        {/* Solo se muestra si se ha subido un archivo de ventas */}
+        {/*{dateRangeBounds && (
+          <DateRangeFilter 
+            minDate={new Date(dateRangeBounds.min_date)}
+            maxDate={new Date(dateRangeBounds.max_date)}
+            onApply={handleApplyDateFilter}
+          />
+        )}*/}
+
         {/* El resto de tu JSX para la lista de reportes */}
         {isConfigLoading ? (
           <p>Cargando reportes...</p>
         ) : filesReady ? (
-          <div className="w-full space-y-8 px-4 mb-10">
-            {Object.entries(reportData).map(([categoria, reportes]) => (
-              <div key={categoria} className="mb-6">
-                <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
-                  {categoria}
-                </h3>
-                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {reportes.map((reportItem) => (
-                    <button
-                      key={reportItem.label}
-                      onClick={() => handleReportView(reportItem)}
-                      className={`relative w-full text-left p-4 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group
-                        ${reportItem.isPro 
-                          ? 'bg-gray-700 text-gray-400 hover:bg-gray-600 border border-purple-800' // Estilo Pro
-                          : 'bg-white bg-opacity-90 text-black hover:bg-purple-100' // Estilo Básico
-                        }`
-                      }
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-sm">{reportItem.label}</span>
-                        {reportItem.isPro && <FiLock className="text-yellow-500" />}
-                      </div>
-                      {reportItem.isPro && (
-                        <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>
-                      )}
-                    </button>
-                  ))}
-                </div>
+          <>
+            {/* --- RENDERIZADO CONDICIONAL DEL BOTÓN DE FILTRO DE FECHAS --- */}
+            {dateRangeBounds && (
+              <div className="my-6 text-center">
+                <button 
+                  onClick={() => setIsDateModalOpen(true)}
+                  className="text-purple-400 font-semibold hover:text-white border-2 border-dashed border-gray-600 rounded-lg px-4 py-2"
+                >
+                  📅 Analizar un Rango de Fechas Específico ⭐
+                </button>
               </div>
-            ))}
-          </div>
+            )}
+            <div className="w-full space-y-8 px-4 mb-10">
+              {Object.entries(reportData).map(([categoria, reportes]) => (
+                <div key={categoria} className="mb-6">
+                  <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
+                    {categoria}
+                  </h3>
+                  <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                    {reportes.map((reportItem) => (
+                      <button
+                        key={reportItem.label}
+                        onClick={() => handleReportView(reportItem)}
+                        className={`relative w-full text-left p-4 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group
+                          ${reportItem.isPro 
+                            ? 'bg-gray-700 text-gray-400 hover:bg-gray-600 border border-purple-800' // Estilo Pro
+                            : 'bg-white bg-opacity-90 text-black hover:bg-purple-100' // Estilo Básico
+                          }`
+                        }
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="font-semibold text-sm">{reportItem.label}</span>
+                          {reportItem.isPro && <FiLock className="text-yellow-500" />}
+                        </div>
+                        {reportItem.isPro && (
+                          <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </>
         ) : (
           <p className="mt-10 text-center text-white p-4 bg-gray-800 rounded-md shadow">
             📂 Carga tus archivos y activa la inteligencia comercial de tu ferretería.
@@ -577,6 +627,30 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           reportItem={proReportClicked}
           onClose={() => setActiveModal(null)}
           onAction={handleUpgradeAction}
+        />
+      )}
+
+      {/* --- RENDERIZADO DEL NUEVO MODAL --- */}
+      {isDateModalOpen && dateRangeBounds && (
+        <DateRangePickerModal
+          minDate={new Date(dateRangeBounds.min_date)}
+          maxDate={new Date(dateRangeBounds.max_date)}
+          onClose={() => setIsDateModalOpen(false)}
+          onApply={handleApplyDateFilter}
+        />
+      )}
+
+      {activeModal === 'becomeStrategist' && <BecomeStrategistModal onClose={() => setActiveModal(null)} />}
+      {/* --- RENDERIZADO CENTRALIZADO DE TODOS LOS MODALES --- */}
+      {activeModal === 'registerToUnlock' && (
+        <RegisterToUnlockModal 
+          {...modalInfo}
+          onRegister={() => {
+              setActiveModal(null);
+              setActiveModal('register');
+              // onSwitchToRegister(); // Llama a la función del padre para mostrar el modal de registro real
+          }}
+          onClose={() => setActiveModal(null)}
         />
       )}
     </div>

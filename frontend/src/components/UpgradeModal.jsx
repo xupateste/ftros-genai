@@ -29,7 +29,7 @@ export function UpgradeModal({ context, reportItem, onAction, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4 animate-fade-in-fast">
-      <div className="bg-white rounded-lg p-8 m-4 max-w-md w-full shadow-2xl text-center relative">
+      <div className="bg-white rounded-lg p-8 m-2 max-w-md w-full shadow-2xl text-center relative">
         <button onClick={onClose} className="absolute top-3 right-3 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
         
         {currentContent.icon}
@@ -40,7 +40,7 @@ export function UpgradeModal({ context, reportItem, onAction, onClose }) {
           <p className="text-xs text-gray-500">Intentaste acceder a:</p>
           <button
             onClick={() => {}} 
-            className="relative w-full text-left p-4 text-xs rounded-lg shadow-md transition-all duration-200 ease-in-out transform scale-80 hover:scale-87 group bg-gray-700 text-gray-400 hover:bg-gray-600 border border-purple-800 disabled:cursor-not-allowed"
+            className="relative w-full text-left p-4 text-xs rounded-lg shadow-md transform scale-90 group bg-gray-700 text-gray-400 border border-purple-800 hover:cursor-not-allowed"
           >
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm">{reportItem.label}</span>
@@ -50,7 +50,7 @@ export function UpgradeModal({ context, reportItem, onAction, onClose }) {
           </button>
 
         
-        <p className="text-gray-600 mb-6">{currentContent.message}</p>
+        <p className="text-gray-600 mb-6 mt-2">{currentContent.message}</p>
         
         <div className="flex flex-col gap-3">
           <button 

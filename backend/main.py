@@ -1,7 +1,7 @@
 import os
 import uvicorn
 import json
-
+import asyncio
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -450,58 +450,95 @@ async def get_session_state(
     X_Session_ID: str = Header(..., alias="X-Session-ID")
 ):
     """
-    Busca en Firestore el estado actual de una sesión, incluyendo el saldo de
-    créditos y el historial de reportes generados, para restaurar el estado en el frontend.
+    Obtiene el estado completo de una sesión anónima, incluyendo créditos,
+    historial y metadatos de archivos, con un manejo de fechas robusto.
     """
     if not X_Session_ID:
         raise HTTPException(status_code=400, detail="La cabecera X-Session-ID es requerida.")
 
     try:
-        # --- 1. Obtener el estado del "monedero" ---
         session_ref = db.collection('sesiones_anonimas').document(X_Session_ID)
         session_doc = session_ref.get()
 
         if not session_doc.exists:
-            # Es importante manejar el caso en que el frontend envíe un ID de sesión antiguo o inválido
             raise HTTPException(status_code=404, detail="La sesión no existe o ha expirado.")
 
         session_data = session_doc.to_dict()
+        
+        # --- 1. Obtener créditos ---
         creditos_restantes = session_data.get("creditos_restantes", 0)
         creditos_usados = session_data.get("creditos_iniciales", 20) - creditos_restantes
+        credits_data = {"used": creditos_usados, "remaining": creditos_restantes}
 
         # --- 2. Obtener el historial de reportes ---
         historial_ref = session_ref.collection('reportes_generados')
-        # Pedimos los reportes ordenados por fecha, del más reciente al más antiguo
-        query = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(5)
-        
-        docs_historial = query.stream()
+        query = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(10)
         
         historial_list = []
-        for doc in docs_historial:
+        for doc in query.stream():
             doc_data = doc.to_dict()
-
-            if 'fechaGeneracion' in doc_data and isinstance(doc_data['fechaGeneracion'], datetime):
-                # Convertimos la fecha a un string en formato ISO 8601, que es compatible con JSON
+            # Usamos hasattr para una conversión de fecha segura
+            if 'fechaGeneracion' in doc_data and hasattr(doc_data['fechaGeneracion'], 'isoformat'):
                 doc_data['fechaGeneracion'] = doc_data['fechaGeneracion'].isoformat()
-        
             historial_list.append(doc_data)
 
-        # --- 3. Construir y devolver la respuesta ---
-        return JSONResponse(content={
-            "credits": {
-                "used": creditos_usados,
-                "remaining": creditos_restantes
-            },
-            "history": historial_list
-        })
+        # --- 3. Obtener metadatos de archivos (Lógica Optimizada) ---
+        files_ref = session_ref.collection('archivos_cargados')
+        
+        files_map = {"ventas": None, "inventario": None}
+        date_range_bounds = None
+        available_filters = {"categorias": [], "marcas": []}
+
+        # Usamos la sintaxis posicional estable para las consultas
+        query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+        last_venta_doc = next(query_ventas, None)
+        if last_venta_doc:
+            files_map["ventas"] = last_venta_doc.id
+            metadata = last_venta_doc.to_dict().get("metadata", {})
+        
+        query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+        last_inventario_doc = next(query_inventario, None)
+        if last_inventario_doc:
+            files_map["inventario"] = last_inventario_doc.id
+            metadata = last_inventario_doc.to_dict().get("metadata", {})
+            available_filters = {"categorias": metadata.get("lista_completa_categorias", []), "marcas": metadata.get("lista_completa_marcas", [])}
+
+        # --- 4. Construir y devolver la respuesta completa ---
+
+        date_range_bounds = session_data.get("fechas_disponibles") # Asumiendo que se guarda aquí
+
+        # --- INICIO DEL BLOQUE DE AUDITORÍA DE SERIALIZACIÓN ---
+        # print("\n--- DEBUG: Auditoría de Serialización JSON ---")
+        final_content = {
+            "credits": credits_data,
+            "history": historial_list,
+            "files": files_map,
+            "available_filters": available_filters,
+            "date_range_bounds": date_range_bounds
+        }
+        
+        # for key, value in final_content.items():
+        #     try:
+        #         json.dumps(value, default=str) # Usamos `default=str` como un fallback seguro
+        #         print(f"✅ La sección '{key}' se puede serializar correctamente.")
+        #         print(f"{value}")
+        #     except TypeError as e:
+        #         print(f"🔥🔥🔥 ¡ERROR ENCONTRADO! La sección '{key}' no se puede serializar. Causa: {e}")
+        #         print(f"Datos problemáticos en '{key}': {value}")
+        # print("--------------------------------------------\n")
+        # --- FIN DEL BLOQUE DE AUDITORÍA ---
+
+
+
+        return JSONResponse(content=final_content)
 
     except HTTPException as http_exc:
-        # Relanzamos los errores HTTP que nosotros mismos generamos (ej: 404)
         raise http_exc
     except Exception as e:
-        # Capturamos cualquier otro error inesperado con Firebase
         print(f"🔥 Error al recuperar estado de sesión para {X_Session_ID}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado de la sesión desde el servidor.")
+
 
 
 # ===================================================================================
@@ -513,14 +550,13 @@ async def get_workspace_state(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Busca en Firestore el estado completo de un espacio de trabajo.
-    Ahora, prioriza la lectura de los filtros cacheados directamente desde el
-    documento del workspace para una carga más rápida.
+    Obtiene el estado completo de un workspace, con un bloque de depuración
+    para auditar la serialización de cada componente de la respuesta.
     """
     try:
         user_email = current_user.get("email")
         
-        # --- 1. Obtener datos del usuario y del workspace ---
+        # --- Lógica de obtención de datos (sin cambios) ---
         user_ref = db.collection('usuarios').document(user_email)
         workspace_ref = user_ref.collection('espacios_trabajo').document(workspace_id)
         
@@ -533,64 +569,58 @@ async def get_workspace_state(
         user_data = user_doc.to_dict()
         workspace_data = workspace_doc.to_dict()
 
-        # --- 2. LÓGICA DE CACHÉ PARA LOS FILTROS ---
-        available_filters = None
-        
-        # Primero, intentamos leer los filtros directamente desde el caché en el documento del workspace
-        if "filtros_disponibles" in workspace_data:
-            print(f"✅ Filtros encontrados en el caché de Firestore para el workspace '{workspace_id}'.")
-            available_filters = workspace_data["filtros_disponibles"]
-        
-        # --- 3. Obtener los últimos archivos cargados (la lógica no cambia) ---
-        files_ref = workspace_ref.collection('archivos_cargados')
-        query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1)
-        query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1)
-        
-        last_venta_id = next(query_ventas.stream(), None)
-        last_inventario_id = next(query_inventario.stream(), None)
-
-        files_map = {
-            "ventas": last_venta_id.id if last_venta_id else None,
-            "inventario": last_inventario_id.id if last_inventario_id else None
-        }
-
-        # --- 4. Fallback (Plan B): Si no hay caché, lo generamos al vuelo ---
-        # Esto da robustez al sistema si se trabaja con un workspace antiguo que no tenía el caché.
-        if available_filters is None and files_map["inventario"]:
-            print(f"⚠️ Filtros no encontrados en caché. Generando al vuelo para el workspace '{workspace_id}'.")
-            inventario_contents = descargar_contenido_de_storage(user_email, workspace_id, None, files_map["inventario"])
-            df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
-            metadata = extraer_metadatos_df(df_inventario, 'inventario')
-            available_filters = {
-                "categorias": metadata.get("lista_completa_categorias", []),
-                "marcas": metadata.get("lista_completa_marcas", [])
-            }
-
-        # --- 5. Obtener el resto de la información (créditos e historial) ---
         creditos_restantes = user_data.get("creditos_restantes", 0)
-        creditos_iniciales = user_data.get("creditos_iniciales", 0)
-        creditos_usados = creditos_iniciales - creditos_restantes
-        
+        creditos_usados = user_data.get("creditos_iniciales", 0) - creditos_restantes
+        credits_data = {"used": creditos_usados, "remaining": creditos_restantes}
+
         historial_ref = workspace_ref.collection('reportes_generados')
         query_historial = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(10)
-        
         historial_list = []
         for doc in query_historial.stream():
             doc_data = doc.to_dict()
-            if 'fechaGeneracion' in doc_data and isinstance(doc_data['fechaGeneracion'], datetime):
-                doc_data['fechaGeneracion'] = doc_data['fechaGeneracion'].isoformat()
+            for field in ['fechaGeneracion', 'fechaUltimoAcceso', 'fechaCreacion']:
+                if field in doc_data and hasattr(doc_data[field], 'isoformat'):
+                    doc_data[field] = doc_data[field].isoformat()
             historial_list.append(doc_data)
 
-        # --- 6. Construir y devolver la respuesta completa ---
-        return JSONResponse(content={
-            "credits": {"used": creditos_usados, "remaining": creditos_restantes},
+        files_ref = workspace_ref.collection('archivos_cargados')
+        # --- CORRECCIÓN PROACTIVA: Volvemos a la sintaxis que sabemos que es estable ---
+        query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1).stream()
+        query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1).stream()
+        
+        last_venta_doc = next(query_ventas, None)
+        last_inventario_doc = next(query_inventario, None)
+        files_map = {"ventas": last_venta_doc.id if last_venta_doc else None, "inventario": last_inventario_doc.id if last_inventario_doc else None}
+        
+        available_filters = workspace_data.get("filtros_disponibles", {"categorias": [], "marcas": []})
+        date_range_bounds = workspace_data.get("fechas_disponibles") # Asumiendo que se guarda aquí
+
+        # --- INICIO DEL BLOQUE DE AUDITORÍA DE SERIALIZACIÓN ---
+        # print("\n--- DEBUG: Auditoría de Serialización JSON ---")
+        final_content = {
+            "credits": credits_data,
             "history": historial_list,
             "files": files_map,
-            "available_filters": available_filters or {"categorias": [], "marcas": []} # Aseguramos que siempre sea un objeto
-        })
+            "available_filters": available_filters,
+            "date_range_bounds": date_range_bounds
+        }
+        
+        # for key, value in final_content.items():
+        #     try:
+        #         json.dumps(value, default=str) # Usamos `default=str` como un fallback seguro
+        #         print(f"✅ La sección '{key}' se puede serializar correctamente.")
+        #         print(f"{value}")
+        #     except TypeError as e:
+        #         print(f"🔥🔥🔥 ¡ERROR ENCONTRADO! La sección '{key}' no se puede serializar. Causa: {e}")
+        #         print(f"Datos problemáticos en '{key}': {value}")
+        # print("--------------------------------------------\n")
+        # --- FIN DEL BLOQUE DE AUDITORÍA ---
+
+        return JSONResponse(content=final_content)
 
     except Exception as e:
         print(f"🔥 Error al recuperar estado del workspace {workspace_id}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado del espacio de trabajo.")
 
 
@@ -1069,8 +1099,8 @@ async def upload_file(
 
     # --- Lógica de Determinación de Contexto (sin cambios) ---
     if current_user:
-        if not workspace_id:
-            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        # if not workspace_id:
+        #     raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
         user_id = current_user['email']
         print(f"Contexto de carga: Usuario Registrado ({user_id}), Workspace ({workspace_id})")
     elif X_Session_ID:
@@ -1150,7 +1180,7 @@ async def upload_file(
             timestamp_obj=now
         )
 
-        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ ---
+        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ PARA INVENTARIO---
         # Si la carga es de un usuario registrado y el archivo es un inventario...
         if user_id and workspace_id and tipo_archivo == 'inventario':
             print(f"Detectado archivo de inventario para usuario registrado. Cacheando filtros...")
@@ -1170,6 +1200,46 @@ async def upload_file(
             print(f"✅ Filtros cacheados exitosamente en el workspace '{workspace_id}'.")
         # --- FIN DE LA NUEVA LÓGICA DE CACHÉ ---
 
+        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ PARA VENTAS---
+        # Si la carga es de un usuario registrado y el archivo es un inventario...
+        if user_id and workspace_id and tipo_archivo == 'ventas':
+            print(f"Detectado archivo de ventas para usuario registrado. Cacheando fechas...")
+            
+            # Obtenemos las listas de filtros desde los metadatos que ya extrajimos
+            fechas_a_guardar = {
+                "min_date": metadata["fecha_primera_venta"].isoformat(),
+                "max_date": metadata["fecha_ultima_venta"].isoformat()
+            }
+
+            # Obtenemos la referencia al documento del ESPACIO DE TRABAJO
+            workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+            
+            # Actualizamos el documento del workspace con los filtros disponibles
+            workspace_ref.update({"fechas_disponibles": fechas_a_guardar})
+            
+            print(f"✅ Fechas cacheados exitosamente en el workspace '{workspace_id}'.")
+        # --- FIN DE LA NUEVA LÓGICA DE CACHÉ ---
+
+        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ PARA VENTAS - ANONIMAS ---
+        # Si la carga es de un usuario registrado y el archivo es un inventario...
+        if session_id_to_use and tipo_archivo == 'ventas':
+            print(f"Detectado archivo de ventas para usuario anonimo. Cacheando fechas...")
+            
+            # Obtenemos las listas de filtros desde los metadatos que ya extrajimos
+            fechas_a_guardar = {
+                "min_date": metadata["fecha_primera_venta"].isoformat(),
+                "max_date": metadata["fecha_ultima_venta"].isoformat()
+            }
+
+            # Obtenemos la referencia al documento del ESPACIO DE TRABAJO
+            workspace_anonimo_ref = db.collection('sesiones_anonimas').document(session_id_to_use)
+            
+            # Actualizamos el documento del workspace con los filtros disponibles
+            workspace_anonimo_ref.update({"fechas_disponibles": fechas_a_guardar})
+            
+            print(f"✅ Fechas cacheados exitosamente para anonimo en '{session_id_to_use}'.")
+        # --- FIN DE LA NUEVA LÓGICA DE CACHÉ ---
+
         # La construcción de la respuesta no cambia
         response_content = {
             "message": f"Archivo de {tipo_archivo} subido exitosamente.",
@@ -1177,6 +1247,15 @@ async def upload_file(
             "tipo_archivo": tipo_archivo,
             "nombre_original": file.filename
         }
+        
+        # Devolvemos los metadatos extraídos para que la UI se actualice al instante
+        if tipo_archivo == 'ventas' and metadata.get("fecha_primera_venta"):
+            response_content["date_range_bounds"] = {
+                "min_date": metadata["fecha_primera_venta"].isoformat(),
+                "max_date": metadata["fecha_ultima_venta"].isoformat()
+            }
+        
+
         # Si es un inventario (para cualquier tipo de usuario), devolvemos los filtros para uso inmediato
         if tipo_archivo == 'inventario':
             response_content["available_filters"] = {
@@ -1982,7 +2061,7 @@ async def _handle_report_generation(
     report_cost = report_config['costo']
     is_pro_report = report_config['isPro']
 
-# Esta es la lógica clave. `entity_ref` apuntará al documento que contiene los créditos.
+    # Esta es la lógica clave. `entity_ref` apuntará al documento que contiene los créditos.
     if user_id:
         # CONTEXTO: Usuario Registrado
         print(f"Procesando para usuario registrado: {user_id}")
@@ -2014,15 +2093,34 @@ async def _handle_report_generation(
     # --- PASO 3: PROCESAMIENTO Y GENERACIÓN (DENTRO DE UN TRY/EXCEPT) ---
     # Si algo falla aquí, es un error de ejecución. Lo registraremos como "fallido" sin cobrar.
     try:
-         # La llamada a las funciones auxiliares ahora incluye el contexto completo
-        ventas_contents = descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id)
-        inventario_contents = descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id)
+        # --- INICIO DE LA NUEVA LÓGICA DE CARGA CENTRALIZADA ---
+        print("Iniciando carga de datos centralizada...")
         
+        # 1. Descargamos ambos archivos en paralelo para máxima eficiencia
+        ventas_contents_task = descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id)
+        inventario_contents_task = descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id)
+        
+        # Esperamos a que ambas descargas terminen
+        ventas_contents, inventario_contents = await asyncio.gather(
+            ventas_contents_task,
+            inventario_contents_task
+        )
+
+        # 2. Creamos los DataFrames una sola vez
+        # Aquí puedes poner tu lógica robusta para leer CSVs con diferentes formatos
         df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
         df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
         
-        # La función ahora devuelve un diccionario
-        processing_result = processing_function(df_ventas, df_inventario, **processing_params)
+        print("✅ Datos cargados y convertidos a DataFrames exitosamente.")
+        # --- FIN DE LA NUEVA LÓGICA DE CARGA ---
+
+
+        # Ahora, pasamos los DataFrames ya cargados a la función de lógica
+        processing_result = processing_function(
+            df_ventas=df_ventas.copy(), 
+            df_inventario=df_inventario.copy(), 
+            **processing_params
+        )
         
         # Extraemos las partes del resultado
         resultado_df = processing_result.get("data")
