@@ -186,6 +186,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
   const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
+  const [fileMetadata, setFileMetadata] = useState({ ventas: null, inventario: null });
 
   // --- ESTADOS SIMPLIFICADOS ---
   // El estado del modal de reporte ahora es mucho más simple
@@ -216,10 +217,11 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           loadStrategy(context)
         ]);
 
-        const { credits, history, files, available_filters, date_range_bounds } = stateResponse.data || {};
+        const { credits, history, files, available_filters, date_range_bounds, files_metadata } = stateResponse.data || {};
         setCredits(credits || { used: 0, remaining: 20 });
         setCreditHistory(history || []);
         setUploadedFileIds(files || { ventas: null, inventario: null });
+        setFileMetadata(files_metadata || { ventas: null, inventario: null }); // <-- Carga la metadata persistente
         setAvailableFilters( available_filters
                 ? { categorias: available_filters.categorias, marcas: available_filters.marcas }
                 : { categorias: [], marcas: []});          
@@ -320,7 +322,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       const response = await api.post('/upload-file', formData, { headers });
       setUploadedFileIds(prev => ({ ...prev, [fileType]: response.data.file_id }));
       setUploadStatus(prev => ({ ...prev, [fileType]: 'success' }));
-      
+      setFileMetadata(prev => ({ ...prev, [fileType]: response.data.metadata || {} }));
       // --- LÓGICA CLAVE PARA POBLAR LOS FILTROS ---
       if (fileType === 'inventario' && response.data.available_filters) {
         console.log("Filtros de Categorías y Marcas recibidos:", response.data.available_filters);
@@ -338,6 +340,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       console.error(`Error al subir ${fileType}:`, error);
       alert(error.response?.data?.detail || `Error al subir el archivo.`);
       setUploadStatus(prev => ({ ...prev, [fileType]: 'error' }));
+      setFileMetadata(prev => ({ ...prev, [fileType]: null })); // Limpiamos metadata en caso de error
     }
   };
 
@@ -459,6 +462,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             template={templateVentas}
             onFileProcessed={handleFileProcessed}
             uploadStatus={uploadStatus.ventas}
+            metadata={fileMetadata.ventas}
           />
           <CsvImporterComponent 
             fileType="inventario"
@@ -466,6 +470,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             template={templateStock}
             onFileProcessed={handleFileProcessed}
             uploadStatus={uploadStatus.inventario}
+            metadata={fileMetadata.inventario}
           />
         </div>
         <div className="flex flex-row w-full justify-center items-center">
@@ -619,6 +624,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             onSuccess={handleCreationSuccessAndSwitch} // Le pasamos la función de éxito específica
         />
       )}
+
 
       {/* Renderizado del nuevo UpgradeModal */}
       {activeModal === 'upgrade' && proReportClicked && (

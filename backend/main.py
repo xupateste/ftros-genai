@@ -200,6 +200,39 @@ async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme
         # El token es inválido o ha expirado
         return None
 
+def get_metadata_from_context(base_ref):
+    """
+    Lee los metadatos cacheados directamente desde los documentos de Firestore
+    para una carga de estado ultra-rápida.
+    """
+    state = {
+        "files": {"ventas": None, "inventario": None},
+        "files_metadata": {"ventas": None, "inventario": None}
+    }
+    files_ref = base_ref.collection('archivos_cargados')
+
+    # Buscamos el último archivo de ventas y leemos su metadata
+    query_ventas = files_ref.where("tipoArchivo", "==", "ventas").order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+    last_venta_doc = next(query_ventas, None)
+    if last_venta_doc:
+        state["files"]["ventas"] = last_venta_doc.id
+        ventas_metadata = last_venta_doc.to_dict().get("metadata", {})
+        # --- CAMBIO CLAVE: Convertimos las fechas en los metadatos ANTES de guardarlos ---
+        if 'fecha_primera_venta' in ventas_metadata and hasattr(ventas_metadata['fecha_primera_venta'], 'isoformat'):
+            ventas_metadata['fecha_primera_venta'] = ventas_metadata['fecha_primera_venta'].isoformat()
+        if 'fecha_ultima_venta' in ventas_metadata and hasattr(ventas_metadata['fecha_ultima_venta'], 'isoformat'):
+            ventas_metadata['fecha_ultima_venta'] = ventas_metadata['fecha_ultima_venta'].isoformat()
+
+        state["files_metadata"]["ventas"] = ventas_metadata
+            
+    # Buscamos el último archivo de inventario y leemos su metadata
+    query_inventario = files_ref.where("tipoArchivo", "==", "inventario").order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+    last_inventario_doc = next(query_inventario, None)
+    if last_inventario_doc:
+        state["files"]["inventario"] = last_inventario_doc.id
+        state["files_metadata"]["inventario"] = last_inventario_doc.to_dict().get("metadata", {})
+        
+    return state
 
 # ===================================================================================
 # --- MODELOS DE DATOS ---
@@ -509,12 +542,14 @@ async def get_session_state(
 
         # --- INICIO DEL BLOQUE DE AUDITORÍA DE SERIALIZACIÓN ---
         # print("\n--- DEBUG: Auditoría de Serialización JSON ---")
+        metadata_payload = get_metadata_from_context(session_ref)
         final_content = {
             "credits": credits_data,
             "history": historial_list,
             "files": files_map,
             "available_filters": available_filters,
-            "date_range_bounds": date_range_bounds
+            "date_range_bounds": date_range_bounds,
+            **metadata_payload
         }
         
         # for key, value in final_content.items():
@@ -597,12 +632,15 @@ async def get_workspace_state(
 
         # --- INICIO DEL BLOQUE DE AUDITORÍA DE SERIALIZACIÓN ---
         # print("\n--- DEBUG: Auditoría de Serialización JSON ---")
+        metadata_payload = get_metadata_from_context(workspace_ref)
+
         final_content = {
             "credits": credits_data,
             "history": historial_list,
             "files": files_map,
             "available_filters": available_filters,
-            "date_range_bounds": date_range_bounds
+            "date_range_bounds": date_range_bounds,
+            **metadata_payload
         }
         
         # for key, value in final_content.items():
@@ -614,7 +652,7 @@ async def get_workspace_state(
         #         print(f"🔥🔥🔥 ¡ERROR ENCONTRADO! La sección '{key}' no se puede serializar. Causa: {e}")
         #         print(f"Datos problemáticos en '{key}': {value}")
         # print("--------------------------------------------\n")
-        # --- FIN DEL BLOQUE DE AUDITORÍA ---
+        # # --- FIN DEL BLOQUE DE AUDITORÍA ---
 
         return JSONResponse(content=final_content)
 
@@ -1180,6 +1218,8 @@ async def upload_file(
             timestamp_obj=now
         )
 
+        # print(f"✅ Metadata en '{metadata}'.")
+
         # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ PARA INVENTARIO---
         # Si la carga es de un usuario registrado y el archivo es un inventario...
         if user_id and workspace_id and tipo_archivo == 'inventario':
@@ -1240,14 +1280,8 @@ async def upload_file(
             print(f"✅ Fechas cacheados exitosamente para anonimo en '{session_id_to_use}'.")
         # --- FIN DE LA NUEVA LÓGICA DE CACHÉ ---
 
-        # La construcción de la respuesta no cambia
-        response_content = {
-            "message": f"Archivo de {tipo_archivo} subido exitosamente.",
-            "file_id": file_id,
-            "tipo_archivo": tipo_archivo,
-            "nombre_original": file.filename
-        }
-        
+        response_content = {}
+
         # Devolvemos los metadatos extraídos para que la UI se actualice al instante
         if tipo_archivo == 'ventas' and metadata.get("fecha_primera_venta"):
             response_content["date_range_bounds"] = {
@@ -1262,6 +1296,21 @@ async def upload_file(
                 "categorias": metadata.get("lista_completa_categorias", []),
                 "marcas": metadata.get("lista_completa_marcas", [])
             }
+
+        # --- CAMBIO CLAVE: Convertimos las fechas en los metadatos ANTES de guardarlos ---
+        if 'fecha_primera_venta' in metadata and hasattr(metadata['fecha_primera_venta'], 'isoformat'):
+            metadata['fecha_primera_venta'] = metadata['fecha_primera_venta'].isoformat()
+        if 'fecha_ultima_venta' in metadata and hasattr(metadata['fecha_ultima_venta'], 'isoformat'):
+            metadata['fecha_ultima_venta'] = metadata['fecha_ultima_venta'].isoformat()
+
+        # La construcción de la respuesta no cambia
+        response_content = {
+            "message": f"Archivo de {tipo_archivo} subido exitosamente.",
+            "file_id": file_id,
+            "tipo_archivo": tipo_archivo,
+            "nombre_original": file.filename,
+            "metadata": metadata
+        }
         
         return JSONResponse(content=response_content)
 
