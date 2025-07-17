@@ -611,9 +611,9 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                               })}
                             </div>
                             {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
-                            <button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
+                            {/*<button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
                               <FiRefreshCw className="text-md"/> Restaurar valores por defecto
-                            </button>
+                            </button>*/}
                           </>
                         )}
                       </div>
@@ -715,7 +715,12 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                     {context.type === 'anonymous' && truncationInfo ? (
                       // Para anónimos con resultados truncados, mostramos el botón de desbloqueo
                       <button 
-                        onClick={() => setActiveModal('register')} 
+                        onClick={() => {
+                          setModalInfo({
+                            title: "Desbloquea la Lista Completa del Resultado",
+                            message: "Esta función es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
+                          });
+                          setActiveModal('registerToUnlock')}} 
                         className="font-semibold text-purple-600 hover:text-purple-800"
                       >
                         ⭐ Ver los {truncationInfo.total - truncationInfo.shown} resultados restantes

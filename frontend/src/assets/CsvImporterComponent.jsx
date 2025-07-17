@@ -66,7 +66,7 @@ function CsvImporterComponent({
   const getStatusContent = () => {
     switch (uploadStatus) {
       case 'uploading':
-        return <><FiLoader className="text-5xl mb-2 text-purple-400 animate-spin" /> <span className="text-lg font-semibold mb-2">Subiendo...</span></>;
+        return <><FiLoader className="text-5xl mb-4 text-purple-400 animate-spin" /> <span className="text-lg font-semibold mb-2">Subiendo...</span></>;
       case 'success':
         if (metadata) {
           return (

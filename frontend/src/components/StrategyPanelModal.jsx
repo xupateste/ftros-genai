@@ -25,7 +25,7 @@ export function StrategyPanelModal({ onClose, context }) {
     if (!draftStrategy) return;
     setIsSaving(true);
     try {
-      if (context.type === 'user') {
+      if (context.type === 'workspace' || context.type === 'global') {
         // Para usuarios registrados, guardamos en la base de datos
         await saveStrategy(draftStrategy, context);
       } else {

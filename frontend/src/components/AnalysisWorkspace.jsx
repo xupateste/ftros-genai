@@ -210,14 +210,14 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       resetWorkspaceState();
 
       try {
+        const contextToLoad = isUserContext ? { type: 'workspace', id: context.workspace.id } : { type: 'anonymous', id: context.id}
         // Hacemos las llamadas en paralelo
         const [stateResponse] = await Promise.all([
           api.get(isUserContext ? `/workspaces/${identifier}/state` : `/session-state`, {
             headers: isUserContext ? {} : { 'X-Session-ID': identifier }
           }),
-          loadStrategy(context)
+          loadStrategy(contextToLoad)
         ]);
-
         const { credits, history, files, available_filters, date_range_bounds, files_metadata } = stateResponse.data || {};
         setCredits(credits || { used: 0, remaining: 20 });
         setCreditHistory(history || []);

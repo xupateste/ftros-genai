@@ -807,10 +807,11 @@ export default function AnalysisWorkspace({ context, reportData, diccionarioData
       {/*{isStrategyPanelOpen && ()}*/}
       {activeModal === 'strategy' && (
         <StrategyPanelModal
-          strategy={draftStrategy} 
-          setStrategy={setDraftStrategy} 
+          // strategy={draftStrategy} 
+          // setStrategy={setDraftStrategy} 
           onClose={() => setActiveModal(null)}
-          sessionId={context.id}
+          // sessionId={context.id}
+          context={context}
         />
       )}
 

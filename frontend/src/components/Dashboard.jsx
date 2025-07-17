@@ -185,7 +185,7 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
 
       {isStrategyModalOpen && (
         <StrategyPanelModal 
-          context={{ type: 'global' }} 
+          context={{ type: 'global', id: 'global' }} 
           onClose={() => setStrategyModalOpen(false)} 
         />
       )}
