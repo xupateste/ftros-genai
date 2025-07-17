@@ -1,4 +1,9 @@
 TOOLTIPS_GLOSSARY = {
+    # --- Parámetros de Análisis Rotación ---
+    "sort_by_rotacion": "Elige el criterio principal para ordenar tu 'radar' de productos. 'Importancia' te mostrará tus productos más críticos primero, mientras que 'Próximos a Agotarse' te alertará sobre los riesgos inmediatos.",
+    "pesos_estrategia": "Anula temporalmente los pesos de tu estrategia global para simular diferentes escenarios de importancia en este reporte específico.",
+    "umbrales_stock": "Define los umbrales en días de cobertura para que la herramienta clasifique un producto como 'Stock Bajo' (riesgo de quiebre) o 'Sobre-stock' (capital inmovilizado).",
+
     "chart_placeholder": "Visualiza tus datos para descubrir patrones y tendencias clave. Esta es una herramienta estratégica que te ayuda a interpretar los resultados de tu reporte de un solo vistazo, permitiéndote tomar decisiones más rápidas e informadas.",
     
     "filtro_texto": "Busca coincidencias en el SKU, Nombre, Categoría o Marca del producto. Ideal para encontrar rápidamente un item específico dentro de los resultados.",

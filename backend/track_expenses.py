@@ -511,7 +511,7 @@ def process_csv_analisis_estrategico_rotacion(
     # Parámetros de Ordenamiento
     sort_by: str = 'Importancia_Dinamica',
     sort_ascending: bool = False
-) -> pd.DataFrame:
+) -> Dict[str, Any]:
     """
     Genera un análisis estratégico de rotación de inventario (Radar Estratégico).
     Se enfoca en diagnosticar la salud y la importancia de los productos,
@@ -665,6 +665,34 @@ def process_csv_analisis_estrategico_rotacion(
     else:
         df_resultado = df_resultado.sort_values(by='Importancia_Dinamica', ascending=False)
     
+
+    # --- PASO 9: CÁLCULO DE KPIs Y RESUMEN ---
+    # Usamos el DataFrame ya filtrado y ordenado para los KPIs
+    
+    # SKUs "Estrella": Clase A o B, con stock saludable o bajo (no sobre-stock y no agotado)
+    estrellas_mask = df_resultado['Clasificacion'].isin(['Clase A (Crítico)', 'Clase B (Importante)']) & \
+                     df_resultado['Alerta_Stock'].isin(['Saludable', 'Stock Bajo'])
+    skus_estrella = len(df_resultado[estrellas_mask])
+
+    # SKUs "Problemáticos": Clase A o B, pero con sobre-stock
+    problematicos_mask = df_resultado['Clasificacion'].isin(['Clase A (Crítico)', 'Clase B (Importante)']) & \
+                         (df_resultado['Alerta_Stock'] == 'Sobre-stock')
+    skus_problematicos = len(df_resultado[problematicos_mask])
+
+    # Valor en Sobre-stock
+    valor_sobre_stock = df_resultado[df_resultado['Alerta_Stock'] == 'Sobre-stock']['Inversion_Stock_Actual'].sum()
+
+    insight_text = f"Análisis completado. Se han identificado {skus_estrella} SKUs 'Estrella' que necesitan vigilancia. ¡Alerta! Tienes S/ {valor_sobre_stock:,.2f} inmovilizados en productos importantes con sobre-stock."
+    if skus_estrella == 0 and valor_sobre_stock == 0:
+        insight_text = "Análisis completado. No se encontraron productos con actividad de venta reciente que cumplan los criterios."
+
+    kpis = {
+        "SKUs Estrella": skus_estrella,
+        "SKUs Problemáticos (Sobre-stock)": skus_problematicos,
+        "Valor en Sobre-stock": f"S/ {valor_sobre_stock:,.2f}",
+        "Rotación Promedio (Ejemplo)": "90 días" # Placeholder para un futuro cálculo
+    }
+
     # --- 9. Selección y Renombrado de Columnas Finales ---
     columnas_salida_optimas = [
         # Identificación
@@ -723,7 +751,13 @@ def process_csv_analisis_estrategico_rotacion(
     # El método .where() es muy eficiente para esto.
     resultado_final_json_safe = df_limpio.where(pd.notna(df_limpio), None)
     
-    return resultado_final_json_safe
+    return {
+        "data": resultado_final_json_safe,
+        "summary": {
+            "insight": insight_text,
+            "kpis": kpis
+        }
+    }
 
 
 def process_csv_rotacion_general_version_anterior(

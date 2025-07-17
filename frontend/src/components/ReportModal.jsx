@@ -220,6 +220,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       formData.append("current_user", token);
     }
 
+    console.log('modalParams')
+    console.log(modalParams)
     Object.entries(modalParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value)) formData.append(key, JSON.stringify(value));
@@ -638,7 +640,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
               <hr/>
                 <div className="grid gap-4">
                   {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
-                  <div className="mb-6 mt-6">
+                  <div className="mb-4 mt-6">
                     <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
                     <div className="grid grid-cols-2 gap-4">
                       {analysisResult && analysisResult.kpis && 
@@ -680,7 +682,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                   </div>
                 </div>
               </div>
-              <hr/>
+              <hr className="mx-4"/>
               {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
               <div className="flex-1 min-h-100 flex flex-col bg-gray-100">
                 {/* --- Barra de Búsqueda "Pegajosa" --- */}

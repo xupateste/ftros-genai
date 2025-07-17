@@ -201,25 +201,24 @@ REPORTS_CONFIG = {
     "isPro": False,
     "costo": 8,
     "basic_parameters": [
-      { "name": 'sort_by', "label": 'Ordenar Reporte Por', "type": 'select', "tooltip_key": "sort_by",
+      { 
+        "name": 'sort_by', "label": 'Priorizar y Ordenar Por', "type": 'select',
+        "tooltip_key": "sort_by_rotacion",
         "options": [
           { "value": 'Importancia_Dinamica', "label": 'Índice de Importancia (Recomendado)' },
           { "value": 'Inversion_Stock_Actual', "label": 'Mayor Inversión en Stock' },
-          { "value": 'Dias_Cobertura_Stock_Actual', "label": 'Próximos a Agotarse (Cobertura)' },
-          { "value": 'Ventas_Total_Reciente', "label": 'Más Vendidos (Unidades Recientes)' },
-          { "value": 'Clasificacion', "label": 'Clasificación (A, B, C, D)' },
+          { "value": 'Dias_Cobertura_Stock_Actual', "label": 'Próximos a Agotarse (Cobertura)' }
         ],
         "defaultValue": 'Importancia_Dinamica'
       },
-      { "name": 'filtro_categorias_json', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "filtro_categorias_json", "optionsKey": 'categorias', "defaultValue": [] },
-      { "name": 'filtro_marcas_json', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "filtro_marcas_json", "optionsKey": 'marcas', "defaultValue": [] },
-      { "name": 'min_importancia', "label": 'Mostrar solo con Importancia mayor a', "type": 'number', "tooltip_key": "min_importancia", "defaultValue": '', "min": 0, "max": 1, "step": 0.1, "placeholder": '"Ej": 0.7' },
-      { "name": 'max_dias_cobertura', "label": 'Mostrar solo con Cobertura menor a (días)', "type": 'number', "tooltip_key": "max_dias_cobertura", "defaultValue": '', "min": 0, "placeholder": '"Ej": 15 (para ver bajo stock)' },
-      { "name": 'min_dias_cobertura', "label": 'Mostrar solo con Cobertura mayor a (días)', "type": 'number', "tooltip_key": "min_dias_cobertura", "defaultValue": '', "min": 0, "placeholder": '"Ej": 180 (para ver sobre-stock)' },
+      { "name": 'filtro_categorias_json', "label": 'Filtrar por Categorías', "type": 'multi-select', "optionsKey": 'categorias', "defaultValue": [] },
+      { "name": 'filtro_marcas_json', "label": 'Filtrar por Marcas', "type": 'multi-select', "optionsKey": 'marcas', "defaultValue": [] }
     ],
     "advanced_parameters": [
-      { "name": 'dias_analisis_ventas_recientes', "label": 'Período de Análisis Reciente (días)', "type": 'number', "tooltip_key": "dias_analisis_ventas_recientes", "defaultValue": 30, "min": 15 },
       { "name": 'dias_analisis_ventas_general', "label": 'Período de Análisis General (días)', "type": 'number', "tooltip_key": "dias_analisis_ventas_general", "defaultValue": 180, "min": 30 },
+      { "name": 'dias_analisis_ventas_recientes', "label": 'Período de Análisis (días)', "type": 'number', "defaultValue": 30, "min": 15, "tooltip_key": "dias_analisis_ventas_recientes" },
+      { "name": 'umbral_stock_bajo_dias', "label": "Umbral para 'Stock Bajo' (días)", "type": "number", "defaultValue": 15, "tooltip_key": "umbrales_stock" },
+      { "name": 'umbral_sobre_stock_dias', "label": "Umbral para 'Sobre-stock' (días)", "type": "number", "defaultValue": 180, "tooltip_key": "umbrales_stock" },
       {
           "name": 'score_ventas',
           "label": 'Peso de Ventas (Popularidad)',
@@ -252,6 +251,16 @@ REPORTS_CONFIG = {
           "defaultValue": 2,
           "min": 1, "max": 10
       },
+    ],
+    "accionable_columns": [
+      "SKU / Código de producto", "Nombre del producto", "Clasificacion", 
+      "Alerta de Stock", "Índice de Importancia", "Cobertura Actual (Días)"
+    ],
+    "preview_details": [
+      { "label": "Clasificación", "data_key": "Clasificación" },
+      { "label": "Alerta de Stock", "data_key": "Alerta de Stock" },
+      { "label": "Importancia", "data_key": "Índice de Importancia" },
+      { "label": "Cobertura", "data_key": "Cobertura Actual (Días)", "suffix": " días" }
     ]
   },
 

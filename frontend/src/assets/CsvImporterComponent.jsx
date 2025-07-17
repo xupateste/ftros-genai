@@ -73,7 +73,7 @@ function CsvImporterComponent({
             <div className="w-full text-left animate-fade-in">
               <div className="flex items-center gap-3 mb-3">
                 <FiCheckCircle className="text-3xl text-green-400 flex-shrink-0" />
-                <h3 className="text-lg font-bold">Archivo Cargado</h3>
+                <h3 className="text-lg font-bold">{title} Cargado</h3>
               </div>
               <div className="space-y-1">
                 {fileType === 'inventario' && (

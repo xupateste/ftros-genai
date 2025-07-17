@@ -550,7 +550,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                       >
                         <div className="flex items-center justify-between">
                           <span className="font-semibold text-sm">{reportItem.label}</span>
-                          {reportItem.isPro && <FiLock className="text-yellow-500" />}
+                          {reportItem.isPro && <FiStar className="text-yellow-500" />}
                         </div>
                         {reportItem.isPro && (
                           <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>

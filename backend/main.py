@@ -1508,7 +1508,12 @@ async def run_analisis_estrategico_rotacion(
     dias_analisis_ventas_general: Optional[int] = Form(None, description="Ventana secundaria de análisis para productos sin ventas recientes."),
     umbral_sobre_stock_dias: int = Form(180, description="Días a partir de los cuales un producto se considera 'Sobre-stock'."),
     umbral_stock_bajo_dias: int = Form(15, description="Días por debajo de los cuales un producto se considera con 'Stock Bajo'."),
-    pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+    # pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+    # --- NUEVO: Recibimos los scores de la estrategia desde el frontend ---
+    score_ventas: int = Form(...),
+    score_ingreso: int = Form(...),
+    score_margen: int = Form(...),
+    score_dias_venta: int = Form(...)
 ):
     user_id = None
     
@@ -1531,14 +1536,30 @@ async def run_analisis_estrategico_rotacion(
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
     # --- 2. Procesar Parámetros Complejos desde JSON ---
-    pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
     filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
     filtro_marcas = json.loads(filtro_marcas_json) if filtro_marcas_json else None
     # (Se podría añadir un try-except más robusto aquí si se desea)
 
+    # pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+    # 1. Sumamos los scores recibidos
+    total_scores = score_ventas + score_ingreso + score_margen + score_dias_venta
+
+    # 2. Calculamos los pesos prorrateados, manejando el caso de división por cero
+    if total_scores == 0:
+        # Si todos los scores son 0, asignamos un peso equitativo
+        pesos_calculados = {'ventas': 0.25, 'ingreso': 0.25, 'margen': 0.25, 'dias_venta': 0.25}
+    else:
+        pesos_calculados = {
+            'ventas': score_ventas / total_scores,
+            'ingreso': score_ingreso / total_scores,
+            'margen': score_margen / total_scores,
+            'dias_venta': score_dias_venta / total_scores
+        }
+    
+
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
-        "pesos_importancia": pesos_importancia,
+        "pesos_importancia": pesos_calculados,
         "dias_analisis_ventas_recientes": dias_analisis_ventas_recientes,
         "dias_analisis_ventas_general": dias_analisis_ventas_general,
         "umbral_sobre_stock_dias": umbral_sobre_stock_dias,
@@ -1836,7 +1857,12 @@ async def lista_basica_reposicion_historico(
     lead_time_dias: float = Form(7.0),
     dias_cobertura_ideal_base: int = Form(10),
     peso_ventas_historicas: float = Form(0.6),
-    pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+    # pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+    # --- NUEVO: Recibimos los scores de la estrategia desde el frontend ---
+    score_ventas: int = Form(...),
+    score_ingreso: int = Form(...),
+    score_margen: int = Form(...),
+    score_dias_venta: int = Form(...)
 ):
     user_id = None
     
@@ -1865,9 +1891,25 @@ async def lista_basica_reposicion_historico(
         # Parseamos los strings JSON para convertirlos en listas de Python
         categorias_list = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
         marcas_list = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
-        pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+        # pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
+
+    # pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+    # 1. Sumamos los scores recibidos
+    total_scores = score_ventas + score_ingreso + score_margen + score_dias_venta
+
+    # 2. Calculamos los pesos prorrateados, manejando el caso de división por cero
+    if total_scores == 0:
+        # Si todos los scores son 0, asignamos un peso equitativo
+        pesos_calculados = {'ventas': 0.25, 'ingreso': 0.25, 'margen': 0.25, 'dias_venta': 0.25}
+    else:
+        pesos_calculados = {
+            'ventas': score_ventas / total_scores,
+            'ingreso': score_ingreso / total_scores,
+            'margen': score_margen / total_scores,
+            'dias_venta': score_dias_venta / total_scores
+        }
 
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
@@ -1880,7 +1922,7 @@ async def lista_basica_reposicion_historico(
         "lead_time_dias": lead_time_dias,
         "dias_cobertura_ideal_base": dias_cobertura_ideal_base,
         "peso_ventas_historicas": peso_ventas_historicas,
-        "pesos_importancia": pesos_importancia,
+        "pesos_importancia": pesos_calculados,
     }
 
     full_params_for_logging = dict(await request.form())
