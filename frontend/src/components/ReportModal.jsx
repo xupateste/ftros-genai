@@ -220,8 +220,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       formData.append("current_user", token);
     }
 
-    console.log('modalParams')
-    console.log(modalParams)
+    // console.log('modalParams')
+    // console.log(modalParams)
     Object.entries(modalParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value)) formData.append(key, JSON.stringify(value));
