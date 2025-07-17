@@ -212,7 +212,7 @@ def get_metadata_from_context(base_ref):
     files_ref = base_ref.collection('archivos_cargados')
 
     # Buscamos el último archivo de ventas y leemos su metadata
-    query_ventas = files_ref.where("tipoArchivo", "==", "ventas").order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+    query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
     last_venta_doc = next(query_ventas, None)
     if last_venta_doc:
         state["files"]["ventas"] = last_venta_doc.id
@@ -226,7 +226,7 @@ def get_metadata_from_context(base_ref):
         state["files_metadata"]["ventas"] = ventas_metadata
             
     # Buscamos el último archivo de inventario y leemos su metadata
-    query_inventario = files_ref.where("tipoArchivo", "==", "inventario").order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+    query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
     last_inventario_doc = next(query_inventario, None)
     if last_inventario_doc:
         state["files"]["inventario"] = last_inventario_doc.id

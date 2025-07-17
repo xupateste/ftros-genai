@@ -279,14 +279,14 @@ def get_context_state_from_firestore(user_id: Optional[str], workspace_id: Optio
 
     # Leemos los metadatos de los archivos directamente
     files_ref = base_ref.collection('archivos_cargados')
-    last_venta_doc = next(files_ref.where("tipoArchivo", "==", "ventas").order_by("fechaCarga", direction="DESCENDING").limit(1).stream(), None)
+    last_venta_doc = next(files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream(), None)
     if last_venta_doc:
         state["files"]["ventas"] = last_venta_doc.id
         metadata = last_venta_doc.to_dict().get("metadata", {})
         if metadata.get("fecha_primera_venta"):
             state["date_range_bounds"] = {"min_date": metadata["fecha_primera_venta"], "max_date": metadata["fecha_ultima_venta"]}
             
-    last_inventario_doc = next(files_ref.where("tipoArchivo", "==", "inventario").order_by("fechaCarga", direction="DESCENDING").limit(1).stream(), None)
+    last_inventario_doc = next(files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream(), None)
     if last_inventario_doc:
         state["files"]["inventario"] = last_inventario_doc.id
         metadata = last_inventario_doc.to_dict().get("metadata", {})
