@@ -1,4 +1,10 @@
 TOOLTIPS_GLOSSARY = {
+    # --- Parámetros de maestro inventario ---
+    "maestro_criterio_abc": "Elige la métrica principal para clasificar tus productos más importantes (Clase A, B, C) dentro de este reporte maestro.",
+    "maestro_periodo_abc": "Define el rango de tiempo de las ventas que se usarán para el análisis de importancia ABC.",
+    "maestro_dias_muerto": "Establece el umbral de días sin venta para que un producto sea considerado 'Stock Muerto' en este diagnóstico.",
+    "maestro_meses_salud": "Define cuántos meses de ventas recientes se usarán para calcular la velocidad de rotación y detectar excesos de stock.",
+
     # --- Parámetros de alerta stock ---
     "ordenar_alerta_por": "Elige el criterio principal para ordenar la lista de alertas. 'Más Urgente' te mostrará primero los productos que están más por debajo de su stock de seguridad.",
     "filtro_categorias": "Permite enfocar el análisis únicamente en las familias de productos que te interesan.",

@@ -149,48 +149,18 @@ REPORTS_CONFIG = {
       }
     ],
     "advanced_parameters": [
-      {
-        "name": "dias_sin_venta_muerto",
-        "label": "Umbral de Días para 'Stock Muerto'",
-        "type": "number",
-        "tooltip_key": "dias_sin_venta_muerto",
-        "placeholder": "Default: dinámico",
-        "defaultValue": 30,
-        "min": 30
-      },
-      {
-        "name": "meses_analisis_salud",
-        "label": "Período para Cálculo de Salud (meses)",
-        "type": "number",
-        "tooltip_key": "meses_analisis_salud",
-        "placeholder": "Default: dinámico",
-        "defaultValue": 1,
-        "min": 1
-      },
-      {
-        "name": "peso_margen",
-        "label": "Peso de Margen (0.0 a 1.0)",
-        "type": "number",
-        "tooltip_key": "peso_margen",
-        "defaultValue": 0.5,
-        "min": 0, "max": 1, "step": 0.1
-      },
-      {
-        "name": "peso_ingresos",
-        "label": "Peso de Ingresos (0.0 a 1.0)",
-        "type": "number",
-        "tooltip_key": "peso_ingresos",
-        "defaultValue": 0.3,
-        "min": 0, "max": 1, "step": 0.1
-      },
-      {
-        "name": "peso_unidades",
-        "label": "Peso de Unidades (0.0 a 1.0)",
-        "type": "number",
-        "tooltip_key": "peso_unidades",
-        "defaultValue": 0.2,
-        "min": 0, "max": 1, "step": 0.1
-      }
+        { "name": "dias_sin_venta_muerto", "label": "Umbral para 'Stock Muerto' (días)", "type": "number", "defaultValue": 180, "tooltip_key": "maestro_dias_muerto" },
+        { "name": "meses_analisis_salud", "label": "Meses para Cálculo de Salud", "type": "number", "defaultValue": 3, "tooltip_key": "maestro_meses_salud" }
+    ],
+    "accionable_columns": [
+        "SKU / Código de producto", "Nombre del producto", "Clasificación ABC", 
+        "Clasificación Diagnóstica", "Índice de Importancia", "Cobertura Actual (Días)"
+    ],
+    "preview_details": [
+        { "label": "Clasificación ABC", "data_key": "Clasificación ABC" },
+        { "label": "Diagnóstico de Salud", "data_key": "Clasificación Diagnóstica" },
+        { "label": "Importancia", "data_key": "Índice de Importancia" },
+        { "label": "Cobertura Actual", "data_key": "Cobertura Actual (Días)", "suffix": " días" }
     ]
   },
   "ReporteAnalisisEstrategicoRotacion": {

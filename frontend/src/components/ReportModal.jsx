@@ -244,6 +244,20 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       }
     }
 
+    if (reportConfig.key === 'ReporteMaestro') {
+      if (strategy) {
+        formData.append('score_ventas', strategy.score_ventas);
+        formData.append('score_ingreso', strategy.score_ingreso);
+        formData.append('score_margen', strategy.score_margen);
+      } else {
+        // Fallback por si la estrategia no ha cargado, aunque no debería pasar.
+        console.warn("Estrategia no encontrada, usando valores por defecto para el reporte ABC.");
+        formData.append('score_ventas', 8);
+        formData.append('score_ingreso', 6);
+        formData.append('score_margen', 4);
+      }
+    }
+
     try {
       const response = await api.post(reportConfig.endpoint, formData, {
         headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : { 'X-Session-ID': context.workspace.id }

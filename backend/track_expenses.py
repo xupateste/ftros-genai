@@ -410,40 +410,102 @@ def process_csv_abc(
 def generar_reporte_maestro_inventario(
     df_ventas: pd.DataFrame,
     df_inventario: pd.DataFrame,
-    # Parámetros para el análisis ABC
+    # Parámetros que vienen de la UI y la estrategia del usuario
     criterio_abc: str = 'margen',
     periodo_abc: int = 6,
-    pesos_combinado: Optional[Dict[str, float]] = None,
-    # Parámetros para el análisis de Stock Muerto
-    # meses_analisis: Optional[int] = None,
-    meses_analisis: Optional[int] = 1,
-    dias_sin_venta_muerto: Optional[int] = None
-) -> pd.DataFrame:
+    dias_sin_venta_muerto: int = 180,
+    # meses_analisis: Optional[int] = 1,
+    meses_analisis_salud: int = 3,
+    # Pesos para el criterio combinado (se obtienen de la estrategia)
+    score_ventas: int = 8,
+    score_ingreso: int = 6,
+    score_margen: int = 4,
+    # score_dias_venta: int = 2,
+    **kwargs
+) -> Dict[str, Any]:
     """
-    Genera un reporte maestro robusto, asegurando que no haya columnas duplicadas
-    y que todos los datos sean compatibles con JSON antes de devolverlos.
+    Genera un reporte maestro 360° del inventario, combinando análisis ABC,
+    diagnóstico de salud (stock muerto/exceso) y métricas clave de rendimiento.
     """
     print("Iniciando generación de Reporte Maestro de Inventario...")
     
-    # --- 1. Análisis de Salud y ABC ---
-    # (El código para los pasos 1, 2, 3 y 4 se mantiene como lo tenías,
-    # ya que su lógica de negocio es correcta)
+    # --- PASO 1: Ejecutar Análisis de Salud del Stock ---
+    # Usamos una versión simplificada de la lógica de stock muerto para obtener la clasificación
     print("Paso 1/5: Ejecutando análisis de salud del stock...")
-    df_salud = procesar_stock_muerto(df_ventas.copy(), df_inventario.copy(), meses_analisis=meses_analisis)
+    resultado_salud = procesar_stock_muerto(
+        df_ventas.copy(), 
+        df_inventario.copy(),
+        meses_analisis=meses_analisis_salud,
+        dias_sin_venta_muerto=dias_sin_venta_muerto
+    )
+    df_salud = resultado_salud.get("data")
 
+
+    # --- PASO 2: Ejecutar Análisis de Importancia (ABC) ---
     print("Paso 2/5: Ejecutando análisis de importancia (ABC)...")
-    df_importancia = process_csv_abc(df_ventas.copy(), df_inventario.copy(), criterio_abc, periodo_abc, pesos_combinado)
-    columna_criterio_abc = df_importancia.columns[4] if len(df_importancia.columns) > 4 else None
-    df_importancia_subset = df_importancia[['SKU / Código de producto', 'Clasificación ABC']].copy()
+    pesos_combinado = {
+        "ingresos": score_ingreso,
+        "margen": score_margen,
+        "unidades": score_ventas
+    }
+    resultado_abc = process_csv_abc(
+        df_ventas.copy(), 
+        df_inventario.copy(), 
+        criterio_abc, 
+        periodo_abc, 
+        pesos_combinado=pesos_combinado
+    )
+    df_importancia = resultado_abc.get("data")
+    columna_criterio_abc = [col for col in df_importancia.columns if '(S/.)' in col or '(Und)' in col or 'Ponderado' in col][0]
+    df_importancia_subset = df_importancia[['SKU / Código de producto', 'Clasificación ABC', columna_criterio_abc]].copy()
+    # df_importancia = process_csv_abc(df_ventas.copy(), df_inventario.copy(), criterio_abc, periodo_abc, pesos_combinado)
+    # columna_criterio_abc = df_importancia.columns[4] if len(df_importancia.columns) > 4 else None
+    # df_importancia_subset = df_importancia[['SKU / Código de producto', 'Clasificación ABC']].copy()
 
+
+    # --- PASO 3: Combinar y Enriquecer los Datos ---
     print("Paso 3/5: Combinando y enriqueciendo los datos...")
     df_salud['SKU / Código de producto'] = df_salud['SKU / Código de producto'].astype(str)
     df_importancia_subset['SKU / Código de producto'] = df_importancia_subset['SKU / Código de producto'].astype(str)
     df_maestro = pd.merge(df_salud, df_importancia_subset, on='SKU / Código de producto', how='left')
     df_maestro['Clasificación ABC'] = df_maestro['Clasificación ABC'].fillna('Sin Ventas Recientes')
 
-    # --- 4. Creación de Prioridad y Formato Final ---
-    print("Paso 4/4: Definiendo prioridad estratégica y formateando reporte final...")
+
+    # --- PASO 4: CÁLCULO DE KPIs Y RESUMEN EJECUTIVO ---
+    print("Paso 4/5: Calculando KPIs y resumen ejecutivo...")
+    valor_total_inventario = df_maestro['Valor stock (S/.)'].sum()
+
+    df_stock_muerto = df_maestro[df_maestro['Clasificación Diagnóstica'] == 'Stock Muerto']
+    valor_stock_muerto = df_stock_muerto['Valor stock (S/.)'].sum()
+    porcentaje_muerto = (valor_stock_muerto / valor_total_inventario * 100) if valor_total_inventario > 0 else 0
+
+    df_exceso_stock = df_maestro[df_maestro['Clasificación Diagnóstica'] == 'Exceso de Stock']
+    valor_exceso_stock = df_exceso_stock['Valor stock (S/.)'].sum()
+    porcentaje_exceso = (valor_exceso_stock / valor_total_inventario * 100) if valor_total_inventario > 0 else 0
+    
+    valor_en_riesgo = valor_stock_muerto + valor_exceso_stock
+    porcentaje_saludable = 100 - porcentaje_muerto - porcentaje_exceso
+
+    productos_a = df_maestro[df_maestro['Clasificación ABC'] == 'A']
+    valor_clase_a = productos_a[columna_criterio_abc].sum() if columna_criterio_abc in productos_a.columns else 0
+    porcentaje_valor_a = (valor_clase_a / df_maestro[columna_criterio_abc].sum() * 100) if df_maestro[columna_criterio_abc].sum() > 0 else 0
+
+    insight_text = (
+        f"Tu inventario tiene un valor de S/ {valor_total_inventario:,.2f}. "
+        f"El {porcentaje_saludable:.1f}% es saludable, pero ¡atención!, "
+        f"tienes S/ {valor_en_riesgo:,.2f} en riesgo ({porcentaje_muerto + porcentaje_exceso:.1f}%) entre stock muerto y exceso."
+    )
+
+    kpis = {
+        "Valor Total del Inventario": f"S/ {valor_total_inventario:,.2f}",
+        "Valor en Riesgo (Muerto/Exceso)": f"S/ {valor_en_riesgo:,.2f}",
+        "% Inventario Saludable": f"{porcentaje_saludable:.1f}%",
+        f"% del Valor (Clase A)": f"{porcentaje_valor_a:.1f}%"
+    }
+
+
+    # --- PASO 5: FORMATEO FINAL DE SALIDA ---
+    print("Paso 5/5: Definiendo prioridad estratégica y formateando reporte final...")
     
     # Aplicar la lógica de priorización estratégica
     prioridades = df_maestro.apply(_definir_prioridad_estrategica, axis=1)
@@ -460,14 +522,15 @@ def generar_reporte_maestro_inventario(
     # Selección y reordenamiento final de columnas para máxima claridad
     columnas_finales_ordenadas = [
         # Identificación y Prioridad
-        'SKU / Código de producto', 'Nombre del producto', 'Clasificación ABC', 'Prioridad Estratégica', 'Clasificación Diagnóstica',
+        'SKU / Código de producto', 'Nombre del producto', 'Categoría', 'Subcategoría', 'Marca',
         # Métricas de Inventario y Salud
         'Valor stock (S/.)', 'Stock Actual (Unds)', 'Días sin venta', df_maestro.columns[11], # Nombre dinámico de DPS
         # Métricas de Venta e Importancia
         columna_criterio_abc if columna_criterio_abc in df_maestro else None,
-        'Ventas últimos ' + str(meses_analisis if meses_analisis else 'X') + 'm (Unds)', 'Última venta',
+        'Ventas últimos ' + str(meses_analisis_salud if meses_analisis_salud else 'X') + 'm (Unds)', 'Última venta',
         # Contexto y Acción
-        'Categoría', 'Subcategoría', df_maestro.columns[13], # Nombre dinámico de Prioridad y Acción
+         'Clasificación ABC', 'Prioridad Estratégica', 'Clasificación Diagnóstica',
+         df_maestro.columns[13], # Nombre dinámico de Prioridad y Acción
         'cod_prioridad' # Mantener para posible uso, pero se puede quitar
     ]
     # Filtrar Nones y columnas que no existan
@@ -489,8 +552,14 @@ def generar_reporte_maestro_inventario(
 
     print("¡Reporte Maestro generado exitosamente!")
     
-    return df_maestro[columnas_finales_ordenadas]
-
+    # return resultado_final[columnas_finales_ordenadas]
+    return {
+            "data": resultado_final[columnas_finales_ordenadas],
+            "summary": {
+                "insight": insight_text,
+                "kpis": kpis
+            }
+        }
 
 def process_csv_analisis_estrategico_rotacion(
     df_ventas: pd.DataFrame,

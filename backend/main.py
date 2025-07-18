@@ -1680,9 +1680,13 @@ async def generar_reporte_maestro_endpoint(
     periodo_abc: int = Form(6, description="Número de meses hacia atrás para el análisis ABC."),
     
     # --- Parámetros Opcionales para el Criterio 'Combinado' ---
-    peso_ingresos: Optional[float] = Form(None, description="Peso para ingresos (ej: 0.5) si el criterio es 'combinado'."),
-    peso_margen: Optional[float] = Form(None, description="Peso para margen (ej: 0.3) si el criterio es 'combinado'."),
-    peso_unidades: Optional[float] = Form(None, description="Peso para unidades (ej: 0.2) si el criterio es 'combinado'."),
+    # peso_ingresos: Optional[float] = Form(None, description="Peso para ingresos (ej: 0.5) si el criterio es 'combinado'."),
+    # peso_margen: Optional[float] = Form(None, description="Peso para margen (ej: 0.3) si el criterio es 'combinado'."),
+    # peso_unidades: Optional[float] = Form(None, description="Peso para unidades (ej: 0.2) si el criterio es 'combinado'."),  
+    score_ventas: int = Form(...),
+    score_ingreso: int = Form(...),
+    score_margen: int = Form(...),
+    # score_dias_venta: int = Form(...),
 
     # --- Parámetros Opcionales para el Análisis de Salud ---
     meses_analisis_salud: Optional[int] = Form(None, description="Meses para analizar ventas recientes en el diagnóstico de salud."),
@@ -1709,28 +1713,32 @@ async def generar_reporte_maestro_endpoint(
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
     # --- Validación de Parámetros ---
-    pesos_combinado = None
-    if criterio_abc == 'combinado':
-        if not all([peso_ingresos, peso_margen, peso_unidades]):
-            raise HTTPException(status_code=400, detail="Para el criterio 'combinado', se deben proveer los tres pesos: peso_ingresos, peso_margen y peso_unidades.")
+    # pesos_combinado = None
+    # if criterio_abc == 'combinado':
+    #     if not all([peso_ingresos, peso_margen, peso_unidades]):
+    #         raise HTTPException(status_code=400, detail="Para el criterio 'combinado', se deben proveer los tres pesos: peso_ingresos, peso_margen y peso_unidades.")
         
-        total_pesos = peso_ingresos + peso_margen + peso_unidades
-        if not math.isclose(total_pesos, 1.0):
-            raise HTTPException(status_code=400, detail=f"La suma de los pesos debe ser 1.0, pero es {total_pesos}.")
+    #     total_pesos = peso_ingresos + peso_margen + peso_unidades
+    #     if not math.isclose(total_pesos, 1.0):
+    #         raise HTTPException(status_code=400, detail=f"La suma de los pesos debe ser 1.0, pero es {total_pesos}.")
             
-        pesos_combinado = {
-            "ingresos": peso_ingresos,
-            "margen": peso_margen,
-            "unidades": peso_unidades
-        }
+    #     pesos_combinado = {
+    #         "ingresos": peso_ingresos,
+    #         "margen": peso_margen,
+    #         "unidades": peso_unidades
+    #     }
 
 
     # 1. Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
         "criterio_abc": criterio_abc,
         "periodo_abc": periodo_abc,
-        "pesos_combinado": pesos_combinado,
-        "meses_analisis": meses_analisis_salud,
+        # "pesos_combinado": pesos_combinado,
+        "score_ventas": score_ventas,
+        "score_ingreso": score_ingreso,
+        "score_margen": score_margen,
+        # "score_dias_venta": score_dias_venta,
+        "meses_analisis_salud": meses_analisis_salud,
         "dias_sin_venta_muerto": dias_sin_venta_muerto
     }
 
@@ -1796,7 +1804,7 @@ async def reporte_puntos_alerta_stock(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
 
-    
+
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
         # Parámetros de periodos para análisis de ventas
