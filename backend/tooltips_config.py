@@ -1,4 +1,12 @@
 TOOLTIPS_GLOSSARY = {
+    # --- Parámetros de alerta stock ---
+    "ordenar_alerta_por": "Elige el criterio principal para ordenar la lista de alertas. 'Más Urgente' te mostrará primero los productos que están más por debajo de su stock de seguridad.",
+    "filtro_categorias": "Permite enfocar el análisis únicamente en las familias de productos que te interesan.",
+    "filtro_marcas": "Permite enfocar el análisis únicamente en las marcas que te interesan.",
+    "lead_time": "Introduce el número promedio de días que tu proveedor tarda en entregarte un pedido. Es el factor más importante para saber cuándo pedir.",
+    "dias_seguridad": "Define cuántos días de venta extra quieres tener en stock como un 'colchón' para protegerte de retrasos o picos de demanda inesperados.",
+    "factor_importancia": "Aumenta el colchón de seguridad solo para tus productos más importantes (Clase A). Un valor de 2.0 duplicará el stock de seguridad para estos items críticos.",
+
     # --- Parámetros de Análisis Rotación ---
     "sort_by_rotacion": "Elige el criterio principal para ordenar tu 'radar' de productos. 'Importancia' te mostrará tus productos más críticos primero, mientras que 'Próximos a Agotarse' te alertará sobre los riesgos inmediatos.",
     "pesos_estrategia": "Anula temporalmente los pesos de tu estrategia global para simular diferentes escenarios de importancia en este reporte específico.",
@@ -48,6 +56,17 @@ TOOLTIPS_GLOSSARY = {
 }
 
 KPI_TOOLTIPS_GLOSSARY = {
+    # --- NUEVOS Tooltips para Puntos de Alerta de Stock ---
+    "SKUs en Alerta Roja": "El número de productos cuyo stock actual está por debajo de su punto de alerta MÍNIMO (tu colchón de seguridad). Requieren acción inmediata.",
+    "Inversión Urgente Requerida": "La inversión estimada para comprar el pedido MÍNIMO sugerido solo para los productos en Alerta Roja y así evitar quiebres de stock.",
+    "Próximo Quiebre Crítico": "Identifica el producto de 'Clase A' (más importante) que está más cerca de agotarse. Es el riesgo más grande para tu negocio en este momento.",
+
+    # --- NUEVOS Tooltips para Análisis Estratégico de Rotación ---
+    "SKUs Estrella": "Productos de alta importancia (Clase A/B) con un nivel de stock saludable o bajo. Son los motores de tu negocio que están funcionando bien.",
+    "SKUs Problemáticos (Sobre-stock)": "Productos de alta importancia (Clase A/B) en los que tienes demasiado inventario. Están inmovilizando capital que podrías usar en otros productos.",
+    "Valor en Sobre-stock": "La suma total del costo de tu inventario que está clasificado como 'Sobre-stock'. Es el capital que podrías liberar con promociones o liquidaciones.",
+    "Rotación Promedio (Ejemplo)": "Una métrica futura que medirá la velocidad promedio a la que rota todo tu inventario.",
+
     # --- Tooltips para Reporte ABC ---
     "SKUs Clase A (Vitales)": "El número de productos que son críticos para tu negocio. Son pocos, pero generan la mayor parte de tu valor.",
     "% del Valor (Clase A)": "El porcentaje del valor total (según tu criterio) que es generado por tus productos de Clase A. Idealmente, sigue la regla 80/20.",

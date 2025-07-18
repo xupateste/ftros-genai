@@ -1763,8 +1763,12 @@ async def reporte_puntos_alerta_stock(
     
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
-    lead_time_dias: int = Form(...),
-    dias_seguridad_base: int = Form(...)
+    lead_time_dias: int = Form(7.0),
+    dias_seguridad_base: int = Form(0),
+    factor_importancia_seguridad: float = Form(1.12),
+    ordenar_por: str = Form("Diferencia_vs_Alerta_Minima"),
+    filtro_categorias_json: Optional[str] = Form(None),
+    filtro_marcas_json: Optional[str] = Form(None)
 ):
     user_id = None
     
@@ -1786,7 +1790,13 @@ async def reporte_puntos_alerta_stock(
         # CASO 3: No hay identificador, denegamos el acceso
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
+    try:
+        filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
+        filtro_marcas = json.loads(filtro_marcas_json) if filtro_marcas_json else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
 
+    
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
         # Parámetros de periodos para análisis de ventas
@@ -1809,7 +1819,10 @@ async def reporte_puntos_alerta_stock(
         # --- NUEVOS PARÁMETROS PARA EL PUNTO DE ALERTA ---
         "lead_time_dias": lead_time_dias,
         "dias_seguridad_base": dias_seguridad_base,
-        "factor_importancia_seguridad": 1.0
+        "factor_importancia_seguridad": factor_importancia_seguridad,
+        "ordenar_por": ordenar_por,
+        "filtro_categorias": filtro_categorias,
+        "filtro_marcas": filtro_marcas,
     }
     
     full_params_for_logging = dict(await request.form())

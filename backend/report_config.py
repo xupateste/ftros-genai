@@ -291,7 +291,41 @@ REPORTS_CONFIG = {
           { "value": '3', "label": '3 días adicionales' }
         ],
         "defaultValue": '0'
+      },
+      {
+        "name": "ordenar_por",
+        "label": "Priorizar y Ordenar Por",
+        "type": "select",
+        "defaultValue": "Diferencia_vs_Alerta_Minima",
+        "tooltip_key": "ordenar_alerta_por",
+        "options": [
+          { "value": "Diferencia_vs_Alerta_Minima", "label": "Más Urgente (Stock vs Alerta)" },
+          { "value": "Importancia_Dinamica", "label": "Mayor Importancia" },
+          { "value": "Inversion_Urgente", "label": "Mayor Inversión Requerida" }
+        ]
+      },
+      { "name": "filtro_categorias_json", "label": "Filtrar por Categorías", "type": "multi-select", "optionsKey": "categorias", "defaultValue": [], "tooltip_key": "filtro_categorias" },
+      { "name": "filtro_marcas_json", "label": "Filtrar por Marcas", "type": "multi-select", "optionsKey": "marcas", "defaultValue": [], "tooltip_key": "filtro_marcas" }
+    ],
+    "advanced_parameters": [
+      { 
+        "name": "factor_importancia_seguridad", 
+        "label": "Multiplicador de Seguridad para Productos 'A'", 
+        "type": "number", 
+        "defaultValue": 1.5,
+        "step": 0.1,
+        "tooltip_key": "factor_importancia"
       }
+    ],
+    "accionable_columns": [
+        "SKU / Código de producto", "Nombre del producto", "Cantidad en stock actual",
+        "Punto de Alerta Mínimo (Unds)", "Diferencia (Stock vs Alerta)", "¿Pedir Ahora?"
+    ],
+    "preview_details": [
+        { "label": "Stock Actual", "data_key": "Cantidad en stock actual", "suffix": " Unds" },
+        { "label": "Alerta Mínima", "data_key": "Punto de Alerta Mínimo (Unds)", "suffix": " Unds" },
+        { "label": "Alerta Ideal", "data_key": "Punto de Alerta Ideal (Unds)", "suffix": " Unds" },
+        { "label": "Acción Requerida", "data_key": "¿Pedir Ahora?" }
     ]
   },
   "ReporteListaBasicaReposicionHistorica": {

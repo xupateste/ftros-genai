@@ -1353,32 +1353,58 @@ def process_csv_puntos_alerta_stock(
     # --- PARÁMETROS PARA EL PUNTO DE ALERTA ---
     lead_time_dias: float = 7.0,
     dias_seguridad_base: float = 0,
-    factor_importancia_seguridad: float = 1.0
-) -> pd.DataFrame:
-    # ... (código de inicialización sin cambios hasta la sección de cálculo de PDA_Final) ...
+    factor_importancia_seguridad: float = 1.0,
+    ordenar_por: str = 'Importancia',
+    filtro_categorias: Optional[List[str]] = None,
+    filtro_marcas: Optional[List[str]] = None,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Calcula los Puntos de Alerta de Stock siguiendo un flujo de procesamiento
+    de datos lógico y ordenado para garantizar la consistencia y corrección.
+    """
+    print("Iniciando análisis de Puntos de Alerta de Stock...")
+
+    # --- PASO 1: DEFINICIÓN DE NOMBRES Y PRE-PROCESAMIENTO ---
     sku_col = 'SKU / Código de producto'
     fecha_col_ventas = 'Fecha de venta'
     cantidad_col_ventas = 'Cantidad vendida'
     precio_venta_col_ventas = 'Precio de venta unitario (S/.)'
-    marca_col_stock = 'Marca'
     stock_actual_col_stock = 'Cantidad en stock actual'
-    nombre_prod_col_stock = 'Nombre del producto'
-    categoria_col_stock = 'Categoría'
-    subcategoria_col_stock = 'Subcategoría'
     precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
+    categoria_col_stock = 'Categoría'
+
     df_ventas_proc = df_ventas.copy()
     df_inventario_proc = df_inventario.copy()
-    df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
-    df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
-    df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
-    df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
-    df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
-    df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
+
+    # Limpieza y conversión de tipos
+    for df in [df_ventas_proc, df_inventario_proc]:
+        df.columns = df.columns.str.strip()
+        if sku_col in df.columns:
+            df[sku_col] = df[sku_col].astype(str).str.strip()
+    
+    for col in [stock_actual_col_stock, precio_compra_actual_col_stock]:
+        if col in df_inventario_proc.columns:
+            df_inventario_proc[col] = pd.to_numeric(df_inventario_proc[col], errors='coerce').fillna(0)
+    
+    for col in [cantidad_col_ventas, precio_venta_col_ventas]:
+        if col in df_ventas_proc.columns:
+            df_ventas_proc[col] = pd.to_numeric(df_ventas_proc[col], errors='coerce').fillna(0)
+    
     df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
     df_ventas_proc.dropna(subset=[fecha_col_ventas], inplace=True)
+    
     if df_ventas_proc.empty: return pd.DataFrame()
     fecha_max_venta = df_ventas_proc[fecha_col_ventas].max()
     if pd.isna(fecha_max_venta): return pd.DataFrame()
+
+
+    # --- PASO 2: CÁLCULO DE MÉTRICAS BASE (Ventas, PDA, Importancia) ---
+    # (Esta sección contiene tu lógica existente para calcular las métricas necesarias)
+    
+    # ... (Tu lógica para `agregar_ventas_periodo` y `df_ventas_rec_agg`, `df_ventas_gen_agg`)
+    # ... (Tu lógica para el `merge` y crear `df_analisis`)
+    # ... (Tu lógica para calcular `PDA_Final` e `Importancia_Dinamica`)
     final_dias_recientes = dias_analisis_ventas_recientes
     final_dias_general = dias_analisis_ventas_general
     if dias_analisis_ventas_recientes is None or dias_analisis_ventas_general is None:
@@ -1402,6 +1428,9 @@ def process_csv_puntos_alerta_stock(
         agg_ventas = df_periodo.groupby(sku_c).agg(Ventas_Total=(cant_c, 'sum'), Dias_Con_Venta=(fecha_c, 'nunique'), Precio_Venta_Prom=(p_venta_c, 'mean')).reset_index()
         agg_ventas.columns = [sku_c] + [f'{col}{sufijo}' for col in agg_ventas.columns[1:]]
         return agg_ventas
+
+
+
     df_ventas_rec_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_recientes, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_Reciente')
     df_ventas_gen_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_general, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_General')
     df_analisis = pd.merge(df_inventario_proc, df_ventas_rec_agg, on=sku_col, how='left')
@@ -1460,124 +1489,188 @@ def process_csv_puntos_alerta_stock(
     df_analisis['Stock_Ideal_Unds'] = (df_analisis['PDA_Final'] * df_analisis['Dias_Cobertura_Ideal_Ajustados'] * df_analisis['Factor_Reposicion_Categoria'] * df_analisis['Factor_Rotacion_Ajustado_Ideal']).round().clip(lower=0)
     df_analisis['Stock_Minimo_Unds'] = (df_analisis['PDA_Final'] * dias_cubrir_con_pedido_minimo * df_analisis['Factor_Rotacion_Ajustado_Minimo']).round().clip(lower=0)
     
-    # --- CÁLCULO DE PUNTOS DE ALERTA (LÓGICA ACTUALIZADA) ---
+
+    # --- PASO 3: CÁLCULO DE PUNTOS DE ALERTA (Lógica Central) ---
+    print("Calculando puntos de alerta...")
     
-    # 1. Calcular el Stock de Seguridad en unidades.
+    # Stock de Seguridad en unidades
     dias_seguridad_adicionales = df_analisis['Importancia_Dinamica'] * factor_importancia_seguridad
     dias_seguridad_totales = dias_seguridad_base + dias_seguridad_adicionales
     df_analisis['Stock_de_Seguridad_Unds'] = (df_analisis['PDA_Final'] * dias_seguridad_totales).round()
 
-    # 2. Calcular la Demanda Durante el Tiempo de Entrega (Lead Time)
+    # Demanda Durante el Tiempo de Entrega (Lead Time)
     df_analisis['Demanda_Lead_Time_Unds'] = (df_analisis['PDA_Final'] * lead_time_dias).round()
 
-    # 3. Calcular el Punto de Alerta IDEAL (antes llamado Punto de Alerta)
+    # Punto de Alerta IDEAL (El nivel al que deberías pedir para no usar tu stock de seguridad)
     df_analisis['Punto_de_Alerta_Ideal_Unds'] = df_analisis['Demanda_Lead_Time_Unds'] + df_analisis['Stock_de_Seguridad_Unds']
     
-    # 4. Calcular el Punto de Alerta MÍNIMO (NUEVA LÓGICA)
-    # Condición: Si hay ventas recientes (>1) O si el promedio de venta es positivo.
-    condicion_min = (df_analisis['Ventas_Total_Reciente'] > 1) | (df_analisis['PDA_Final'] > 0)
-    # Valor si es verdad: Se suma el stock de seguridad y las ventas recientes, redondeando hacia arriba.
-    valor_si_verdadero = np.ceil(df_analisis['Stock_de_Seguridad_Unds'] + df_analisis['PDA_Final'])
-    # Valor si es falso: Solo se usa el stock de seguridad.
-    valor_si_falso = df_analisis['Stock_de_Seguridad_Unds']
-    # Aplicar la condición
-    alerta_minimo_calculado = np.where(condicion_min, valor_si_verdadero, valor_si_falso)
-    # Aplicar el tope máximo: el valor no puede ser mayor que el Stock Mínimo Sugerido.
-    df_analisis['Punto_de_Alerta_Minimo_Unds'] = np.minimum(alerta_minimo_calculado, df_analisis['Stock_Minimo_Unds'])
+    # Punto de Alerta MÍNIMO (El nivel crítico, cuando ya estás consumiendo tu seguridad)
+    # Usamos el Stock de Seguridad como el punto mínimo absoluto.
+    df_analisis['Punto_de_Alerta_Minimo_Unds'] = df_analisis['Stock_de_Seguridad_Unds'].round()
 
-    # 5. Añadir columna de acción para saber si pedir ahora (basado en el Punto de Alerta Ideal)
-    df_analisis['Accion_Requerida'] = np.where(
-        df_analisis[stock_actual_col_stock] < df_analisis['Punto_de_Alerta_Minimo_Unds'], 'Sí', 'No'
-    )
-    # -----------------------------------------------------------------
+
+
+    # --- PASO 3: Cálculo de Puntos de Alerta ---
+    dias_seguridad_adicionales = df_analisis['Importancia_Dinamica'] * factor_importancia_seguridad
+    dias_seguridad_totales = dias_seguridad_base + dias_seguridad_adicionales
+    df_analisis['Stock_de_Seguridad_Unds'] = (df_analisis['PDA_Final'] * dias_seguridad_totales).round()
+    df_analisis['Demanda_Lead_Time_Unds'] = (df_analisis['PDA_Final'] * lead_time_dias).round()
+    df_analisis['Punto_de_Alerta_Ideal_Unds'] = df_analisis['Demanda_Lead_Time_Unds'] + df_analisis['Stock_de_Seguridad_Unds']
+    df_analisis['Punto_de_Alerta_Minimo_Unds'] = df_analisis['Stock_de_Seguridad_Unds'].round()
     
-    # ... (resto del código sin cambios hasta las columnas de salida) ...
-    df_analisis['Sugerencia_Pedido_Ideal_Unds'] = (df_analisis['Stock_Ideal_Unds'] - df_analisis[stock_actual_col_stock]).clip(lower=0).round()
+    # Determinamos si se necesita una acción de pedido AHORA MISMO
+    df_analisis['Accion_Requerida'] = np.where(
+        df_analisis['Cantidad en stock actual'] < df_analisis['Punto_de_Alerta_Minimo_Unds'], 'Sí, URGENTE',
+        np.where(df_analisis['Cantidad en stock actual'] < df_analisis['Punto_de_Alerta_Ideal_Unds'], 'Sí, Recomendado', 'No')
+    )
+    # df_analisis['Accion_Requerida'] = np.where(
+    #     df_analisis['Cantidad en stock actual'] < df_analisis['Punto_de_Alerta_Minimo_Unds'], 'Sí, URGENTE', 'No')
+    
+    # Calculamos la sugerencia de pedido mínimo, necesaria para los KPIs
     cantidad_base_pedido_minimo = df_analisis['PDA_Final'] * dias_cubrir_con_pedido_minimo
     factor_ajuste_importancia_pedido_minimo = 1 + (df_analisis['Importancia_Dinamica'] * coef_importancia_para_pedido_minimo)
     df_analisis['Sugerencia_Pedido_Minimo_Unds'] = (cantidad_base_pedido_minimo * factor_ajuste_importancia_pedido_minimo * df_analisis['Factor_Rotacion_Ajustado_Minimo']).round().clip(lower=0)
-    cond_importancia_alta = df_analisis['Importancia_Dinamica'] >= importancia_minima_para_redondeo_a_1
-    df_analisis.loc[cond_importancia_alta & (df_analisis['Sugerencia_Pedido_Ideal_Unds'] > 0) & (df_analisis['Sugerencia_Pedido_Ideal_Unds'] < 1), 'Sugerencia_Pedido_Ideal_Unds'] = 1
-    df_analisis.loc[cond_importancia_alta & (df_analisis['Sugerencia_Pedido_Minimo_Unds'] > 0) & (df_analisis['Sugerencia_Pedido_Minimo_Unds'] < 1), 'Sugerencia_Pedido_Minimo_Unds'] = 1
-    cond_pasivo = ((df_analisis['PDA_Final'] <= 1e-6) & (df_analisis[stock_actual_col_stock] == 0) & (df_analisis['Ventas_Total_Reciente'] > 0))
-    if incluir_productos_pasivos:
-        df_analisis.loc[cond_pasivo, 'Sugerencia_Pedido_Ideal_Unds'] = np.maximum(df_analisis.loc[cond_pasivo, 'Sugerencia_Pedido_Ideal_Unds'].fillna(0), cantidad_reposicion_para_pasivos)
-        df_analisis.loc[cond_pasivo, 'Stock_Ideal_Unds'] = np.maximum(df_analisis.loc[cond_pasivo, 'Stock_Ideal_Unds'].fillna(0), cantidad_reposicion_para_pasivos)
-        df_analisis.loc[cond_pasivo, 'Sugerencia_Pedido_Minimo_Unds'] = np.maximum(df_analisis.loc[cond_pasivo, 'Sugerencia_Pedido_Minimo_Unds'].fillna(0), cantidad_reposicion_para_pasivos)
-        df_analisis.loc[cond_pasivo, 'Stock_Minimo_Unds'] = np.maximum(df_analisis.loc[cond_pasivo, 'Stock_Minimo_Unds'].fillna(0), cantidad_reposicion_para_pasivos)
-    df_analisis['Dias_Cobertura_Stock_Actual'] = np.where(df_analisis['PDA_Final'] > 1e-6, df_analisis[stock_actual_col_stock] / df_analisis['PDA_Final'], np.inf)
-    df_analisis.loc[df_analisis[stock_actual_col_stock] == 0, 'Dias_Cobertura_Stock_Actual'] = 0
-    df_analisis['Dias_Cobertura_Stock_Actual'] = df_analisis['Dias_Cobertura_Stock_Actual'].round(1)
-    df_resultado = df_analisis.copy()
-    if excluir_productos_sin_sugerencia_ideal:
-        if 'Sugerencia_Pedido_Ideal_Unds' in df_resultado.columns: df_resultado = df_resultado[df_resultado['Sugerencia_Pedido_Ideal_Unds'] > 0]
-    if 'Importancia_Dinamica' in df_resultado.columns: df_resultado = df_resultado.sort_values(by='Importancia_Dinamica', ascending=False)
+
+    # Calculamos la diferencia para ver qué tan por debajo (o por encima) estamos
+    df_analisis['Diferencia_vs_Alerta_Minima'] = df_analisis[stock_actual_col_stock] - df_analisis['Punto_de_Alerta_Minimo_Unds']
+
+
+
+    # --- PASO 4: Filtrado y Cálculo de KPIs ---
+    # # 4.1 Filtramos por categorías si el usuario lo proporcionó
+    # if filtro_categorias and 'categoria' in df_analisis.columns:
+    #     df_analisis = df_analisis[df_analisis['categoria'].str.strip().str.lower().isin([cat.lower() for cat in filtro_categorias])]
     
-    # --- COLUMNAS DE SALIDA ACTUALIZADAS ---
-    columnas_salida_deseadas = [
-        sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock, 
-        precio_compra_actual_col_stock, stock_actual_col_stock,
-        # 'Dias_Cobertura_Stock_Actual', 
-        'Punto_de_Alerta_Minimo_Unds', 'Punto_de_Alerta_Ideal_Unds',
-        # 'Accion_Requerida',
-        # 'Stock_de_Seguridad_Unds',
-        # 'Stock_Minimo_Unds', 'Stock_Ideal_Unds', 
-        # 'Sugerencia_Pedido_Minimo_Unds', 'Sugerencia_Pedido_Ideal_Unds', 
-        'Importancia_Dinamica',
-        'Ventas_Total_General', 'Ventas_Total_Reciente'
-        # 'PDA_Final'
+
+    # # 4.2 Filtramos por marcas si el usuario lo proporcionó
+    # if filtro_marcas and 'marca' in df_analisis.columns:
+    #     df_analisis = df_analisis[df_analisis['marca'].str.strip().str.lower().isin([marca.lower() for marca in filtro_marcas])]
+
+    if filtro_categorias and 'Categoría' in df_analisis.columns:
+        # Normalizamos la lista de categorías a minúsculas y sin espacios
+        categorias_normalizadas = [cat.strip().lower() for cat in filtro_categorias]
+        
+        # Comparamos contra la columna del DataFrame también normalizada
+        # El .str.lower() y .str.strip() se aplican a cada valor de la columna antes de la comparación
+        df_analisis = df_analisis[
+            df_analisis['Categoría'].str.strip().str.lower().isin(categorias_normalizadas)
+        ].copy()
+    # print(f"DEBUG: 3. Después de filtrar por categorías, quedan {len(df_analisis)} filas.")
+
+    if filtro_marcas and 'Marca' in df_analisis.columns:
+        # Normalizamos la lista de marcas
+        marcas_normalizadas = [marca.strip().lower() for marca in filtro_marcas]
+        
+        # Comparamos contra la columna de marcas normalizada
+        df_analisis = df_analisis[
+            df_analisis['Marca'].str.strip().str.lower().isin(marcas_normalizadas)
+        ].copy()
+
+
+    df_alerta = df_analisis[df_analisis['Accion_Requerida'] == 'Sí, URGENTE'].copy()
+
+    skus_en_alerta_roja = len(df_alerta)
+    inversion_urgente = 0
+    proximo_quiebre_critico = "Ninguno"
+
+    if not df_alerta.empty:
+        inversion_urgente = (df_alerta['Sugerencia_Pedido_Minimo_Unds'] * df_alerta['Precio de compra actual (S/.)']).sum()
+        
+        df_alerta['dias_para_quiebre'] = (df_alerta['Cantidad en stock actual'] - df_alerta['Punto_de_Alerta_Minimo_Unds']) / df_alerta['PDA_Final'].replace(0, np.nan)
+        productos_clase_a_en_alerta = df_alerta[df_alerta['Importancia_Dinamica'] > 0.8]
+        
+        if not productos_clase_a_en_alerta.empty:
+            producto_urgente = productos_clase_a_en_alerta.sort_values(by='dias_para_quiebre').iloc[0]
+            proximo_quiebre_critico = producto_urgente['Nombre del producto']
+
+    insight_text = f"¡Atención! Tienes {skus_en_alerta_roja} productos en Alerta Roja (por debajo del stock de seguridad). Se recomienda una inversión urgente de S/ {inversion_urgente:,.2f} para evitar quiebres de stock."
+    if skus_en_alerta_roja == 0:
+        insight_text = "¡Todo en orden! Ningún producto se encuentra por debajo de su punto de alerta mínimo."
+
+    kpis = {
+        "SKUs en Alerta Roja": skus_en_alerta_roja,
+        "Inversión Urgente Requerida": f"S/ {inversion_urgente:,.2f}",
+        "Próximo Quiebre Crítico": proximo_quiebre_critico,
+    }
+
+    ascending_map = {
+        'Diferencia_vs_Alerta_Minima': True, # Menor diferencia (más negativo) primero
+        'Importancia_Dinamica': False,       # Mayor importancia primero
+        'Inversion_Urgente': False           # Mayor inversión primero
+    }
+    
+    if ordenar_por in df_alerta.columns:
+        df_alerta.sort_values(by=ordenar_por, ascending=ascending_map.get(ordenar_por, True), inplace=True)
+    
+
+    print("Formateando el reporte final...")
+    # --- PASO 5: FORMATEO FINAL DE SALIDA ---
+    df_alerta['Diferencia (Stock vs Alerta)'] = df_alerta['Cantidad en stock actual'] - df_alerta['Punto_de_Alerta_Minimo_Unds']
+
+
+    # # --- COLUMNAS DE SALIDA ACTUALIZADAS ---
+    # columnas_salida_deseadas = [
+    #     sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock, 
+    #     precio_compra_actual_col_stock, stock_actual_col_stock,
+    #     # 'Dias_Cobertura_Stock_Actual', 
+    #     'Punto_de_Alerta_Minimo_Unds', 'Punto_de_Alerta_Ideal_Unds',
+    #     # 'Accion_Requerida',
+    #     # 'Stock_de_Seguridad_Unds',
+    #     # 'Stock_Minimo_Unds', 'Stock_Ideal_Unds', 
+    #     # 'Sugerencia_Pedido_Minimo_Unds', 'Sugerencia_Pedido_Ideal_Unds', 
+    #     'Importancia_Dinamica',
+    #     'Ventas_Total_General', 'Ventas_Total_Reciente'
+    #     # 'PDA_Final'
+    # ]
+    
+    # Seleccionamos solo las columnas relevantes para ESTE reporte
+    columnas_finales = [
+        'SKU / Código de producto', 'Nombre del producto', 'Categoría', 'Marca',
+        'Cantidad en stock actual', 'Punto_de_Alerta_Minimo_Unds', 'Punto_de_Alerta_Ideal_Unds',
+        'Diferencia_vs_Alerta_Minima', 'Accion_Requerida', 'Importancia_Dinamica', 'PDA_Final'
     ]
+
+    # columnas_finales_presentes = []
+    # df_resultado_final_dict = {}
+    # for col_s in columnas_salida_deseadas:
+    #     if col_s in df_resultado.columns:
+    #         df_resultado_final_dict[col_s] = df_resultado[col_s]
+    #         columnas_finales_presentes.append(col_s)
+    # if not df_resultado.empty:
+    #     df_resultado_final = pd.DataFrame(df_resultado_final_dict)
+    #     df_resultado_final = df_resultado_final[columnas_finales_presentes]
+    # else: df_resultado_final = pd.DataFrame(columns=columnas_finales_presentes)
     
-    columnas_finales_presentes = []
-    df_resultado_final_dict = {}
-    for col_s in columnas_salida_deseadas:
-        if col_s in df_resultado.columns:
-            df_resultado_final_dict[col_s] = df_resultado[col_s]
-            columnas_finales_presentes.append(col_s)
-    if not df_resultado.empty:
-        df_resultado_final = pd.DataFrame(df_resultado_final_dict)
-        df_resultado_final = df_resultado_final[columnas_finales_presentes]
-    else: df_resultado_final = pd.DataFrame(columns=columnas_finales_presentes)
+
+    df_final = df_analisis[[col for col in columnas_finales if col in df_analisis.columns]].copy()
+
+    # Renombramos las columnas a un formato amigable para el usuario
+    df_final.rename(columns={
+        'sku': 'SKU / Código de producto',
+        'nombre_producto': 'Nombre del producto',
+        'categoria': 'Categoría',
+        'marca': 'Marca',
+        'stock_actual_col_stock': 'Stock Actual (Unds)',
+        'Punto_de_Alerta_Minimo_Unds': 'Punto de Alerta Mínimo (Unds)',
+        'Punto_de_Alerta_Ideal_Unds': 'Punto de Alerta Ideal (Unds)',
+        'Diferencia_vs_Alerta_Minima': 'Diferencia (Stock vs Alerta Mín.)',
+        'Accion_Requerida': '¿Pedir Ahora?',
+        'Importancia_Dinamica': 'Índice de Importancia',
+        'PDA_Final': 'Promedio Venta Diaria (Unds)'
+    }, inplace=True)
     
-    if not df_resultado_final.empty:
-        # --- MAPA DE RENOMBRE DE COLUMNAS ACTUALIZADO ---
-        column_rename_map = {
-            stock_actual_col_stock: 'Stock Actual (Unds)',
-            precio_compra_actual_col_stock: 'Precio Compra Actual (S/.)',
-            'PDA_Final': 'Promedio Venta Diaria (Unds)',
-            'Dias_Cobertura_Stock_Actual': 'Cobertura Actual (Días)',
-            'Punto_de_Alerta_Ideal_Unds': 'Punto de Alerta Ideal (Unds)',   # <-- RENOMBRADO
-            'Punto_de_Alerta_Minimo_Unds': 'Punto de Alerta Mínimo (Unds)', # <-- NUEVO
-            'Accion_Requerida': '¿Pedir Ahora?',
-            'Stock_de_Seguridad_Unds': 'Stock de Seguridad (Unds)',
-            'Stock_Minimo_Unds': 'Stock Mínimo Sugerido (Unds)',
-            'Stock_Ideal_Unds': 'Stock Ideal Sugerido (Unds)',
-            'Sugerencia_Pedido_Ideal_Unds': 'Pedido Ideal Sugerido (Unds)',
-            'Sugerencia_Pedido_Minimo_Unds': 'Pedido Mínimo Sugerido (Unds)',
-            'Importancia_Dinamica': 'Índice de Importancia',
-            'Ventas_Total_Reciente': f'Ventas Recientes ({final_dias_recientes}d) (Unds)',
-            'Dias_Con_Venta_Reciente': f'Días con Venta ({final_dias_recientes}d)',
-            'Ventas_Total_General' : f'Ventas Periodo General ({final_dias_general}d) (Unds)'
-        }
-        # También se renombrará la columna de Stock de Seguridad para mayor claridad
-        actual_rename_map = {k: v for k, v in column_rename_map.items() if k in df_resultado_final.columns}
-        df_resultado_final = df_resultado_final.rename(columns=actual_rename_map)
+    # Ordenamos por los productos más urgentes
+    df_final = df_final.sort_values(by='Diferencia (Stock vs Alerta Mín.)', ascending=True)
 
-    # --- INICIO DEL NUEVO PASO DE LIMPIEZA (justo antes del return) ---
-    print("Limpiando DataFrame final para compatibilidad con JSON...")
-
-    # 1. Asegurarse de que el DataFrame final exista y no esté vacío
-    if df_resultado_final.empty:
-        return df_resultado_final
-
-    # 2. Reemplazar valores infinitos (inf, -inf) con NaN, que es más fácil de manejar
-    df_resultado_final = df_resultado_final.replace([np.inf, -np.inf], np.nan)
-
-    # 3. Reemplazar todos los NaN restantes con None, que es compatible con JSON (se convierte en 'null')
-    # El método .where() es muy eficiente para esto. Donde la condición (pd.notna) es falsa, se reemplaza con None.
-    df_resultado_final = df_resultado_final.where(pd.notna(df_resultado_final), None)
+    # Limpieza final para compatibilidad con JSON
+    df_final = df_final.replace([np.inf, -np.inf], np.nan).where(pd.notna(df_final), None)
     
-    return df_resultado_final
+    # ... (Tu lógica para seleccionar y renombrar las columnas finales del `df_alerta`)
+    
+    return {
+        "data": df_final,
+        "summary": { "insight": insight_text, "kpis": kpis }
+    }
 
 
 
