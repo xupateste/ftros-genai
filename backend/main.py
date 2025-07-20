@@ -31,7 +31,7 @@ from track_expenses import process_csv, summarise_expenses, clean_data, get_top_
 from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
-from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos
+from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos_nuevo, auditar_margenes_de_productos
 from report_config import REPORTS_CONFIG
 from plan_config import PLANS_CONFIG
 from strategy_config import DEFAULT_STRATEGY
@@ -2158,6 +2158,61 @@ async def upload_csvs(
         }
     )
 
+
+# --- 4. CREA EL NUEVO ENDPOINT ---
+@app.post("/auditoria-margenes", summary="Genera el reporte de Auditoría de Márgenes", tags=["Reportes"])
+async def generar_auditoria_margenes(
+    # Inyectamos el request para el logging
+    request: Request, 
+    # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
+    ventas_file_id: str = Form(...),
+    inventario_file_id: str = Form(...),
+    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
+
+    # --- Recibimos los nuevos parámetros del formulario ---
+    tipo_analisis_margen: str = Form("desviacion_negativa"),
+    umbral_desviacion_porcentaje: float = Form(10.0),
+    ordenar_por: str = Form("impacto_financiero")
+):
+    
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+
+    try:
+        filtro_categorias = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        filtro_marcas = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
+
+
+    processing_params = {
+        "tipo_analisis_margen": tipo_analisis_margen,
+        "umbral_desviacion_porcentaje": umbral_desviacion_porcentaje,
+        "filtro_categorias": filtro_categorias,
+        "filtro_marcas": filtro_marcas,
+        "ordenar_por": ordenar_por
+    }
+    
+    full_params_for_logging = dict(await request.form())
+    
+    return await _handle_report_generation(
+        full_params_for_logging=full_params_for_logging,
+        report_key="ReporteAuditoriaMargenes",
+        processing_function=auditar_margenes_de_productos_nuevo, # La nueva función de lógica
+        processing_params=processing_params,
+        output_filename="Auditoria_Margenes.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=X_Session_ID,
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id
+    )
 
 # ----------------------------------------------------------
 # ------------------ FUNCIONES AUXILIARES ------------------

@@ -3,15 +3,68 @@
 # ===================================================================================
 REPORTS_CONFIG = {
   # "🧠 Diagnósticos generales": [
-  "AuditoriaMargenes": {
-        "label": "Auditoría de Márgenes [Debug]",
-        "endpoint": "/debug/auditoria-margenes",
-        "isPro": False, # No es una función Pro
-        "costo": 0,     # ¡No consume créditos!
-        "categoria": "Herramientas de Diagnóstico",
-        "basic_parameters": [], # No tiene parámetros configurables
-        "advanced_parameters": []
-    },
+  "ReporteAuditoriaMargenes": {
+      "label": 'Auditoría de Desviación de Margen 💸',
+      "endpoint": '/auditoria-margenes',
+      "isPro": False, # Es un reporte "Estratega"
+      "costo": 10,
+      "categoria": "🛠️ Diagnósticos de Datos",
+      "basic_parameters": [
+          {
+              "name": "ordenar_por",
+              "label": "Priorizar y Ordenar Por",
+              "type": "select",
+              "defaultValue": "impacto_financiero",
+              "tooltip_key": "ordenar_auditoria_por",
+              "options": [
+                  { "value": "impacto_financiero", "label": "Mayor Impacto Financiero (S/.)" },
+                  { "value": "desviacion_porcentual", "label": "Mayor Desviación Porcentual (%)" },
+                  { "value": "peor_margen_real", "label": "Peor Margen Real por Unidad (S/.)" },
+                  { "value": "categoria", "label": "Categoría (A-Z)" }
+              ]
+          },
+          { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "filtro_categorias", "optionsKey": 'categorias', "defaultValue": [] },
+          { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "filtro_marcas", "optionsKey": 'marcas', "defaultValue": [] },
+          {
+              "name": "tipo_analisis_margen",
+              "label": "Buscar productos con...",
+              "type": "select",
+              "defaultValue": "desviacion_negativa",
+              "tooltip_key": "tipo_analisis_margen",
+              "options": [
+                  { "value": "desviacion_negativa", "label": "Desviación Negativa (Venta por debajo del precio de lista)" },
+                  { "value": "margen_negativo", "label": "Margen Negativo (Venta por debajo del costo)" },
+                  { "value": "todas_las_desviaciones", "label": "Todas las Desviaciones (Positivas y Negativas)" }
+              ]
+          },
+          { 
+              "name": "umbral_desviacion_porcentaje", 
+              "label": "Mostrar solo si la desviación del margen supera el (%)", 
+              "type": "number", 
+              "defaultValue": 10,
+              "tooltip_key": "umbral_desviacion"
+          }
+      ],
+      "advanced_parameters": [],
+      "accionable_columns": [
+          "SKU / Código de producto", "Nombre del producto", "Precio Venta de Lista (S/.)",
+          "Precio Venta Promedio (S/.)", "Margen Teórico (S/.)", "Margen Real (S/.)", "Desviación de Margen (%)"
+      ],
+      "preview_details": [
+          { "label": "Margen de Lista (Esperado)", "data_key": "Margen Teórico (S/.)", "prefix": "S/ " },
+          { "label": "Margen Real (Obtenido)", "data_key": "Margen Real (S/.)", "prefix": "S/ " },
+          { "label": "Desviación", "data_key": "Desviación de Margen (%)", "suffix": "%" }
+      ]
+  },
+  # "AuditoriaMargenes": {
+  #     "label": "Auditoría de Márgenes [Debug]",
+  #     "endpoint": "/debug/auditoria-margenes",
+  #     "isPro": False, # No es una función Pro
+  #     "costo": 0,     # ¡No consume créditos!
+  #     "categoria": "Herramientas de Diagnóstico",
+  #     "basic_parameters": [], # No tiene parámetros configurables
+  #     "advanced_parameters": []
+  # },
   "ReporteABC": {
     "label": 'Análisis ABC de Productos ✓',
     "endpoint": '/abc',
@@ -32,8 +85,8 @@ REPORTS_CONFIG = {
         ],
         "defaultValue": 'combinado'
       },
-      { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "incluir_solo_categorias", "optionsKey": 'categorias', "defaultValue": [] },
-      { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "incluir_solo_marcas", "optionsKey": 'marcas', "defaultValue": [] },
+      { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "filtro_categorias", "optionsKey": 'categorias', "defaultValue": [] },
+      { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "filtro_marcas", "optionsKey": 'marcas', "defaultValue": [] },
       { "name": 'periodo_abc', "label": 'Período de Análisis ABC', "type": 'select', "tooltip_key": "periodo_abc",
         "options": [
           { "value": '12', "label": 'Últimos 12 meses' },
@@ -136,8 +189,8 @@ REPORTS_CONFIG = {
           { "value": "salud", "label": "Peor Salud (Diagnóstico)" }
         ]
       },
-      { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "incluir_solo_categorias", "optionsKey": 'categorias', "defaultValue": [] },
-      { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "incluir_solo_marcas", "optionsKey": 'marcas', "defaultValue": [] },
+      { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "filtro_categorias", "optionsKey": 'categorias', "defaultValue": [] },
+      { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "filtro_marcas", "optionsKey": 'marcas', "defaultValue": [] },
       {
         "name": "criterio_abc",
         "label": "Criterio de Importancia (ABC)",
@@ -198,8 +251,8 @@ REPORTS_CONFIG = {
         ],
         "defaultValue": 'Importancia_Dinamica'
       },
-      { "name": 'filtro_categorias_json', "label": 'Filtrar por Categorías', "type": 'multi-select', "optionsKey": 'categorias', "defaultValue": [] },
-      { "name": 'filtro_marcas_json', "label": 'Filtrar por Marcas', "type": 'multi-select', "optionsKey": 'marcas', "defaultValue": [] }
+      { "name": 'filtro_categorias_json', "label": 'Filtrar por Categorías', "type": 'multi-select', "optionsKey": 'categorias', "tooltip_key": 'filtro_categorias', "defaultValue": [] },
+      { "name": 'filtro_marcas_json', "label": 'Filtrar por Marcas', "type": 'multi-select', "optionsKey": 'marcas', "tooltip_key": 'filtro_marcas', "defaultValue": [] }
     ],
     "advanced_parameters": [
       { "name": 'dias_analisis_ventas_general', "label": 'Período de Análisis General (días)', "type": 'number', "tooltip_key": "dias_analisis_ventas_general", "defaultValue": 180, "min": 30 },

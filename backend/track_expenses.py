@@ -2814,6 +2814,195 @@ def auditar_margenes_de_productos(
         }
     }
 
+
+
+def auditar_margenes_de_productos_nuevo(
+    df_ventas: pd.DataFrame,
+    df_inventario: pd.DataFrame,
+    tipo_analisis_margen: str = "desviacion_negativa",
+    umbral_desviacion_porcentaje: float = 10.0,
+    filtro_categorias: Optional[List[str]] = None,
+    filtro_marcas: Optional[List[str]] = None,
+    ordenar_por: str = 'impacto_financiero',
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Genera un reporte de auditoría para identificar productos con desviaciones
+    de margen, comparando el precio de venta promedio con el precio de lista.
+    """
+    # --- 1. Pre-procesamiento y cálculo de precios ---
+    # ... (Tu lógica para limpiar datos, calcular `Precio_Venta_Prom_Reciente` y hacer merge)
+
+    """
+    Genera un reporte de auditoría para identificar productos con márgenes negativos,
+    asegurando que los nombres de las columnas sean consistentes y el resultado sea
+    compatible con JSON.
+    """
+    print("Iniciando auditoría de márgenes...")
+
+    # --- 1. Definición y Limpieza de Nombres de Columna ---
+    sku_col = 'SKU / Código de producto'
+    cantidad_col_ventas = 'Cantidad vendida' # <-- Nombre correcto
+    precio_venta_col_ventas = 'Precio de venta unitario (S/.)'
+    nombre_prod_col_stock = 'Nombre del producto'
+    precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
+    precio_venta_actual_col_stock = 'Precio de venta actual (S/.)'
+
+    # --- 2. Pre-procesamiento de Datos ---
+    df_ventas_proc = df_ventas.copy()
+    df_inventario_proc = df_inventario.copy()
+
+    df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+    
+    numeric_cols_inv = [
+        'Cantidad en stock actual', 
+        'Precio de compra actual (S/.)', 
+        'Precio de venta actual (S/.)'
+    ]
+    for col in numeric_cols_inv:
+        if col in df_inventario_proc.columns:
+            df_inventario_proc[col] = pd.to_numeric(df_inventario_proc[col], errors='coerce')
+
+    numeric_cols_ventas = [
+        'Cantidad vendida',
+        'Precio de venta unitario (S/.)'
+    ]
+    for col in numeric_cols_ventas:
+        if col in df_ventas_proc.columns:
+            df_ventas_proc[col] = pd.to_numeric(df_ventas_proc[col], errors='coerce')
+
+
+    # --- 3. Cálculo del Precio de Venta Promedio ---
+    df_ventas_proc['ingreso_total_linea'] = df_ventas_proc[cantidad_col_ventas] * df_ventas_proc[precio_venta_col_ventas]
+    
+    agg_ventas = df_ventas_proc.groupby(sku_col).agg(
+        total_ingresos=('ingreso_total_linea', 'sum'),
+        total_unidades=(cantidad_col_ventas, 'sum') # <-- Usando la variable correcta
+    ).reset_index()
+
+    agg_ventas['Precio_Venta_Prom_Calculado'] = agg_ventas['total_ingresos'] / agg_ventas['total_unidades']
+
+    # --- 4. Combinar Datos y Calcular Márgenes ---
+    df_auditoria = pd.merge(
+        df_inventario_proc[[sku_col, nombre_prod_col_stock, "Categoría", "Marca", precio_compra_actual_col_stock, precio_venta_actual_col_stock]],
+        agg_ventas[[sku_col, 'Precio_Venta_Prom_Calculado']],
+        on=sku_col,
+        how='left'
+    )
+
+
+    # --- 2. Cálculo de Márgenes y Desviación ---
+    df_auditoria['Margen Teórico (S/.)'] = df_auditoria['Precio de venta actual (S/.)'] - df_auditoria['Precio de compra actual (S/.)']
+    df_auditoria['Margen Real (S/.)'] = (df_auditoria['Precio_Venta_Prom_Calculado'] - df_auditoria['Precio de compra actual (S/.)']).round(2)
+    
+    # Calculamos la desviación solo si el margen teórico es positivo para evitar divisiones por cero o resultados extraños
+    df_auditoria['Desviación de Margen (%)'] = np.where(
+        df_auditoria['Margen Teórico (S/.)'] > 0,
+        ((df_auditoria['Margen Real (S/.)'] - df_auditoria['Margen Teórico (S/.)']) / df_auditoria['Margen Teórico (S/.)']) * 100,
+        0
+    )
+
+    # --- 3. Filtrado según los parámetros del usuario ---
+    if tipo_analisis_margen == 'desviacion_negativa':
+        df_resultado = (df_auditoria[df_auditoria['Desviación de Margen (%)'] < -umbral_desviacion_porcentaje]).round(2)
+    elif tipo_analisis_margen == 'margen_negativo':
+        df_resultado = (df_auditoria[df_auditoria['Margen Real (S/.)'] < 0]).round(2)
+    else: # 'todas_las_desviaciones'
+        df_resultado = (df_auditoria[abs(df_auditoria['Desviación de Margen (%)']) >= umbral_desviacion_porcentaje]).round(2)
+
+    print(f"colums for df_resultado {df_resultado.columns}")
+
+    if filtro_categorias and "Categoría" in df_resultado.columns:
+        # Normalizamos la lista de categorías a minúsculas y sin espacios
+        categorias_normalizadas = [cat.strip().lower() for cat in filtro_categorias]
+        
+        # Comparamos contra la columna del DataFrame también normalizada
+        # El .str.lower() y .str.strip() se aplican a cada valor de la columna antes de la comparación
+        df_resultado = df_resultado[
+            df_resultado["Categoría"].str.strip().str.lower().isin(categorias_normalizadas)
+        ].copy()
+
+    if filtro_marcas and "Marca" in df_resultado.columns:
+        # Normalizamos la lista de marcas
+        marcas_normalizadas = [marca.strip().lower() for marca in filtro_marcas]
+        
+        # Comparamos contra la columna de marcas normalizada
+        df_resultado = df_resultado[
+            df_resultado["Marca"].str.strip().str.lower().isin(marcas_normalizadas)
+        ].copy()
+   
+    print(f"colums for filtro_categorias {filtro_categorias}")
+
+    unidades_vendidas = df_ventas_proc.groupby('SKU / Código de producto')['Cantidad vendida'].sum()
+    df_resultado = pd.merge(df_resultado, unidades_vendidas, on='SKU / Código de producto', how='left')
+    
+    df_resultado['Impacto Financiero Total (S/.)'] = (df_resultado['Margen Teórico (S/.)'] - df_resultado['Margen Real (S/.)']) * df_resultado['Cantidad vendida']
+    
+
+
+    # --- 4. Cálculo de KPIs y Resumen ---
+    if not df_resultado.empty:
+        ganancia_perdida = (df_resultado['Margen Teórico (S/.)'] - df_resultado['Margen Real (S/.)']).sum()
+        skus_con_desviacion = df_resultado['SKU / Código de producto'].nunique()
+        peor_infractor = df_resultado.sort_values(by='Desviación de Margen (%)').iloc[0]
+        skus_con_perdida = len(df_resultado[df_resultado['Margen Real (S/.)'] < 0])
+    else:
+        ganancia_perdida, skus_con_desviacion, peor_infractor, skus_con_perdida = 0, 0, None, 0
+
+    insight_text = f"Auditoría completada. Se encontraron {skus_con_desviacion} productos con desviaciones significativas, representando S/ {ganancia_perdida:,.2f} en ganancias no realizadas."
+    kpis = {
+        "Ganancia 'Perdida' (S/.)": f"S/ {ganancia_perdida:,.2f}",
+        "# SKUs con Desviación": skus_con_desviacion,
+        "Peor Infractor (%)": f"{peor_infractor['Desviación de Margen (%)']:.1f}% ({peor_infractor['Nombre del producto']})" if peor_infractor is not None else "N/A",
+        "# SKUs con Pérdida": skus_con_perdida
+    }
+
+
+    if ordenar_por == 'impacto_financiero':
+        df_resultado.sort_values(by='Impacto Financiero Total (S/.)', ascending=False, inplace=True)
+    elif ordenar_por == 'desviacion_porcentual':
+        df_resultado.sort_values(by='Desviación de Margen (%)', ascending=True, inplace=True) # La desviación más negativa primero
+    elif ordenar_por == 'peor_margen_real':
+        df_resultado.sort_values(by='Margen Real (S/.)', ascending=True, inplace=True) # El margen más bajo/negativo primero
+    elif ordenar_por == 'categoria':
+        df_resultado.sort_values(by=['Categoría', 'Impacto Financiero Total (S/.)'], ascending=[True, False], inplace=True)
+    
+
+    # --- 5. Formateo y Limpieza Final ---
+    # ... (Tu lógica para seleccionar, renombrar y limpiar el `df_resultado` para JSON)
+    # --- PASO 6: Formateo y Limpieza Final (sin cambios en la lógica, solo en el return) ---
+    if df_resultado.empty:
+        print("✅ Auditoría completada. No se encontraron productos con márgenes negativos.")
+        # Devolvemos la estructura de diccionario esperada, con un DataFrame vacío
+        return {
+            "data": pd.DataFrame({"Resultado": ["No se encontraron productos con márgenes de venta negativos."]}),
+            "summary": {
+                "insight": "¡Excelente! No se detectaron productos vendidos por debajo de su costo actual.",
+                "kpis": {}
+            }
+        }
+
+    print(f"⚠️ Auditoría completada. Se encontraron {len(df_resultado)} productos con márgenes negativos.")
+    
+    df_resultado.rename(columns={
+        'Precio Venta de Lista (Inventario)': 'Precio Venta Lista',
+        'Precio Venta Promedio (Ventas)': 'Precio Venta Promedio',
+        'Precio Compra Actual': 'Costo Actual',
+        'Margen Unitario Real (Negativo)': 'Margen Calculado',
+        'Precio de venta actual (S/.)': 'Precio Venta de Lista (S/.)',
+        'Precio_Venta_Prom_Calculado': 'Precio Venta Promedio (S/.)',
+    }, inplace=True)
+    
+    # Limpieza final para compatibilidad con JSON
+    df_limpio = df_resultado.replace([np.inf, -np.inf], np.nan)
+    resultado_final = df_limpio.where(pd.notna(df_limpio), None)
+
+    
+    return {
+        "data": resultado_final,
+        "summary": { "insight": insight_text, "kpis": kpis }
+    }
 # ===================================================
 # ============== FINAL: FULL REPORTES ===============
 # ===================================================

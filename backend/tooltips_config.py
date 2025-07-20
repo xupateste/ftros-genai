@@ -1,10 +1,17 @@
 TOOLTIPS_GLOSSARY = {
+    # --- Parámetros de Auditoría de Desviación de Margen ---
+    "tipo_analisis_margen": "Elige qué tipo de problema de precios quieres auditar. 'Desviación Negativa' te muestra productos rentables pero que se venden más barato de lo esperado. 'Margen Negativo' te muestra los productos que te están generando pérdidas directas.",
+    "umbral_desviacion": "Filtra los resultados para ignorar pequeñas diferencias de precio. Pon '20' para encontrar solo los productos cuyo margen real se desvía más de un 20% de su margen de lista.",
+    "ordenar_auditoria_por": "Elige el criterio principal para ordenar el reporte. 'Impacto Financiero' te mostrará primero las fugas de dinero más grandes, mientras que 'Peor Margen' se enfocará en los productos que generan pérdidas directas.",
+
     # --- Parámetros de maestro inventario ---
     "maestro_ordenar_por": "Elige el criterio principal para ordenar el reporte. 'Prioridad' te mostrará los problemas más urgentes primero, mientras que 'Valor en Riesgo' se enfocará en el impacto financiero.",
     "maestro_criterio_abc": "Elige la métrica principal para clasificar tus productos más importantes (Clase A, B, C) dentro de este reporte maestro.",
     "maestro_periodo_abc": "Define el rango de tiempo de las ventas que se usarán para el análisis de importancia ABC.",
     "maestro_dias_muerto": "Establece el umbral de días sin venta para que un producto sea considerado 'Stock Muerto' en este diagnóstico.",
     "maestro_meses_salud": "Define cuántos meses de ventas recientes se usarán para calcular la velocidad de rotación y detectar excesos de stock.",
+    "criterio_abc": "Elige la métrica principal que define la 'importancia' de un producto para tu negocio. 'Margen' se enfoca en la rentabilidad, 'Ingresos' en la facturación total, y 'Unidades' en la popularidad.",
+    "periodo_abc": "Define el rango de tiempo de las ventas que se usarán para el análisis de importancia. Un período más corto (3-6 meses) refleja las tendencias recientes, mientras que uno más largo (12 meses) muestra la estabilidad histórica.",
 
     # --- Parámetros de alerta stock ---
     "ordenar_alerta_por": "Elige el criterio principal para ordenar la lista de alertas. 'Más Urgente' te mostrará primero los productos que están más por debajo de su stock de seguridad.",
@@ -63,6 +70,18 @@ TOOLTIPS_GLOSSARY = {
 }
 
 KPI_TOOLTIPS_GLOSSARY = {
+    # --- Parámetros de Auditoría de Desviación de Margen ---
+    "Ganancia 'Perdida' (S/.)": "La suma total en soles de la diferencia entre el margen que DEBERÍAS haber ganado (según tu precio de lista) y el que REALMENTE ganaste. Es el dinero que dejaste sobre la mesa.",
+    "# SKUs con Desviación": "El número de productos únicos que no están cumpliendo con tu estrategia de precios, vendiéndose por debajo de su margen esperado.",
+    "Peor Infractor (%)": "El producto con el mayor porcentaje de desviación negativa. Es el item que más se aleja de tu política de precios.",
+    "# SKUs con Pérdida": "El conteo de productos que se vendieron con un margen real negativo, es decir, por debajo de su costo.",
+
+    # --- NUEVOS Tooltips para Maestro Inventario ---
+    "Valor Total del Inventario": "La suma total del costo de todo tu inventario actual. Es tu capital total invertido en productos.",
+    "Valor en Riesgo (Muerto/Exceso)": "La suma del valor del stock que está clasificado como 'Stock Muerto' o 'Exceso de Stock'. Representa el capital que no está trabajando eficientemente.",
+    "% Inventario Saludable": "El porcentaje de tu inventario que no se considera ni muerto ni en exceso. Un número más alto es mejor.",
+    "% del Valor (Clase A)": "El porcentaje del valor total (según tu criterio ABC) que es generado por tus productos de Clase A. Idealmente, sigue la regla 80/20.",
+
     # --- NUEVOS Tooltips para Puntos de Alerta de Stock ---
     "SKUs en Alerta Roja": "El número de productos cuyo stock actual está por debajo de su punto de alerta MÍNIMO (tu colchón de seguridad). Requieren acción inmediata.",
     "Inversión Urgente Requerida": "La inversión estimada para comprar el pedido MÍNIMO sugerido solo para los productos en Alerta Roja y así evitar quiebres de stock.",
