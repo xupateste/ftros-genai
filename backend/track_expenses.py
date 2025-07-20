@@ -157,6 +157,8 @@ def process_csv_abc(
     score_margen: int = 4,
     # Mantenemos pesos_combinado por si se usa en otro lugar, pero priorizamos los scores
     # pesos_combinado: Optional[Dict[str, float]] = None,
+    filtro_categorias: Optional[List[str]] = None,
+    filtro_marcas: Optional[List[str]] = None,
     **kwargs # Acepta argumentos extra para compatibilidad
 ) -> Dict[str, Any]:
     """
@@ -360,6 +362,12 @@ def process_csv_abc(
     if 'Cantidad Vendida (Und)' in resultado.columns:
         resultado['Cantidad Vendida (Und)'] = resultado['Cantidad Vendida (Und)'].round(0).astype(int)
 
+    if filtro_categorias and "Categoría" in resultado.columns:
+        resultado = resultado[resultado["Categoría"].isin(filtro_categorias)]
+    if filtro_marcas and "Marca" in resultado.columns:
+        resultado = resultado[resultado["Marca"].isin(filtro_marcas)]
+    
+    print(f"filtro_categorias {filtro_categorias}")
 
     # --- PASO 8: CÁLCULO DE KPIs Y RESUMEN ---
     
@@ -421,6 +429,9 @@ def generar_reporte_maestro_inventario(
     score_ingreso: int = 6,
     score_margen: int = 4,
     # score_dias_venta: int = 2,
+    ordenar_por: str = 'prioridad',
+    incluir_solo_categorias: Optional[List[str]] = None,
+    incluir_solo_marcas: Optional[List[str]] = None,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -470,6 +481,28 @@ def generar_reporte_maestro_inventario(
     df_maestro = pd.merge(df_salud, df_importancia_subset, on='SKU / Código de producto', how='left')
     df_maestro['Clasificación ABC'] = df_maestro['Clasificación ABC'].fillna('Sin Ventas Recientes')
 
+    if incluir_solo_categorias and "Categoría" in df_maestro.columns:
+        # Normalizamos la lista de categorías a minúsculas y sin espacios
+        categorias_normalizadas = [cat.strip().lower() for cat in incluir_solo_categorias]
+        
+        # Comparamos contra la columna del DataFrame también normalizada
+        # El .str.lower() y .str.strip() se aplican a cada valor de la columna antes de la comparación
+        df_maestro = df_maestro[
+            df_maestro["Categoría"].str.strip().str.lower().isin(categorias_normalizadas)
+        ].copy()
+    print(f"DEBUG: 3. Después de filtrar por categorías, quedan {len(df_maestro)} filas.")
+
+    if incluir_solo_marcas and "Marca" in df_maestro.columns:
+        # Normalizamos la lista de marcas
+        marcas_normalizadas = [marca.strip().lower() for marca in incluir_solo_marcas]
+        
+        # Comparamos contra la columna de marcas normalizada
+        df_maestro = df_maestro[
+            df_maestro["Marca"].str.strip().str.lower().isin(marcas_normalizadas)
+        ].copy()
+    print(f"DEBUG: 4. Después de filtrar por marcas, quedan {len(df_maestro)} filas.")
+    
+
 
     # --- PASO 4: CÁLCULO DE KPIs Y RESUMEN EJECUTIVO ---
     print("Paso 4/5: Calculando KPIs y resumen ejecutivo...")
@@ -513,35 +546,57 @@ def generar_reporte_maestro_inventario(
     df_maestro['Prioridad Estratégica'] = [p[1] for p in prioridades]
     
     # Ordenar el DataFrame para mostrar los problemas más críticos primero
-    df_maestro.sort_values(
-        by=['cod_prioridad', 'Valor stock (S/.)'], 
-        ascending=[True, False], 
-        inplace=True
-    )
+    print(f"Ordenando reporte maestro por: '{ordenar_por}'")
+    
+    df_maestro_ordenado = df_maestro.copy()
+
+    if ordenar_por == 'prioridad':
+        # Ordena por el código de prioridad (más urgente primero) y luego por valor
+        df_maestro_ordenado.sort_values(by=['cod_prioridad', 'Valor stock (S/.)'], ascending=[True, False], inplace=True)
+    
+    elif ordenar_por == 'valor_riesgo':
+        # Ordena por el valor del stock, pero solo para productos no saludables
+        df_maestro_ordenado['valor_riesgo_sort'] = np.where(
+            df_maestro_ordenado['Clasificación Diagnóstica'] != 'Saludable',
+            df_maestro_ordenado['Valor stock (S/.)'],
+            -1 # Ponemos los saludables al final
+        )
+        df_maestro_ordenado.sort_values(by='valor_riesgo_sort', ascending=False, inplace=True)
+        df_maestro_ordenado.drop(columns=['valor_riesgo_sort'], inplace=True)
+
+    elif ordenar_por == 'importancia':
+        # Ordena por la clasificación ABC y luego por el valor del criterio usado
+        col_criterio = [col for col in df_maestro_ordenado.columns if '(S/.)' in col or '(Und)' in col or 'Ponderado' in col][0]
+        df_maestro_ordenado.sort_values(by=['Clasificación ABC', col_criterio], ascending=[True, False], inplace=True)
+
+    elif ordenar_por == 'salud':
+        # Ordena por la clasificación de salud para agrupar problemas
+        df_maestro_ordenado.sort_values(by=['Clasificación Diagnóstica', 'Valor stock (S/.)'], ascending=[True, False], inplace=True)
+    
     
     # Selección y reordenamiento final de columnas para máxima claridad
     columnas_finales_ordenadas = [
         # Identificación y Prioridad
         'SKU / Código de producto', 'Nombre del producto', 'Categoría', 'Subcategoría', 'Marca',
         # Métricas de Inventario y Salud
-        'Valor stock (S/.)', 'Stock Actual (Unds)', 'Días sin venta', df_maestro.columns[11], # Nombre dinámico de DPS
+        'Valor stock (S/.)', 'Stock Actual (Unds)', 'Días sin venta', df_maestro_ordenado.columns[11], # Nombre dinámico de DPS
         # Métricas de Venta e Importancia
-        columna_criterio_abc if columna_criterio_abc in df_maestro else None,
+        columna_criterio_abc if columna_criterio_abc in df_maestro_ordenado else None,
         'Ventas últimos ' + str(meses_analisis_salud if meses_analisis_salud else 'X') + 'm (Unds)', 'Última venta',
         # Contexto y Acción
          'Clasificación ABC', 'Prioridad Estratégica', 'Clasificación Diagnóstica',
-         df_maestro.columns[13], # Nombre dinámico de Prioridad y Acción
-        'cod_prioridad' # Mantener para posible uso, pero se puede quitar
+         df_maestro_ordenado.columns[13], # Nombre dinámico de Prioridad y Acción
+        # 'cod_prioridad' # Mantener para posible uso, pero se puede quitar
     ]
     # Filtrar Nones y columnas que no existan
-    columnas_finales_ordenadas = [col for col in columnas_finales_ordenadas if col and col in df_maestro.columns]
+    columnas_finales_ordenadas = [col for col in columnas_finales_ordenadas if col and col in df_maestro_ordenado.columns]
     
 
     # --- NUEVO PASO 6: LIMPIEZA FINAL ANTES DE DEVOLVER ---
     print("Paso 6/6: Limpiando datos para compatibilidad JSON...")
 
     # 1. Eliminar columnas duplicadas de forma segura, manteniendo la primera aparición
-    df_maestro_limpio = df_maestro.loc[:, ~df_maestro.columns.duplicated()]
+    df_maestro_limpio = df_maestro_ordenado.loc[:, ~df_maestro_ordenado.columns.duplicated()]
 
     # 2. Reemplazar valores infinitos (inf, -inf) con NaN
     df_maestro_limpio = df_maestro_limpio.replace([np.inf, -np.inf], np.nan)
@@ -751,9 +806,9 @@ def process_csv_analisis_estrategico_rotacion(
     # Valor en Sobre-stock
     valor_sobre_stock = df_resultado[df_resultado['Alerta_Stock'] == 'Sobre-stock']['Inversion_Stock_Actual'].sum()
 
-    insight_text = f"Análisis completado. Se han identificado {skus_estrella} SKUs 'Estrella' que necesitan vigilancia. ¡Alerta! Tienes S/ {valor_sobre_stock:,.2f} inmovilizados en productos importantes con sobre-stock."
+    insight_text = f"Se han identificado {skus_estrella} SKUs 'Estrella' que necesitan vigilancia. ¡Alerta! Tienes S/ {valor_sobre_stock:,.2f} inmovilizados en productos importantes con sobre-stock."
     if skus_estrella == 0 and valor_sobre_stock == 0:
-        insight_text = "Análisis completado. No se encontraron productos con actividad de venta reciente que cumplan los criterios."
+        insight_text = "No se encontraron productos con actividad de venta reciente que cumplan los criterios."
 
     kpis = {
         "SKUs Estrella": skus_estrella,
@@ -1420,6 +1475,7 @@ def process_csv_puntos_alerta_stock(
     cantidad_reposicion_para_pasivos: int = 1,
     excluir_productos_sin_sugerencia_ideal: bool = False,
     # --- PARÁMETROS PARA EL PUNTO DE ALERTA ---
+    excluir_sin_ventas: bool = True,
     lead_time_dias: float = 7.0,
     dias_seguridad_base: float = 0,
     factor_importancia_seguridad: float = 1.0,
@@ -1614,6 +1670,11 @@ def process_csv_puntos_alerta_stock(
     # # 4.2 Filtramos por marcas si el usuario lo proporcionó
     # if filtro_marcas and 'marca' in df_analisis.columns:
     #     df_analisis = df_analisis[df_analisis['marca'].str.strip().str.lower().isin([marca.lower() for marca in filtro_marcas])]
+
+    if excluir_sin_ventas:
+        df_analisis = df_analisis[df_analisis['Ventas_Total_General'] > 0].copy()
+    # print(f"DEBUG: 2. Después de filtrar por 'sin ventas', quedan {len(df_analisis)} filas.")
+    
 
     if filtro_categorias and 'Categoría' in df_analisis.columns:
         # Normalizamos la lista de categorías a minúsculas y sin espacios

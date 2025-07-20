@@ -1,5 +1,6 @@
 TOOLTIPS_GLOSSARY = {
     # --- Parámetros de maestro inventario ---
+    "maestro_ordenar_por": "Elige el criterio principal para ordenar el reporte. 'Prioridad' te mostrará los problemas más urgentes primero, mientras que 'Valor en Riesgo' se enfocará en el impacto financiero.",
     "maestro_criterio_abc": "Elige la métrica principal para clasificar tus productos más importantes (Clase A, B, C) dentro de este reporte maestro.",
     "maestro_periodo_abc": "Define el rango de tiempo de las ventas que se usarán para el análisis de importancia ABC.",
     "maestro_dias_muerto": "Establece el umbral de días sin venta para que un producto sea considerado 'Stock Muerto' en este diagnóstico.",

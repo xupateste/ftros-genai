@@ -20,15 +20,6 @@ REPORTS_CONFIG = {
     "costo": 5,
     "categoria": "🧠 Diagnósticos generales",
     "basic_parameters": [
-      { "name": 'periodo_abc', "label": 'Período de Análisis ABC', "type": 'select', "tooltip_key": "periodo_abc",
-        "options": [
-          { "value": '12', "label": 'Últimos 12 meses' },
-          { "value": '6', "label": 'Últimos 6 meses' },
-          { "value": '3', "label": 'Últimos 3 meses' },
-          { "value": '0', "label": 'Todo' }
-        ],
-        "defaultValue": '6'
-      },
       { 
         "name": 'criterio_abc', 
         "label": 'Criterio Principal ABC', 
@@ -40,7 +31,18 @@ REPORTS_CONFIG = {
             { "value": 'margen', "label": 'Por Margen' }
         ],
         "defaultValue": 'combinado'
-      }
+      },
+      { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "incluir_solo_categorias", "optionsKey": 'categorias', "defaultValue": [] },
+      { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "incluir_solo_marcas", "optionsKey": 'marcas', "defaultValue": [] },
+      { "name": 'periodo_abc', "label": 'Período de Análisis ABC', "type": 'select', "tooltip_key": "periodo_abc",
+        "options": [
+          { "value": '12', "label": 'Últimos 12 meses' },
+          { "value": '6', "label": 'Últimos 6 meses' },
+          { "value": '3', "label": 'Últimos 3 meses' },
+          { "value": '0', "label": 'Todo' }
+        ],
+        "defaultValue": '6'
+      },
     ],
     "advanced_parameters": [],
     "accionable_columns": [
@@ -64,14 +66,6 @@ REPORTS_CONFIG = {
     "isPro": False,
     "costo": 5,
     "basic_parameters": [
-        { 
-            "name": "dias_sin_venta_muerto", 
-            "label": "Considerar 'Stock Muerto' después de (días)", 
-            "type": "number", 
-            "defaultValue": 180,
-            "placeholder": "Ej: 180",
-            "tooltip_key": "dias_sin_venta_muerto"
-        },
         {
             "name": "ordenar_por",
             "label": "Ordenar resultados por",
@@ -86,7 +80,15 @@ REPORTS_CONFIG = {
             ]
         },
         { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "incluir_solo_categorias", "optionsKey": 'categorias', "defaultValue": [] },
-        { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "incluir_solo_marcas", "optionsKey": 'marcas', "defaultValue": [] }
+        { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "incluir_solo_marcas", "optionsKey": 'marcas', "defaultValue": [] },
+        { 
+            "name": "dias_sin_venta_muerto", 
+            "label": "Considerar 'Stock Muerto' después de (días)", 
+            "type": "number", 
+            "defaultValue": 180,
+            "placeholder": "Ej: 180",
+            "tooltip_key": "dias_sin_venta_muerto"
+        },
     ],
     "advanced_parameters": [
         { 
@@ -122,6 +124,21 @@ REPORTS_CONFIG = {
     "costo": 10,
     "basic_parameters": [
       {
+        "name": "ordenar_por",
+        "label": "Priorizar y Ordenar Por",
+        "type": "select",
+        "defaultValue": "prioridad",
+        "tooltip_key": "maestro_ordenar_por",
+        "options": [
+          { "value": "prioridad", "label": "Prioridad Estratégica (Recomendado)" },
+          { "value": "valor_riesgo", "label": "Mayor Valor en Riesgo" },
+          { "value": "importancia", "label": "Mayor Importancia (Clase ABC)" },
+          { "value": "salud", "label": "Peor Salud (Diagnóstico)" }
+        ]
+      },
+      { "name": 'incluir_solo_categorias', "label": 'Filtrar por Categorías', "type": 'multi-select', "tooltip_key": "incluir_solo_categorias", "optionsKey": 'categorias', "defaultValue": [] },
+      { "name": 'incluir_solo_marcas', "label": 'Filtrar por Marcas', "type": 'multi-select', "tooltip_key": "incluir_solo_marcas", "optionsKey": 'marcas', "defaultValue": [] },
+      {
         "name": "criterio_abc",
         "label": "Criterio de Importancia (ABC)",
         "type": "select",
@@ -146,7 +163,7 @@ REPORTS_CONFIG = {
             { "value": "0", "label": "Historial completo" }
         ],
         "defaultValue": "6"
-      }
+      },
     ],
     "advanced_parameters": [
         { "name": "dias_sin_venta_muerto", "label": "Umbral para 'Stock Muerto' (días)", "type": "number", "defaultValue": 180, "tooltip_key": "maestro_dias_muerto" },
@@ -223,13 +240,13 @@ REPORTS_CONFIG = {
       },
     ],
     "accionable_columns": [
-      "SKU / Código de producto", "Nombre del producto", "Clasificacion", 
-      "Alerta de Stock", "Índice de Importancia", "Cobertura Actual (Días)"
+      "SKU / Código de producto", "Nombre del producto", "Clasificación", 
+      "Stock Actual (Unds)", "Alerta de Stock", "Índice de Importancia", "Cobertura Actual (Días)"
     ],
     "preview_details": [
       { "label": "Clasificación", "data_key": "Clasificación" },
+      { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
       { "label": "Alerta de Stock", "data_key": "Alerta de Stock" },
-      { "label": "Importancia", "data_key": "Índice de Importancia" },
       { "label": "Cobertura", "data_key": "Cobertura Actual (Días)", "suffix": " días" }
     ]
   },
@@ -243,25 +260,6 @@ REPORTS_CONFIG = {
     "isPro": False,
     "costo": 6,
     "basic_parameters": [
-      { "name": 'lead_time_dias', "label": 'El tiempo promedio de entrega del proveedor en días', "type": 'select', "tooltip_key": "lead_time_dias",
-        "options": [
-          { "value": '5', "label": '5 días' },
-          { "value": '7', "label": '7 días' },
-          { "value": '10', "label": '10 días' },
-          { "value": '12', "label": '12 días' },
-          { "value": '15', "label": '15 días' }
-        ],
-        "defaultValue": '7'
-      },
-      { "name": 'dias_seguridad_base', "label": 'Días adicionales de cobertura para stock de seguridad', "type": 'select', "tooltip_key": "dias_seguridad_base",
-        "options": [
-          { "value": '0', "label": 'Ninguno' },
-          { "value": '1', "label": '1 día adicional' },
-          { "value": '2', "label": '2 días adicionales' },
-          { "value": '3', "label": '3 días adicionales' }
-        ],
-        "defaultValue": '0'
-      },
       {
         "name": "ordenar_por",
         "label": "Priorizar y Ordenar Por",
@@ -275,9 +273,35 @@ REPORTS_CONFIG = {
         ]
       },
       { "name": "filtro_categorias_json", "label": "Filtrar por Categorías", "type": "multi-select", "optionsKey": "categorias", "defaultValue": [], "tooltip_key": "filtro_categorias" },
-      { "name": "filtro_marcas_json", "label": "Filtrar por Marcas", "type": "multi-select", "optionsKey": "marcas", "defaultValue": [], "tooltip_key": "filtro_marcas" }
+      { "name": "filtro_marcas_json", "label": "Filtrar por Marcas", "type": "multi-select", "optionsKey": "marcas", "defaultValue": [], "tooltip_key": "filtro_marcas" },
+      { "name": 'lead_time_dias', "label": 'El tiempo promedio de entrega del proveedor en días', "type": 'select', "tooltip_key": "lead_time_dias",
+        "options": [
+          { "value": '5', "label": '5 días' },
+          { "value": '7', "label": '7 días' },
+          { "value": '10', "label": '10 días' },
+          { "value": '12', "label": '12 días' },
+          { "value": '15', "label": '15 días' }
+        ],
+        "defaultValue": '5'
+      },
+      { "name": 'dias_seguridad_base', "label": 'Días adicionales de cobertura para stock de seguridad', "type": 'select', "tooltip_key": "dias_seguridad_base",
+        "options": [
+          { "value": '0', "label": 'Ninguno' },
+          { "value": '1', "label": '1 día adicional' },
+          { "value": '2', "label": '2 días adicionales' },
+          { "value": '3', "label": '3 días adicionales' }
+        ],
+        "defaultValue": '0'
+      },
     ],
     "advanced_parameters": [
+      { "name": 'excluir_sin_ventas', "label": '¿Excluir productos con CERO ventas?', "type": 'boolean_select', "tooltip_key": "excluir_sin_ventas",
+        "options": [
+          { "value": 'true', "label": 'Sí, excluir (Recomendado)' },
+          { "value": 'false', "label": 'No, incluirlos' }
+        ],
+        "defaultValue": 'true'
+      },
       { 
         "name": "factor_importancia_seguridad", 
         "label": "Multiplicador de Seguridad para Productos 'A'", 

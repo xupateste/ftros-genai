@@ -1422,7 +1422,9 @@ async def upload_csvs_abc_analysis(
     # --- NUEVO: Recibimos los scores de la estrategia ---
     score_ventas: Optional[int] = Form(None),
     score_ingreso: Optional[int] = Form(None),
-    score_margen: Optional[int] = Form(None)
+    score_margen: Optional[int] = Form(None),
+    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas.")
 
 ):
     user_id = None
@@ -1454,6 +1456,13 @@ async def upload_csvs_abc_analysis(
     #     }
     
     # Preparamos el diccionario de parámetros para la función de lógica
+    try:
+        # Parseamos los strings JSON para convertirlos en listas de Python
+        categorias_list = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        marcas_list = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
+
     processing_params = {
         "criterio_abc": criterio_abc.lower(),
         "periodo_abc": periodo_abc,
@@ -1462,7 +1471,9 @@ async def upload_csvs_abc_analysis(
         "periodo_abc": periodo_abc,
         "score_ventas": score_ventas,
         "score_ingreso": score_ingreso,
-        "score_margen": score_margen
+        "score_margen": score_margen,
+        "filtro_categorias": categorias_list,
+        "filtro_marcas": marcas_list
     }
 
     full_params_for_logging = dict(await request.form())
@@ -1679,6 +1690,9 @@ async def generar_reporte_maestro_endpoint(
     criterio_abc: str = Form("margen", description="Criterio para el análisis ABC: 'ingresos', 'unidades', 'margen', o 'combinado'."),
     periodo_abc: int = Form(6, description="Número de meses hacia atrás para el análisis ABC."),
     
+    ordenar_por: str = Form("prioridad"),
+    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
     # --- Parámetros Opcionales para el Criterio 'Combinado' ---
     # peso_ingresos: Optional[float] = Form(None, description="Peso para ingresos (ej: 0.5) si el criterio es 'combinado'."),
     # peso_margen: Optional[float] = Form(None, description="Peso para margen (ej: 0.3) si el criterio es 'combinado'."),
@@ -1727,7 +1741,14 @@ async def generar_reporte_maestro_endpoint(
     #         "margen": peso_margen,
     #         "unidades": peso_unidades
     #     }
+    try:
+        # Parseamos los strings JSON para convertirlos en listas de Python
+        categorias_list = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        marcas_list = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
 
+   
 
     # 1. Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
@@ -1739,7 +1760,10 @@ async def generar_reporte_maestro_endpoint(
         "score_margen": score_margen,
         # "score_dias_venta": score_dias_venta,
         "meses_analisis_salud": meses_analisis_salud,
-        "dias_sin_venta_muerto": dias_sin_venta_muerto
+        "dias_sin_venta_muerto": dias_sin_venta_muerto,
+        "ordenar_por": ordenar_por,
+        "incluir_solo_categorias": categorias_list,
+        "incluir_solo_marcas": marcas_list
     }
 
     full_params_for_logging = dict(await request.form())
@@ -1768,13 +1792,13 @@ async def reporte_puntos_alerta_stock(
     current_user: Optional[dict] = Depends(get_current_user_optional),
     X_Session_ID: str = Header(..., alias="X-Session-ID"),
     workspace_id: Optional[str] = Form(None),
-    
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
     lead_time_dias: int = Form(7.0),
     dias_seguridad_base: int = Form(0),
     factor_importancia_seguridad: float = Form(1.12),
     ordenar_por: str = Form("Diferencia_vs_Alerta_Minima"),
+    excluir_sin_ventas: str = Form("true", description="String 'true' o 'false' para excluir productos sin ventas."),
     filtro_categorias_json: Optional[str] = Form(None),
     filtro_marcas_json: Optional[str] = Form(None)
 ):
@@ -1799,6 +1823,7 @@ async def reporte_puntos_alerta_stock(
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
     try:
+        excluir_bool = excluir_sin_ventas.lower() == 'true'
         filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
         filtro_marcas = json.loads(filtro_marcas_json) if filtro_marcas_json else None
     except json.JSONDecodeError:
@@ -1829,6 +1854,7 @@ async def reporte_puntos_alerta_stock(
         "dias_seguridad_base": dias_seguridad_base,
         "factor_importancia_seguridad": factor_importancia_seguridad,
         "ordenar_por": ordenar_por,
+        "excluir_sin_ventas": excluir_bool,
         "filtro_categorias": filtro_categorias,
         "filtro_marcas": filtro_marcas,
     }
