@@ -327,7 +327,10 @@ async def register_user(
     # Creamos el primer espacio de trabajo por defecto
     default_workspace_data = {
         "nombre": "Mi Primera Ferretería",
-        "fechaCreacion": now_utc
+        "fechaCreacion": now_utc,
+        "fechaUltimoAcceso": now_utc,
+        "fechaUltimoAcceso": now_utc,
+        "isPinned": False # Inicializamos el campo de fijado
     }
     # Creamos un nuevo documento para el espacio de trabajo
     # (podríamos usar un ID autogenerado o uno predecible)
@@ -1311,6 +1314,21 @@ async def upload_file(
             "nombre_original": file.filename,
             "metadata": metadata
         }
+
+        # --- CAMBIO CLAVE: Añadimos el rango de fechas a la respuesta ---
+        if tipo_archivo == 'ventas':
+            if metadata.get("fecha_primera_venta") and metadata.get("fecha_ultima_venta"):
+                response_content["date_range_bounds"] = {
+                    "min_date": metadata["fecha_primera_venta"],
+                    "max_date": metadata["fecha_ultima_venta"]
+                }
+
+        # Si es un inventario (para cualquier tipo de usuario), devolvemos los filtros para uso inmediato
+        if tipo_archivo == 'inventario':
+            response_content["available_filters"] = {
+                "categorias": metadata.get("lista_completa_categorias", []),
+                "marcas": metadata.get("lista_completa_marcas", [])
+            }
         
         return JSONResponse(content=response_content)
 

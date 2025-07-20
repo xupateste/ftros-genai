@@ -334,7 +334,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       }
 
       if (fileType === 'ventas' && response.data.date_range_bounds) {
-        setDateRangeBounds(response.data.date_range_bounds);
+        setDateRangeBounds(response.data.date_range_bounds || null);
       }
 
     } catch (error) {
