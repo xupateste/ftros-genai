@@ -2,7 +2,7 @@
 # --- CONFIGURACIÓN CENTRAL DEFINITIVA ---
 # ===================================================================================
 REPORTS_CONFIG = {
-  # "🧠 Diagnósticos generales": [
+  # "🧠 Diagnósticos de Negocio": [
   "ReporteAuditoriaMargenes": {
       "label": 'Auditoría de Desviación de Margen 💸',
       "endpoint": '/auditoria-margenes',
@@ -56,6 +56,105 @@ REPORTS_CONFIG = {
           { "label": "Desviación", "data_key": "Desviación de Margen (%)", "suffix": "%" }
       ]
   },
+  "ReporteDiagnosticoCatalogo": {
+      "label": 'Diagnóstico de Catálogo 👻',
+      "endpoint": '/diagnostico-catalogo',
+      "isPro": False, # Es un reporte "Estratega"
+      "costo": 5,
+      "categoria": "🛠️ Diagnósticos de Datos",
+      "basic_parameters": [
+        {
+            "name": "tipo_diagnostico_catalogo",
+            "label": "Buscar productos que están...",
+            "type": "select",
+            "defaultValue": "nunca_vendidos",
+            "tooltip_key": "tipo_diagnostico_catalogo",
+            "options": [
+                { "value": "nunca_vendidos", "label": "En el inventario pero nunca se han vendido" },
+                { "value": "agotados_inactivos", "label": "Agotados y sin ventas por un largo tiempo" }
+            ]
+        },
+        {
+            "name": "ordenar_por",
+            "label": "Priorizar y Ordenar Por",
+            "type": "select",
+            "defaultValue": "valor_stock_s",
+            "tooltip_key": "ordenar_catalogo_por",
+            "options": [
+                { "value": "valor_stock_s", "label": "Mayor Valor Inmovilizado" },
+                { "value": "stock_actual_unds", "label": "Mayor Cantidad en Stock" },
+                { "value": "categoria", "label": "Categoría (A-Z)" }
+            ]
+        },
+        { "name": "incluir_solo_categorias", "label": "Filtrar por Categorías", "type": "multi-select", "optionsKey": "categorias", "defaultValue": [], "tooltip_key": "filtro_categorias" },
+        { "name": "incluir_solo_marcas", "label": "Filtrar por Marcas", "type": "multi-select", "optionsKey": "marcas", "defaultValue": [], "tooltip_key": "filtro_marcas" }
+      ],
+      "advanced_parameters": [
+        {
+            "name": "filtro_stock",
+            "label": "Filtrar por estado de stock",
+            "type": "select",
+            "defaultValue": "todos",
+            "tooltip_key": "filtro_stock",
+            "options": [
+                { "value": "todos", "label": "Mostrar Todos" },
+                { "value": "con_stock", "label": "Mostrar solo con Stock > 0" },
+                { "value": "sin_stock", "label": "Mostrar solo con Stock = 0" }
+            ],
+            "condition": { "field": "tipo_diagnostico_catalogo", "value": "nunca_vendidos" } # Parámetro condicional
+        },
+        { 
+            "name": "dias_inactividad", 
+            "label": "Considerar inactivo después de (días sin venta)", 
+            "type": "number", 
+            "defaultValue": 365,
+            "tooltip_key": "dias_inactividad",
+            "condition": { "field": "tipo_diagnostico_catalogo", "value": "agotados_inactivos" } # Parámetro condicional
+        },
+      ],
+      "accionable_columns": [
+          "SKU / Código de producto", "Nombre del producto", "Categoría",
+          "Stock Actual (Unds)", "Valor stock (S/.)", "Diagnóstico"
+      ],
+      "preview_details": [
+          { "label": "Diagnóstico", "data_key": "Diagnóstico" },
+          { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
+          { "label": "Valor en Stock", "data_key": "Valor stock (S/.)", "prefix": "S/ " }
+      ]
+  },
+  "ReporteAuditoriaCalidadDatos": {
+      "label": 'Auditoría de Calidad de Datos 🧹',
+      "endpoint": '/auditoria-calidad-datos',
+      "isPro": False, # Es un reporte "Estratega"
+      "costo": 5,
+      "categoria": "🛠️ Diagnósticos de Datos",
+      "basic_parameters": [
+          {
+              "name": "criterios_auditoria_json",
+              "label": "Auditar productos con...",
+              "type": "multi-select",
+              "optionsKey": "criterios_auditoria", # Usaremos una clave estática
+              "tooltip_key": "criterios_auditoria",
+              "defaultValue": ["marca_faltante", "categoria_faltante", "precio_compra_cero"],
+              # Opciones estáticas, ya que no dependen de los datos del usuario
+              "static_options": [
+                  { "value": "marca_faltante", "label": "Marca Faltante" },
+                  { "value": "categoria_faltante", "label": "Categoría Faltante" },
+                  { "value": "precio_compra_cero", "label": "Precio de Compra en Cero" }
+              ]
+          }
+      ],
+      "advanced_parameters": [],
+      "accionable_columns": [
+          "SKU / Código de producto", "Nombre del producto", "Problema Detectado",
+          "Stock Actual (Unds)", "Valor stock (S/.)"
+      ],
+      "preview_details": [
+          { "label": "Problema Detectado", "data_key": "Problema Detectado" },
+          { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
+          { "label": "Valor en Stock", "data_key": "Valor stock (S/.)", "prefix": "S/ " }
+      ]
+  },
   # "AuditoriaMargenes": {
   #     "label": "Auditoría de Márgenes [Debug]",
   #     "endpoint": "/debug/auditoria-margenes",
@@ -71,7 +170,7 @@ REPORTS_CONFIG = {
     # "key": 'ReporteABC',
     "isPro": False,
     "costo": 5,
-    "categoria": "🧠 Diagnósticos generales",
+    "categoria": "🧠 Diagnósticos de Negocio",
     "basic_parameters": [
       { 
         "name": 'criterio_abc', 
@@ -115,7 +214,7 @@ REPORTS_CONFIG = {
     "label": 'Diagnóstico de Stock Muerto',
     "endpoint": '/diagnostico-stock-muerto',
     # "key": 'ReporteStockMuerto',
-    "categoria": "🧠 Diagnósticos generales",
+    "categoria": "🧠 Diagnósticos de Negocio",
     "isPro": False,
     "costo": 5,
     "basic_parameters": [
@@ -172,7 +271,7 @@ REPORTS_CONFIG = {
     "label": "⭐ Reporte Maestro de Inventario (Recomendado)",
     "endpoint": "/reporte-maestro-inventario",
     # "key": 'ReporteMaestro',
-    "categoria": "🧠 Diagnósticos generales",
+    "categoria": "🧠 Diagnósticos de Negocio",
     "isPro": False,
     "costo": 10,
     "basic_parameters": [
@@ -237,7 +336,7 @@ REPORTS_CONFIG = {
     "label": 'Análisis Estratégico de Rotación ✓',
     "endpoint": '/rotacion-general-estrategico',
     # "key": 'ReporteAnalisisEstrategicoRotacion',
-    "categoria": "🧠 Diagnósticos generales",
+    "categoria": "🧠 Diagnósticos de Negocio",
     "isPro": False,
     "costo": 8,
     "basic_parameters": [

@@ -31,7 +31,8 @@ from track_expenses import process_csv, summarise_expenses, clean_data, get_top_
 from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
-from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos_nuevo, auditar_margenes_de_productos
+from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos_nuevo
+from track_expenses import auditar_margenes_de_productos, diagnosticar_catalogo, auditar_calidad_datos
 from report_config import REPORTS_CONFIG
 from plan_config import PLANS_CONFIG
 from strategy_config import DEFAULT_STRATEGY
@@ -2214,6 +2215,103 @@ async def generar_auditoria_margenes(
         inventario_file_id=inventario_file_id
     )
 
+
+@app.post("/diagnostico-catalogo", summary="Genera el Diagnóstico de Catálogo", tags=["Reportes"])
+async def generar_diagnostico_catalogo(
+    request: Request,
+    # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
+    ventas_file_id: str = Form(...),
+    inventario_file_id: str = Form(...),
+    # --- Recibimos los nuevos parámetros del formulario ---
+    tipo_diagnostico_catalogo: str = Form(...),
+    filtro_stock: str = Form("todos"),
+    dias_inactividad: int = Form(365),
+    ordenar_por: str = Form("valor_stock_s"),
+    incluir_solo_categorias: Optional[str] = Form(None),
+    incluir_solo_marcas: Optional[str] = Form(None)
+):
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+
+    try:
+        filtro_categorias = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        filtro_marcas = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
+
+    processing_params = {
+        "tipo_diagnostico_catalogo": tipo_diagnostico_catalogo,
+        "filtro_stock": filtro_stock,
+        "dias_inactividad": dias_inactividad,
+        "filtro_categorias": filtro_categorias,
+        "filtro_marcas": filtro_marcas,
+        "ordenar_por": ordenar_por
+    }
+
+    full_params_for_logging = dict(await request.form())
+    
+    return await _handle_report_generation(
+        full_params_for_logging=full_params_for_logging,
+        report_key="ReporteDiagnosticoCatalogo",
+        processing_function=diagnosticar_catalogo, # La nueva función de lógica
+        processing_params=processing_params,
+        # ... (el resto de los argumentos para el manejador)
+        output_filename="Diagnostico_Catalogo.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=X_Session_ID,
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id
+    )
+
+
+@app.post("/auditoria-calidad-datos", summary="Genera la Auditoría de Calidad de Datos", tags=["Reportes"])
+async def generar_auditoria_calidad_datos(
+    request: Request,
+    # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
+    inventario_file_id: str = Form(...), # Este reporte solo necesita el inventario
+    # --- Recibimos los nuevos parámetros del formulario ---
+    criterios_auditoria_json: str = Form(...)
+):
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+
+    try:
+        criterios_auditoria = json.loads(criterios_auditoria_json)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de criterios de auditoría inválido.")
+
+    processing_params = {
+        "criterios_auditoria": criterios_auditoria
+    }
+    
+    full_params_for_logging = dict(await request.form())
+
+    return await _handle_report_generation(
+        full_params_for_logging=full_params_for_logging,
+        report_key="ReporteAuditoriaCalidadDatos",
+        processing_function=auditar_calidad_datos, # La nueva función de lógica
+        processing_params=processing_params,
+        inventario_file_id=inventario_file_id,
+        # Pasamos None para el archivo de ventas, ya que no se necesita
+        ventas_file_id=None, 
+        output_filename="Auditoria_Calidad_de_Datos.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=X_Session_ID,
+    )
+
+
 # ----------------------------------------------------------
 # ------------------ FUNCIONES AUXILIARES ------------------
 # ----------------------------------------------------------
@@ -2257,8 +2355,8 @@ async def _handle_report_generation(
     workspace_id: Optional[str],
     session_id: Optional[str],
     # IDs de los archivos a procesar
-    ventas_file_id: str,
-    inventario_file_id: str
+    ventas_file_id: Optional[str],
+    inventario_file_id: Optional[str]
 ):
     """
     Función central refactorizada que maneja la generación de CUALQUIER reporte
@@ -2304,26 +2402,55 @@ async def _handle_report_generation(
     # --- PASO 3: PROCESAMIENTO Y GENERACIÓN (DENTRO DE UN TRY/EXCEPT) ---
     # Si algo falla aquí, es un error de ejecución. Lo registraremos como "fallido" sin cobrar.
     try:
-        # --- INICIO DE LA NUEVA LÓGICA DE CARGA CENTRALIZADA ---
-        print("Iniciando carga de datos centralizada...")
+        # --- INICIO DE LA NUEVA LÓGICA DE CARGA CONDICIONAL ---
+        print("Iniciando carga de datos condicional...")
         
-        # 1. Descargamos ambos archivos en paralelo para máxima eficiencia
-        ventas_contents_task = descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id)
-        inventario_contents_task = descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id)
-        
-        # Esperamos a que ambas descargas terminen
-        ventas_contents, inventario_contents = await asyncio.gather(
-            ventas_contents_task,
-            inventario_contents_task
-        )
+        tasks = []
+        # Creamos una lista de tareas de descarga solo para los archivos que existen
+        if ventas_file_id:
+            tasks.append(descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id))
+        if inventario_file_id:
+            tasks.append(descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id))
 
-        # 2. Creamos los DataFrames una sola vez
-        # Aquí puedes poner tu lógica robusta para leer CSVs con diferentes formatos
-        df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
-        df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+        # Ejecutamos las tareas que se añadieron
+        results = await asyncio.gather(*tasks)
+
+        # Asignamos los resultados de vuelta con cuidado
+        df_ventas = pd.DataFrame() # Default: DataFrame vacío
+        df_inventario = pd.DataFrame() # Default: DataFrame vacío
         
+        result_index = 0
+        if ventas_file_id:
+            df_ventas = pd.read_csv(io.BytesIO(results[result_index]))
+            result_index += 1
+        if inventario_file_id:
+            df_inventario = pd.read_csv(io.BytesIO(results[result_index]))
+
         print("✅ Datos cargados y convertidos a DataFrames exitosamente.")
         # --- FIN DE LA NUEVA LÓGICA DE CARGA ---
+
+
+
+        # # --- INICIO DE LA NUEVA LÓGICA DE CARGA CENTRALIZADA ---
+        # print("Iniciando carga de datos centralizada...")
+        
+        # # 1. Descargamos ambos archivos en paralelo para máxima eficiencia
+        # ventas_contents_task = descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id)
+        # inventario_contents_task = descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id)
+        
+        # # Esperamos a que ambas descargas terminen
+        # ventas_contents, inventario_contents = await asyncio.gather(
+        #     ventas_contents_task,
+        #     inventario_contents_task
+        # )
+
+        # # 2. Creamos los DataFrames una sola vez
+        # # Aquí puedes poner tu lógica robusta para leer CSVs con diferentes formatos
+        # df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
+        # df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+        
+        # print("✅ Datos cargados y convertidos a DataFrames exitosamente.")
+        # # --- FIN DE LA NUEVA LÓGICA DE CARGA ---
 
 
         # Ahora, pasamos los DataFrames ya cargados a la función de lógica

@@ -1,4 +1,13 @@
 TOOLTIPS_GLOSSARY = {
+    # --- Parámetros de Auditoría de Calidad de Datos ---
+    "criterios_auditoria": "Selecciona uno o más problemas de calidad de datos que quieras encontrar en tu archivo de inventario. Esto te ayudará a limpiar tu catálogo y mejorar la precisión de todos los demás reportes.",
+
+    # --- Parámetros de Auditoría de Stock Fantasma ---
+    "tipo_diagnostico_catalogo": "Elige qué tipo de problema de catálogo quieres encontrar. 'Nunca Vendidos' busca productos que existen en tu inventario pero nunca han aparecido en tu historial de ventas. 'Agotados e Inactivos' busca productos con stock cero que no has vendido en mucho tiempo y que podrías eliminar de tu sistema.",
+    "filtro_stock": "Filtra los productos 'Nunca Vendidos' según su estado de stock actual. Es muy útil para encontrar capital inmovilizado ('Solo con Stock > 0').",
+    "dias_inactividad": "Define el período de tiempo para que un producto agotado sea considerado 'inactivo' y, por lo tanto, un candidato a ser depurado de tu catálogo.",
+    "ordenar_catalogo_por": "Elige el criterio principal para ordenar la lista. 'Mayor Valor' te mostrará primero el capital inmovilizado más grande, mientras que 'Mayor Cantidad' se enfocará en el espacio físico.",
+
     # --- Parámetros de Auditoría de Desviación de Margen ---
     "tipo_analisis_margen": "Elige qué tipo de problema de precios quieres auditar. 'Desviación Negativa' te muestra productos rentables pero que se venden más barato de lo esperado. 'Margen Negativo' te muestra los productos que te están generando pérdidas directas.",
     "umbral_desviacion": "Filtra los resultados para ignorar pequeñas diferencias de precio. Pon '20' para encontrar solo los productos cuyo margen real se desvía más de un 20% de su margen de lista.",
@@ -70,6 +79,15 @@ TOOLTIPS_GLOSSARY = {
 }
 
 KPI_TOOLTIPS_GLOSSARY = {
+    # --- Parámetros de Auditoría de Calidad de Datos ---
+    "# SKUs con Datos Faltantes": "El número total de productos únicos que coinciden con al menos uno de los criterios de auditoría seleccionados.",
+    "Valor en Riesgo por Datos Faltantes": "La suma del valor de stock de los productos con datos incompletos. Un precio de compra faltante puede afectar gravemente tus análisis de rentabilidad.",
+
+    # --- Parámetros de Auditoría de Stock Fantasma ---
+    "# SKUs 'Fantasma' (Nunca Vendidos)": "El número de productos en tu inventario que nunca han registrado una sola venta. Representan un conocimiento incompleto de tu propio catálogo.",
+    "Valor Potencial Oculto": "La suma del valor de costo de los productos 'Nunca Vendidos' que actualmente SÍ tienen stock. Es capital completamente inmovilizado.",
+    "# SKUs Obsoletos": "El conteo de productos que están agotados y no se han vendido en mucho tiempo. Son candidatos seguros para ser desactivados de tu sistema.",
+
     # --- Parámetros de Auditoría de Desviación de Margen ---
     "Ganancia 'Perdida' (S/.)": "La suma total en soles de la diferencia entre el margen que DEBERÍAS haber ganado (según tu precio de lista) y el que REALMENTE ganaste. Es el dinero que dejaste sobre la mesa.",
     "# SKUs con Desviación": "El número de productos únicos que no están cumpliendo con tu estrategia de precios, vendiéndose por debajo de su margen esperado.",

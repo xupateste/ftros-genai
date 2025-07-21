@@ -203,6 +203,25 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
           </div>
         );
 
+      case 'boolean_select':
+       return (
+          <div key={param.name} className="mb-4">
+            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+              {param.label}:
+              <Tooltip text={tooltips[param.tooltip_key]} />
+            </label>
+            <select
+              id={param.name}
+              name={param.name}
+              value={modalParams[param.name] || ''}
+              onChange={e => handleParamChange(param.name, e.target.value)}
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+            >
+              {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -582,7 +601,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                           <>
                             <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
                               {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
-                              {reportConfig.advanced_parameters.map(param => {
+                              {(reportConfig.advanced_parameters).map(renderParameter)}
+                              {/*{reportConfig.advanced_parameters.map(param => {
                                 if (param.type === 'boolean_select') {
                                   return (
                                     <div key={param.name} className="mb-4">
@@ -624,7 +644,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                                   );
                                 }
                                 return null;
-                              })}
+                              })}*/}
                             </div>
                             {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
                             {/*<button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
