@@ -17,6 +17,7 @@ import { Tooltip } from './Tooltip';
 import { jsPDF } from "jspdf";
 // import "jspdf-autotable";
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { AppliedParameters } from './AppliedParameters'; // <-- Importamos el nuevo componente
 
 import { autoTable } from 'jspdf-autotable';
 
@@ -39,7 +40,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // --- NUEVO COMPONENTE REUTILIZABLE PARA LAS TARJETAS DE KPI ---
 const KpiCard = ({ label, value, tooltipText }) => (
-  <div className="bg-white p-4 rounded-lg shadow border transform hover:scale-105">
+  <div className="bg-white p-4 rounded-lg shadow border transform transition-all duration-300 hover:scale-105">
     <div className="flex items-center">
       <p className="text-sm text-gray-500">{label}</p>
       {/* El tooltip se renderiza aquí */}
@@ -151,12 +152,23 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
       case 'multi-select':
         {
-          // 1. Obtenemos las opciones del estado `availableFilters`
-          const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-          // 2. Obtenemos el valor actual del estado `modalParams`
-          const currentValue = modalParams[param.name] || [];
-          // 3. Convertimos el valor actual al formato que `react-select` espera
-          const valueForSelect = currentValue.map(val => ({ value: val, label: val }));
+          // --- INICIO DE LA LÓGICA CORREGIDA ---
+          let options = [];
+          // 1. Verificamos si el parámetro tiene opciones estáticas definidas en la configuración
+          if (param.static_options) {
+            // Si las tiene, usamos esas. Son la fuente de verdad.
+            options = param.static_options;
+          } else {
+            // Si no, usamos las opciones dinámicas que vienen de los archivos (ej. categorías, marcas)
+            options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
+          }
+          // --- FIN DE LA LÓGICA CORREGIDA ---
+
+          const value = (modalParams[param.name] || []).map(val => {
+              // Buscamos la opción completa (value y label) para que el select la muestre
+              return options.find(opt => opt.value === val) || { value: val, label: val };
+          });
+
           return (
             <div key={param.name} className="mb-4 text-left">
               <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -169,10 +181,9 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 options={options}
                 className="mt-1 block w-full basic-multi-select"
                 classNamePrefix="select"
-                value={valueForSelect} // <-- Usamos el valor formateado
+                value={value} // <-- Usamos el valor formateado
                 placeholder="Selecciona..."
                 onChange={(selectedOptions) => {
-                  // Al cambiar, extraemos solo los valores (strings) para guardarlos en el estado
                   const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
                   handleParamChange(param.name, values);
                 }}
@@ -346,37 +357,71 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   };
 
   const handleOpenPDF = () => {
-    const dataToUse = filteredData; // Usamos los datos ya filtrados por la búsqueda
+    const dataToUse = filteredData;
     if (!dataToUse || dataToUse.length === 0) {
       alert("No hay datos para generar el PDF.");
       return;
     }
 
-    // 1. Leemos las instrucciones desde la configuración del reporte
-    const headers = reportConfig.accionable_columns || [];
-    if (headers.length === 0) {
-        alert("Este reporte no tiene una versión accionable definida.");
-        return;
+    // 1. Obtenemos la lista de parámetros a mostrar (reutilizando la lógica)
+    const paramsToShow = (reportConfig.basic_parameters || [])
+      .map(param => {
+        const usedValue = modalParams[param.name];
+        const shouldShow = Array.isArray(usedValue) ? usedValue.length > 0 : usedValue !== undefined && usedValue !== null && usedValue !== '';
+        
+        if (shouldShow) {
+          const selectedOption = param.options?.find(opt => String(opt.value) === String(usedValue));
+          const displayValue = selectedOption ? selectedOption.label : usedValue;
+          return { label: param.label, value: displayValue };
+        }
+        return null;
+      })
+      .filter(Boolean);
+
+    // 2. Creamos el documento PDF
+    const doc = new jsPDF({ orientation: "portrait" });
+    let currentY = 15; // Posición vertical inicial
+
+    // Título del Reporte
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(19);
+    doc.text(`~${replaceEmojis(reportConfig.label, "")}`, 14, currentY);
+    currentY += 10;
+
+    // --- 3. DIBUJAMOS LA NUEVA "CARÁTULA DE CONTEXTO" ---
+    if (paramsToShow.length > 0) {
+      doc.setFontSize(13);
+      doc.setTextColor(100); // Color gris
+      doc.text("Parámetros de la Ejecución:", 14, currentY);
+      currentY += 6;
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.setTextColor(40); // Color de texto principal
+      
+      paramsToShow.forEach(param => {
+        doc.text(`- ${param.label}: ${param.value}`, 16, currentY);
+        currentY += 5;
+      });
+      currentY += 2; // Espacio extra antes de la tabla
     }
 
-    // 2. Añadimos las columnas de interacción para la versión impresa
+    // 4. Dibujamos la tabla de datos
+    const headers = reportConfig.accionable_columns || [];
     const finalHeaders = [...headers];
-
-    // 3. Mapeamos los datos, seleccionando solo las columnas especificadas
     const body = dataToUse.map(row => {
-        const rowData = headers.map(header => row[header] || ''); // Obtenemos el valor de cada columna
+        const rowData = headers.map(header => row[header] || '');
         return rowData;
     });
 
-    const doc = new jsPDF({ orientation: "portrait" });
-    doc.text(`Reporte Accionable: \n${reportConfig.label}`, 14, 15);
     autoTable(doc, {
         head: [finalHeaders],
         body: body,
-        startY: 30,
-        styles: { fontSize: 10, valign: 'middle'},
+        startY: currentY, // La tabla empieza después del encabezado de contexto
+        styles: { fontSize: 11 },
         headStyles: { fillColor: [67, 56, 202] }
     });
+
 
     // --- NUEVA SECCIÓN: "ANUNCIO DE VALOR" EN EL PDF ---
     // const finalY = doc.autoTable.previous.finalY; // Obtenemos la posición final de la tabla
@@ -396,7 +441,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     doc.setFontSize(10);
     doc.setTextColor(17, 24, 39); // Color de texto oscuro (text-gray-900)
     doc.setFont("helvetica", "bold");
-    doc.text("Potencia tu Análisis con Gráficos Estratégicos", 30, adY + 8);
+    doc.text("Potencia tu Análisis", 30, adY + 8);
     
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
@@ -409,11 +454,15 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     doc.text("Visita Ferretero.IA para mejorar tu plan y acceder a esta y otras herramientas Pro.", 30, adY + 28);
     
     
-    // Abre el PDF en una nueva pestaña
-    // const pdfBlob = doc.output('pdfobjectnewwindow');
+    // 5. Abrimos el PDF en una nueva pestaña
     doc.output('bloburl', { filename: `FerreteroIA_${reportConfig.key}_Accionable.pdf` });
     window.open(doc.output('bloburl'), '_blank');
   };
+
+  function replaceEmojis(text, placeholder = '[emoji]') {
+    const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g;
+    return text.replace(emojiRegex, placeholder);
+  }
 
   const handleDownloadExcel = async () => {
     const dataToUse = filteredData;
@@ -667,8 +716,13 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}
                 {/* Insight Clave */}
                 <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
-                  <p className="text-md font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
+                  <p className="text-lg mb-2 font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
                   <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
+                  {/* --- NUEVA FICHA DE CONTEXTO --- */}
+                  <AppliedParameters 
+                    reportConfig={reportConfig}
+                    modalParams={modalParams}
+                  />
                   {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
                 </div>
               <hr/>
@@ -693,7 +747,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 </div>
                 {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
                 {/* Dentro de tu vista de resultados del ReportModal */}
-                <div className="p-4 bg-white shadow border rounded-lg text-center transform hover:scale-104">
+                <div className="p-4 bg-white shadow border rounded-lg text-center transform transition-all duration-300 hover:scale-104">
                   <div className="flex items-center justify-center mb-2">
                     <p className="text-sm text-gray-500">Gráfico Estadístico</p>
                     <Tooltip text={tooltips['chart_placeholder']} />

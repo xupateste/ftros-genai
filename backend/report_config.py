@@ -2,13 +2,13 @@
 # --- CONFIGURACIÓN CENTRAL DEFINITIVA ---
 # ===================================================================================
 REPORTS_CONFIG = {
-  # "🧠 Diagnósticos de Negocio": [
+  # "🧠 Análisis Estratégico": [
   "ReporteAuditoriaMargenes": {
-      "label": 'Auditoría de Desviación de Margen 💸',
+      "label": '💸 Auditoría de Desviación de Margen',
       "endpoint": '/auditoria-margenes',
       "isPro": False, # Es un reporte "Estratega"
       "costo": 10,
-      "categoria": "🛠️ Diagnósticos de Datos",
+      "categoria": "📋 Auditorías de Datos",
       "basic_parameters": [
           {
               "name": "ordenar_por",
@@ -57,11 +57,11 @@ REPORTS_CONFIG = {
       ]
   },
   "ReporteDiagnosticoCatalogo": {
-      "label": 'Diagnóstico de Catálogo 👻',
+      "label": '🔎 Auditoría de Integridad de Catálogo',
       "endpoint": '/diagnostico-catalogo',
       "isPro": False, # Es un reporte "Estratega"
       "costo": 5,
-      "categoria": "🛠️ Diagnósticos de Datos",
+      "categoria": "📋 Auditorías de Datos",
       "basic_parameters": [
         {
             "name": "tipo_diagnostico_catalogo",
@@ -123,11 +123,11 @@ REPORTS_CONFIG = {
       ]
   },
   "ReporteAuditoriaCalidadDatos": {
-      "label": 'Auditoría de Calidad de Datos 🧹',
+      "label": '🧹 Auditoría de Calidad de Datos',
       "endpoint": '/auditoria-calidad-datos',
       "isPro": False, # Es un reporte "Estratega"
       "costo": 5,
-      "categoria": "🛠️ Diagnósticos de Datos",
+      "categoria": "📋 Auditorías de Datos",
       "basic_parameters": [
           {
               "name": "criterios_auditoria_json",
@@ -165,12 +165,12 @@ REPORTS_CONFIG = {
   #     "advanced_parameters": []
   # },
   "ReporteABC": {
-    "label": 'Análisis ABC de Productos ✓',
+    "label": '🥇 Análisis ABC de Productos',
     "endpoint": '/abc',
     # "key": 'ReporteABC',
     "isPro": False,
     "costo": 5,
-    "categoria": "🧠 Diagnósticos de Negocio",
+    "categoria": "🧠 Análisis Estratégico",
     "basic_parameters": [
       { 
         "name": 'criterio_abc', 
@@ -211,10 +211,10 @@ REPORTS_CONFIG = {
     ]
   },
   "ReporteDiagnosticoStockMuerto": {
-    "label": 'Diagnóstico de Stock Muerto',
+    "label": '💸 Diagnóstico de Stock Muerto',
     "endpoint": '/diagnostico-stock-muerto',
     # "key": 'ReporteStockMuerto',
-    "categoria": "🧠 Diagnósticos de Negocio",
+    "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
     "costo": 5,
     "basic_parameters": [
@@ -268,10 +268,10 @@ REPORTS_CONFIG = {
     ]
   },
   "ReporteMaestro": {
-    "label": "⭐ Reporte Maestro de Inventario (Recomendado)",
+    "label": "⭐ Reporte Maestro de Inventario",
     "endpoint": "/reporte-maestro-inventario",
     # "key": 'ReporteMaestro',
-    "categoria": "🧠 Diagnósticos de Negocio",
+    "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
     "costo": 10,
     "basic_parameters": [
@@ -333,10 +333,10 @@ REPORTS_CONFIG = {
     ]
   },
   "ReporteAnalisisEstrategicoRotacion": {
-    "label": 'Análisis Estratégico de Rotación ✓',
+    "label": '🔄 Análisis Estratégico de Rotación',
     "endpoint": '/rotacion-general-estrategico',
     # "key": 'ReporteAnalisisEstrategicoRotacion',
-    "categoria": "🧠 Diagnósticos de Negocio",
+    "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
     "costo": 8,
     "basic_parameters": [
@@ -404,11 +404,12 @@ REPORTS_CONFIG = {
   },
 
 
-  # "📦 Reposición Inteligente y Sugerencias de Pedido"
-  "ReportePuntosAlertaStock": { "label": 'Puntos de Alerta de Stock ✓',
+  # "📦 Planificación de Compras Estratégicas"
+  "ReportePuntosAlertaStock": {
+    "label": '⚙️ Alertas para Punto de Venta',
     "endpoint": '/reporte-puntos-alerta-stock',
     # "key": 'ReportePuntosAlertaStock',
-    "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido",
+    "categoria": "📦 Planificación de Compras Estratégicas",
     "isPro": False,
     "costo": 6,
     "basic_parameters": [
@@ -475,10 +476,10 @@ REPORTS_CONFIG = {
     ]
   },
   "ReporteListaBasicaReposicionHistorica": {
-    "label": 'Lista básica de reposición según histórico',
+    "label": '📋 Plan de Compra Sugerido',
     "endpoint": '/lista-basica-reposicion-historico',
     # "key": 'ReporteListaBasicaReposicionHistorica',
-    "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido",
+    "categoria": "📦 Planificación de Compras Estratégicas",
     "isPro": False,
     "costo": 8,
     "accionable_columns": [
@@ -559,10 +560,10 @@ REPORTS_CONFIG = {
       }
     ]
   },
-  "ReporteListaSugeridaParaAlcanzarMontoMinimo": { "label": 'Lista sugerida para alcanzar monto mínimo', "endpoint": '/rotacion', "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido", "isPro": True, "costo": 10, "basic_parameters": [] },
-  "ReportePedidoOptimizadoPorMarcas": { "label": 'Pedido optimizado por marcas o líneas específicas', "endpoint": '/rotacion', "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido", "isPro": True, "costo": 10, "basic_parameters": [] },
-  "ReporteReposicionInteligentePorCategoria": { "label": 'Reposición inteligente por categoría', "endpoint": '/rotacion', "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido", "isPro": True, "costo": 10, "basic_parameters": [] },
-  "ReporteSugerenciaCompinadaPorZona": { "label": 'Sugerencia combinada por zona', "endpoint": '/rotacion', "categoria": "📦 Reposición Inteligente y Sugerencias de Pedido", "isPro": True, "costo": 10, "basic_parameters": [] },
+  "ReporteListaSugeridaParaAlcanzarMontoMinimo": { "label": '🎯 Optimizador de Pedido por Línea', "endpoint": '/rotacion', "categoria": "📦 Planificación de Compras Estratégicas", "isPro": True, "costo": 10, "basic_parameters": [] },
+  "ReportePedidoOptimizadoPorMarcas": { "label": '💎 Descubridor de Productos Estrella', "endpoint": '/rotacion', "categoria": "📦 Planificación de Compras Estratégicas", "isPro": True, "costo": 10, "basic_parameters": [] },
+  "ReporteReposicionInteligentePorCategoria": { "label": '🗓️ Pronóstico de Demanda Estacional', "endpoint": '/rotacion', "categoria": "📦 Planificación de Compras Estratégicas", "isPro": True, "costo": 10, "basic_parameters": [] },
+  "ReporteSugerenciaCompinadaPorZona": { "label": '🗺 Radar de Mercado Local', "endpoint": '/rotacion', "categoria": "📦 Planificación de Compras Estratégicas", "isPro": True, "costo": 10, "basic_parameters": [] },
   
 
   # "📊 Simulación y ROI de Compra"

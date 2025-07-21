@@ -17,6 +17,7 @@ import { Tooltip } from './Tooltip';
 import { jsPDF } from "jspdf";
 // import "jspdf-autotable";
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
+import { AppliedParameters } from './AppliedParameters'; // <-- Importamos el nuevo componente
 
 import { autoTable } from 'jspdf-autotable';
 
@@ -39,7 +40,7 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
 // --- NUEVO COMPONENTE REUTILIZABLE PARA LAS TARJETAS DE KPI ---
 const KpiCard = ({ label, value, tooltipText }) => (
-  <div className="bg-white p-4 rounded-lg shadow border transform hover:scale-105">
+  <div className="bg-white p-4 rounded-lg shadow border transform transition-all duration-300 hover:scale-105">
     <div className="flex items-center">
       <p className="text-sm text-gray-500">{label}</p>
       {/* El tooltip se renderiza aquí */}
@@ -151,12 +152,23 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
       case 'multi-select':
         {
-          // 1. Obtenemos las opciones del estado `availableFilters`
-          const options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-          // 2. Obtenemos el valor actual del estado `modalParams`
-          const currentValue = modalParams[param.name] || [];
-          // 3. Convertimos el valor actual al formato que `react-select` espera
-          const valueForSelect = currentValue.map(val => ({ value: val, label: val }));
+          // --- INICIO DE LA LÓGICA CORREGIDA ---
+          let options = [];
+          // 1. Verificamos si el parámetro tiene opciones estáticas definidas en la configuración
+          if (param.static_options) {
+            // Si las tiene, usamos esas. Son la fuente de verdad.
+            options = param.static_options;
+          } else {
+            // Si no, usamos las opciones dinámicas que vienen de los archivos (ej. categorías, marcas)
+            options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
+          }
+          // --- FIN DE LA LÓGICA CORREGIDA ---
+
+          const value = (modalParams[param.name] || []).map(val => {
+              // Buscamos la opción completa (value y label) para que el select la muestre
+              return options.find(opt => opt.value === val) || { value: val, label: val };
+          });
+
           return (
             <div key={param.name} className="mb-4 text-left">
               <label className="block text-sm font-medium text-gray-600 mb-1">
@@ -169,10 +181,9 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 options={options}
                 className="mt-1 block w-full basic-multi-select"
                 classNamePrefix="select"
-                value={valueForSelect} // <-- Usamos el valor formateado
+                value={value} // <-- Usamos el valor formateado
                 placeholder="Selecciona..."
                 onChange={(selectedOptions) => {
-                  // Al cambiar, extraemos solo los valores (strings) para guardarlos en el estado
                   const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
                   handleParamChange(param.name, values);
                 }}
@@ -203,6 +214,25 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
           </div>
         );
 
+      case 'boolean_select':
+       return (
+          <div key={param.name} className="mb-4">
+            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+              {param.label}:
+              <Tooltip text={tooltips[param.tooltip_key]} />
+            </label>
+            <select
+              id={param.name}
+              name={param.name}
+              value={modalParams[param.name] || ''}
+              onChange={e => handleParamChange(param.name, e.target.value)}
+              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+            >
+              {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -220,6 +250,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       formData.append("current_user", token);
     }
 
+    // console.log('modalParams')
+    // console.log(modalParams)
     Object.entries(modalParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value)) formData.append(key, JSON.stringify(value));
@@ -229,6 +261,20 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
 
     // Si es el reporte ABC y el criterio es 'combinado', enviamos los pesos de la estrategia.
     if (reportConfig.key === 'ReporteABC' && modalParams.criterio_abc === 'combinado') {
+      if (strategy) {
+        formData.append('score_ventas', strategy.score_ventas);
+        formData.append('score_ingreso', strategy.score_ingreso);
+        formData.append('score_margen', strategy.score_margen);
+      } else {
+        // Fallback por si la estrategia no ha cargado, aunque no debería pasar.
+        console.warn("Estrategia no encontrada, usando valores por defecto para el reporte ABC.");
+        formData.append('score_ventas', 8);
+        formData.append('score_ingreso', 6);
+        formData.append('score_margen', 4);
+      }
+    }
+
+    if (reportConfig.key === 'ReporteMaestro') {
       if (strategy) {
         formData.append('score_ventas', strategy.score_ventas);
         formData.append('score_ingreso', strategy.score_ingreso);
@@ -316,6 +362,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
       alert("No hay datos para generar el PDF.");
       return;
     }
+
+    
 
     // 1. Leemos las instrucciones desde la configuración del reporte
     const headers = reportConfig.accionable_columns || [];
@@ -566,7 +614,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                           <>
                             <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
                               {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
-                              {reportConfig.advanced_parameters.map(param => {
+                              {(reportConfig.advanced_parameters).map(renderParameter)}
+                              {/*{reportConfig.advanced_parameters.map(param => {
                                 if (param.type === 'boolean_select') {
                                   return (
                                     <div key={param.name} className="mb-4">
@@ -608,12 +657,12 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                                   );
                                 }
                                 return null;
-                              })}
+                              })}*/}
                             </div>
                             {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
-                            <button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
+                            {/*<button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
                               <FiRefreshCw className="text-md"/> Restaurar valores por defecto
-                            </button>
+                            </button>*/}
                           </>
                         )}
                       </div>
@@ -633,12 +682,17 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
                   <p className="text-md font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
                   <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
+                  {/* --- NUEVA FICHA DE CONTEXTO --- */}
+                  <AppliedParameters 
+                    reportConfig={reportConfig}
+                    modalParams={modalParams}
+                  />
                   {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
                 </div>
               <hr/>
                 <div className="grid gap-4">
                   {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
-                  <div className="mb-6 mt-6">
+                  <div className="mb-4 mt-6">
                     <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
                     <div className="grid grid-cols-2 gap-4">
                       {analysisResult && analysisResult.kpis && 
@@ -657,7 +711,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                 </div>
                 {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
                 {/* Dentro de tu vista de resultados del ReportModal */}
-                <div className="p-4 bg-white shadow border rounded-lg text-center transform hover:scale-104">
+                <div className="p-4 bg-white shadow border rounded-lg text-center transform transition-all duration-300 hover:scale-104">
                   <div className="flex items-center justify-center mb-2">
                     <p className="text-sm text-gray-500">Gráfico Estadístico</p>
                     <Tooltip text={tooltips['chart_placeholder']} />
@@ -680,7 +734,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                   </div>
                 </div>
               </div>
-              <hr/>
+              <hr className="mx-4"/>
               {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
               <div className="flex-1 min-h-100 flex flex-col bg-gray-100">
                 {/* --- Barra de Búsqueda "Pegajosa" --- */}
@@ -715,7 +769,12 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                     {context.type === 'anonymous' && truncationInfo ? (
                       // Para anónimos con resultados truncados, mostramos el botón de desbloqueo
                       <button 
-                        onClick={() => setActiveModal('register')} 
+                        onClick={() => {
+                          setModalInfo({
+                            title: "Desbloquea la Lista Completa del Resultado",
+                            message: "Esta función es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
+                          });
+                          setActiveModal('registerToUnlock')}} 
                         className="font-semibold text-purple-600 hover:text-purple-800"
                       >
                         ⭐ Ver los {truncationInfo.total - truncationInfo.shown} resultados restantes
@@ -723,7 +782,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                     ) : (
                       // Para usuarios registrados, mostramos el "Cargar más"
                       filteredData.length > visibleItemsCount && (
-                        <button onClick={() => setVisibleItemsCount(prev => prev + 15)} className="...">
+                        <button onClick={() => setVisibleItemsCount(prev => prev + 15)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
                           Cargar 15 más...
                         </button>
                       )
