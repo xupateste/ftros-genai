@@ -431,6 +431,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     // Aquí podrías añadir una lógica para re-ejecutar los reportes con el rango completo si fuera necesario
   };
 
+  const handleProFeatureClick = (reportItem) => {
+    // Reutilizamos la lógica que ya tenemos para los reportes Pro
+    setProReportClicked(reportItem); 
+    setActiveModal('becomeStrategist'); // Abre el modal de "upgrade"
+  };
+
   // --- Función para formatear el texto del botón ---
   const getFilterButtonText = () => {
     if (activeDateFilter) {
@@ -544,9 +550,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                       <ReportButton
                         key={reportItem.key}
                         reportItem={reportItem}
+                        context={context} // <-- Pasa el contexto del usuario
                         onExecute={handleReportView}
-                        onInfoClick={setInfoModalReport} // Abre el modal de info
-                        onFeedbackClick={() => alert("Función de feedback próximamente.")}
+                        onInfoClick={setInfoModalReport}
+                        onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
                       />
                       // <button
                       //   key={reportItem.label}

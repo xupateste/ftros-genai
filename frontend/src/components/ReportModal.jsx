@@ -637,7 +637,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
       <div className="h-full flex flex-col bg-white rounded-lg max-w-lg w-full shadow-2xl relative">
         <div className="p-4 border-b bg-white z-10 shadow text-center items-center sticky top-0">
-          <h2 className="text-xl text-left font-bold text-gray-800 relative w-full pr-10 break-words truncate">{reportConfig.label}</h2>
+          <h2 className="text-xl text-left font-bold text-gray-800 relative w-9/10 pr-10 break-words truncate">{reportConfig.label}</h2>
           {/*<button onClick={onClose} className="absolute top-3 right-0 h-10 w-10 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>*/}
           <div className="absolute top-3 right-0 w-20 gap-0 p-2">
             <button 
@@ -647,7 +647,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
             >
               <FiHelpCircle size={24}/>
             </button>
-            <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
+            <button onClick={onClose} className="mx-2 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
           </div>
         </div>
 
@@ -796,8 +796,8 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
                       <p className="text-sm text-gray-500">Gráfico Estadístico</p>
                       <Tooltip text={tooltips['chart_placeholder']} />
                     </div>
-                    <div className="h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center">
-                        <div role="status" className="relative w-full p-4 rounded-sm shadow-sm border-gray-700 animate-pulse">
+                    <div className="relative h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center">
+                        <div role="status" className="w-full p-4 rounded-sm shadow-sm border-gray-700 animate-pulse">
                           <div className="flex items-baseline">
                               <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-400"></div>
                               <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-400"></div>
