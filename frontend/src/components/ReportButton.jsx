@@ -58,7 +58,7 @@ export function ReportButton({ reportItem, onExecute, onInfoClick, onFeedbackCli
               <ul className="py-1">
                 <li>
                   <a href="#" onClick={(e) => { e.preventDefault(); onInfoClick(reportItem); setIsMenuOpen(false); }} className="flex items-center gap-3 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700">
-                    <FiInfo /> Ver Detalles y Estrategias
+                    <FiInfo /> Más Información
                   </a>
                 </li>
                 <li>

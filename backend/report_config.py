@@ -9,6 +9,34 @@ REPORTS_CONFIG = {
       "isPro": False, # Es un reporte "Estratega"
       "costo": 3,
       "categoria": "📋 Auditorías de Datos",
+      "description": "Este reporte es tu \"detector de fugas de rentabilidad\". Su misión es encontrar productos que no se están vendiendo al precio que deberían, ya sea porque te están generando pérdidas directas (margen negativo) o porque estás dejando dinero sobre la mesa (desviación negativa). Es una herramienta fundamental para auditar tu política de precios y la ejecución en el punto de venta.",
+      "how_it_works": "La herramienta compara dos márgenes para cada producto: el \"Margen Teórico\" (basado en tu precio de lista) y el \"Margen Real\" (basado en tu historial de ventas). La diferencia entre ambos revela inconsistencias en tu política de precios o en la ejecución en el punto de venta.",
+      "data_requirements": {
+          "ventas": ["SKU / Código de producto", "Precio de venta unitario (S/.)"],
+          "inventario": ["SKU / Código de producto", "Precio de compra actual (S/.)", "Precio de venta actual (S/.)"]
+      },
+      "planes_de_accion": [
+          {
+              "title": "Misión: Taponar las Fugas de Dinero (Financiero)",
+              "periodicity": "Recomendado: Mensualmente",
+              "recipe": "Ejecuta el reporte con el parámetro \"Buscar productos con: Margen Negativo\". La lista resultante son los productos que te están costando dinero en cada venta. La acción es inmediata: revisa y corrige sus precios de venta en tu sistema o considera descontinuarlos."
+          },
+          {
+              "title": "Misión: Auditoría de Descuentos y Errores (Operativo)",
+              "periodicity": "Cuándo: Semanalmente o quincenalmente",
+              "recipe": "Ejecuta el reporte con el parámetro \"Buscar productos con: Desviación Negativa\" y ordena por \"Mayor Desviación Porcentual (%)\". Los primeros productos de la lista son tus \"casos de estudio\": ¿Hubo un error de tipeo en una factura? ¿Un vendedor aplicó un descuento no autorizado? ¿El precio de lista en tu sistema es incorrecto? Es una herramienta forense para mejorar tus procesos."
+          },
+          {
+              "title": "Misión: Maximizar la Rentabilidad Oculta (Comercial)",
+              "periodicity": "Cuándo: Trimestralmente, al planificar estrategias de precios",
+              "recipe": "Ejecuta el reporte con el parámetro \"Buscar productos con: Desviación Negativa\" y ordena por \"Mayor Impacto Financiero (S/.)\". El KPI \"Ganancia 'Perdida'\" te dirá exactamente cuánto dinero dejaste de ganar. Usa esta lista para re-entrenar a tu equipo de ventas sobre la importancia de defender el margen en tus productos más importantes."
+          },
+          {
+              "title": "Misión: Revisión de Precios de Proveedores (Compras)",
+              "periodicity": "Cuándo: Después de recibir nuevas listas de precios",
+              "recipe": "Filtra el reporte por la \"Marca\" del proveedor. Si ves una alta \"Desviación Negativa\" en sus productos, es una señal de que sus costos han subido pero tú no has actualizado tus precios de venta al público. Este reporte es tu recordatorio para ajustar tus precios y proteger tu rentabilidad."
+          }
+      ],
       "basic_parameters": [
           {
               "name": "ordenar_por",
@@ -62,6 +90,34 @@ REPORTS_CONFIG = {
       "isPro": False, # Es un reporte "Estratega"
       "costo": 3,
       "categoria": "📋 Auditorías de Datos",
+      "description": "Este reporte es el 'mantenimiento preventivo' de tu base de datos. Su misión es encontrar 'ruido' en tu catálogo: productos que existen en tu sistema pero no en la realidad de tu negocio (fantasmas), o productos con información crítica faltante. Un catálogo limpio es la base para que todos los demás análisis sean precisos y fiables.",
+      "how_it_works": "La herramienta cruza tu lista de inventario con tu historial de ventas para encontrar discrepancias. Adicionalmente, escanea tu inventario en busca de campos de datos esenciales que estén vacíos o con valores incorrectos (como un precio de compra en cero).",
+      "data_requirements": {
+          "ventas": ["SKU / Código de producto"],
+          "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Cantidad en stock actual"]
+      },
+      "planes_de_accion": [
+          {
+              "title": "Misión: La Gran Depuración Anual (Limpieza General)",
+              "periodicity": "Recomendado: Una vez al año",
+              "recipe": "Ejecuta el diagnóstico en modo \"Productos 'Fantasma' (que nunca se han vendido)\" y \"Productos 'Obsoletos' (agotados y sin ventas recientes)\". La lista resultante es tu plan de trabajo para depurar tu sistema de punto de venta, eliminando o desactivando SKUs que ya no son relevantes. Esto acelera tu sistema y reduce la posibilidad de errores."
+          },
+          {
+              "title": "Misión: Rescate de Capital Oculto (Financiero)",
+              "periodicity": "Cuándo: Trimestralmente",
+              "recipe": "Ejecuta el diagnóstico en modo \"Productos 'Fantasma'\" y aplica el filtro \"Mostrar solo con Stock > 0\". Ordena el resultado por \"Mayor Valor Inmovilizado\". La lista que obtienes es, literalmente, dinero acumulando polvo en tu almacén. La misión es crear un plan de liquidación inmediato para estos productos."
+          },
+          {
+              "title": "Misión: Fortalecer la Base de Datos (Calidad de Datos)",
+              "periodicity": "Cuándo: Mensualmente",
+              "recipe": "Ejecuta el diagnóstico en modo \"Productos con Datos Incompletos\" y selecciona todos los criterios (Marca Faltante, Categoría Faltante, Precio de Compra en Cero). La lista resultante es tu \"checklist de correcciones\". Dedica una hora a completar esta información en tu sistema. Cada campo que llenes hará que todos tus reportes de rentabilidad y estrategia sean más precisos."
+          },
+          {
+              "title": "Misión: Optimización de la Experiencia Online (E-commerce)",
+              "periodicity": "Cuándo: Antes de una campaña de marketing digital",
+              "recipe": "Ejecuta el diagnóstico en modo \"Productos con Datos Incompletos\", enfocándote en \"Categoría Faltante\" y \"Marca Faltante\". Un catálogo con estos datos completos permite a tus clientes usar los filtros de tu tienda online de manera más efectiva, mejorando su experiencia de compra y aumentando la conversión."
+          }
+      ],
       "basic_parameters": [
         {
             "name": "tipo_diagnostico_catalogo",
@@ -181,17 +237,37 @@ REPORTS_CONFIG = {
         {
             "title": "Misión: Proteger a tus Estrellas (Gestión de Riesgo)",
             "periodicity": "Recomendado: Semanalmente",
-            "recipe": "Ejecuta el reporte con el criterio 'Por Margen de Ganancia'. Toma la lista de tus 10 productos 'Clase A' y asegúrate de que su nivel de stock sea siempre óptimo. Un quiebre de stock en uno de estos productos es una pérdida directa de rentabilidad."
+            "recipe": "Ejecuta el reporte con el criterio \"Por Margen de Ganancia\". La lista de tus productos \"Clase A\" son los que pagan las facturas y financian el crecimiento. La misión es simple: estos productos NUNCA deben agotarse. Revisa sus niveles de stock y sus Puntos de Alerta en tu sistema POS. Un quiebre de stock en uno de estos items es una pérdida directa de rentabilidad y una oportunidad para que un cliente fiel se vaya a la competencia."
         },
         {
             "title": "Misión: Rediseño de Tienda (Visual Merchandising)",
-            "periodicity": "Cuándo: Cada 3-6 meses",
-            "recipe": "Ejecuta el reporte por 'Unidades Vendidas'. Tus productos 'Clase A' son los más populares. ¿Están a la altura de la vista, en los estantes principales? Usa esta lista para optimizar la distribución física de tu tienda."
+            "periodicity": "Cuándo: Cada 3-6 meses, al reorganizar la tienda",
+            "recipe": "Ejecuta el reporte por \"Unidades Vendidas\". Tus productos \"Clase A\" son los más populares y los que la gente viene a buscar. ¿Están en la ubicación más privilegiada de tu tienda? ¿A la altura de la vista? ¿En los estantes principales o cerca de la caja? Usa esta lista para optimizar la distribución física de tu local y maximizar las ventas por impulso."
         },
         {
             "title": "Misión: Catálogo Inteligente (Estrategia de Compras)",
             "periodicity": "Cuándo: Al planificar las compras del próximo trimestre",
-            "recipe": "Ejecuta el reporte por 'Ingresos'. Analiza tu 'Clase C'. ¿Hay productos aquí que te generan muchos problemas (devoluciones, quejas) pero que apenas aportan a tu facturación? Son los candidatos perfectos para ser descontinuados."
+            "recipe": "Ejecuta el reporte por \"Ingresos\". Ahora, enfócate en tu \"Clase C\". Estos son los productos que, aunque se vendan, aportan muy poco a tu facturación total. ¿Hay items aquí que te generan muchos problemas (ocupan mucho espacio, tienen devoluciones, requieren pedidos mínimos altos)? Son los candidatos perfectos para ser descontinuados. Usa los datos para limpiar y optimizar tu catálogo, liberando capital y espacio."
+        },
+        {
+            "title": "Misión: Negociación Estratégica con Proveedores (Compras Avanzadas)",
+            "periodicity": "Cuándo: Antes de una reunión o negociación importante",
+            "recipe": "Ejecuta el reporte por \"Margen de Ganancia\" y filtra por la \"Marca\" de un proveedor específico. La lista resultante te muestra cuáles de sus productos son realmente \"Clase A\" para tu negocio. Usa esta información como una poderosa herramienta de negociación: \"Estos son los productos que más rentabilidad me generan de tu línea. Necesito un mejor precio de compra por volumen para estos items específicos si quieres que aumente mi pedido total\"."
+        },
+        {
+            "title": "Misión: Campaña de Marketing Enfocada (Ventas y Marketing)",
+            "periodicity": "Cuándo: Mensualmente, al planificar tus promociones",
+            "recipe": "Ejecuta el reporte por \"Unidades Vendidas\". La lista de tus productos \"Clase A\" y \"Clase B\" es tu \"mina de oro\" para el marketing. En lugar de promocionar productos de baja rotación, enfoca tus campañas (volantes, redes sociales, anuncios) en estos \"ganadores\". La misión es simple: vende más de lo que ya se vende bien."
+        },
+        {
+            "title": "Misión: Optimización del Almacén (Logística y Operaciones)",
+            "periodicity": "Cuándo: Trimestralmente",
+            "recipe": "Ejecuta el reporte por \"Unidades Vendidas\". Usa la \"Clase A\" para implementar un sistema de \"conteo cíclico\". En lugar de cerrar la tienda un día entero para un inventario general, cuenta tus pocos productos de Clase A mucho más frecuentemente (ej. semanalmente) y los de Clase C con menos frecuencia (ej. semestralmente). Esto reduce drásticamente el tiempo de inventario y minimiza las discrepancias en tus productos más críticos."
+        },
+        {
+            "title": "Misión: Liberación de \"Capital Perezoso\" (Financiero)",
+            "periodicity": "Cuándo: Trimestralmente",
+            "recipe": "Ejecuta el reporte por \"Margen de Ganancia\". Ahora, mira tus productos de \"Clase C\" y ordena por \"Valor de Stock\". Incluso si no son \"Stock Muerto\", estos productos son \"capital perezoso\": dinero que está trabajando muy lentamente. La misión es identificar los 10 items de Clase C con mayor valor de stock y crear un plan para reducir su inventario a la mitad, liberando ese flujo de caja para invertirlo en tus productos de Clase A."
         }
     ],
     "basic_parameters": [
@@ -249,18 +325,38 @@ REPORTS_CONFIG = {
     "planes_de_accion": [
         {
             "title": "Misión: Rescate de Capital (Financiero)",
-            "periodicity": "Recomendado: Mensual",
-            "recipe": "Ejecuta el reporte ordenando por 'Mayor Valor Inmovilizado'. La lista resultante son tus prioridades #1. Enfócate en los 5 primeros: cada sol que recuperes de estos productos es un sol que puedes reinvertir en inventario que sí rota."
+            "periodicity": "Recomendado: Mensualmente, al revisar las finanzas",
+            "recipe": "Ejecuta el reporte ordenando por \"Mayor Valor Inmovilizado\". La lista resultante son tus prioridades #1. Enfócate en los 5 primeros: cada sol que recuperes de estos productos es un sol que puedes reinvertir en inventario que sí rota."
         },
         {
             "title": "Misión: Guerra de Espacio (Logístico)",
-            "periodicity": "Cuándo: Cuando el almacén esté lleno",
-            "recipe": "Ejecuta el reporte ordenando por 'Mayor Cantidad en Stock'. Esto te mostrará los productos que, aunque no sean caros, están ocupando más espacio físico. Son los candidatos perfectos para una oferta '2x1'."
+            "periodicity": "Cuándo: Cuando el almacén esté lleno o llegue un pedido grande",
+            "recipe": "Ejecuta el reporte ordenando por \"Mayor Cantidad en Stock\". Esto te mostrará los productos que, aunque no sean caros, están ocupando más espacio físico. Son los candidatos perfectos para una oferta \"2x1\" o para moverlos a una zona de liquidación en la entrada de la tienda."
         },
         {
             "title": "Misión: Entrenamiento de Vendedores (Comercial)",
-            "periodicity": "Cuándo: Semanalmente",
-            "recipe": "Imprime el reporte accionable y conviértelo en un concurso de ventas. Ofrece una comisión o un bono al vendedor que logre mover más unidades de esta lista durante la semana."
+            "periodicity": "Cuándo: Semanalmente, en la reunión con tu equipo de ventas",
+            "recipe": "Imprime el reporte accionable. Conviértelo en un \"concurso de ventas\": ofrece una pequeña comisión o un bono al vendedor que logre mover más unidades de esta lista durante la semana. Es una forma gamificada de liquidar stock."
+        },
+        {
+            "title": "Misión: Misión: Creación de Combos y Kits (Venta Cruzada)",
+            "periodicity": "Cuándo: Trimestralmente, al planificar nuevas ofertas",
+            "recipe": "Identifica en la lista de stock muerto un producto complementario a un \"producto estrella\" (un 'Clase A' de tu reporte ABC). Por ejemplo, si tienes un tipo de broca que no se vende, crea un \"Kit de Taladro Profesional\" que incluya el taladro (tu producto estrella) con esa broca \"de regalo\". Es una forma de mover stock muerto sin devaluar tu marca con descuentos directos."
+        },
+        {
+            "title": "Misión: Misión: Conquista Digital (E-commerce y Marketplaces)",
+            "periodicity": "Cuándo: Al planificar tu estrategia de venta online",
+            "recipe": "A veces, un producto es \"stock muerto\" en tu tienda física pero tiene un nicho de mercado online. Usa la lista de stock muerto como tu catálogo para experimentar en plataformas como Mercado Libre o Facebook Marketplace. Crea publicaciones atractivas para estos productos a un precio de liquidación. Es una forma de llegar a un público nuevo y recuperar capital."
+        },
+        {
+            "title": "Misión: Diálogo con Proveedores (Negociación)",
+            "periodicity": "Cuándo: Antes de una reunión o negociación con un proveedor clave",
+            "recipe": "Filtra el reporte por la \"Marca\" de tu proveedor. Si tienes una cantidad significativa de su producto como stock muerto, usa esta lista como una poderosa herramienta de negociación. Propón una devolución parcial a cambio de una nueva compra, o solicita notas de crédito o apoyo con material de marketing para ayudarte a liquidar el inventario."
+        },
+        {
+            "title": "Misión: Optimización Fiscal y Social (Financiero Avanzado)",
+            "periodicity": "Cuándo: Anualmente, antes del cierre fiscal",
+            "recipe": "Ejecuta el reporte ordenando por \"Más Antiguo\". Para los productos que llevan más de uno o dos años sin venderse y cuyo valor es bajo, la liquidación puede ser más costosa que el beneficio. Considera la opción de donarlos a una institución técnica local o a una ONG. Consulta con tu contador: esta acción no solo genera buena voluntad, sino que a menudo puede ser registrada como una pérdida o un gasto deducible de impuestos, convirtiendo un problema en un beneficio fiscal y de imagen."
         }
     ],
     "basic_parameters": [
@@ -320,8 +416,8 @@ REPORTS_CONFIG = {
     "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
     "costo": 7,
-    "description": "Este es tu centro de mando unificado. Combina el análisis de Importancia (ABC) con el de Salud (Diagnóstico) en una única vista poderosa para que puedas tomar decisiones complejas que equilibren la rentabilidad, el riesgo y la inversión.",
-    "how_it_works": "La herramienta ejecuta internamente los análisis de ABC y de Salud del Stock. Luego, cruza ambos resultados y aplica un modelo de priorización para asignar una 'Prioridad Estratégica' a cada producto, destacando las oportunidades y los riesgos más críticos.",
+    "description": "Este es tu centro de mando unificado. Combina el análisis de Importancia (ABC) con el de Salud (Diagnóstico) en una única vista poderosa. Su misión es darte una radiografía completa de cada producto en tu inventario para que puedas tomar decisiones complejas que equilibren la rentabilidad, el riesgo y la inversión.",
+    "how_it_works": "La herramienta ejecuta internamente los análisis de ABC y de Salud del Stock. Luego, cruza ambos resultados y aplica un modelo de priorización para asignar una \"Prioridad Estratégica\" a cada producto, destacando las oportunidades y los riesgos más críticos.",
     "data_requirements": {
         "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
         "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Cantidad en stock actual"]
@@ -329,23 +425,23 @@ REPORTS_CONFIG = {
     "planes_de_accion": [
         {
             "title": "Misión: Revisión Gerencial Semanal",
-            "periodicity": "Recomendado: Cada lunes por la mañana",
-            "recipe": "Ejecuta el reporte ordenando por 'Prioridad Estratégica'. La lista resultante es tu 'hoja de ruta' para la semana. Enfócate en los 5-10 primeros items para identificar los problemas más urgentes."
+            "periodicity": "Recomendado: Cada lunes por la mañana para establecer las prioridades de la semana",
+            "recipe": "Ejecuta el reporte con los parámetros por defecto, ordenando por \"Prioridad Estratégica\". La lista resultante es tu \"hoja de ruta\" para la semana. Enfócate en los 5-10 primeros items: te dirán si el problema más urgente es un quiebre de stock de un producto \"Clase A\" o un exceso de inventario en un producto costoso."
         },
         {
             "title": "Misión: Planificación de Inversión Trimestral",
-            "periodicity": "Cuándo: Al planificar el presupuesto de compras",
-            "recipe": "Usa el reporte para comparar el valor total de tus productos 'Clase A' vs. 'Clase C', y tu inventario 'Saludable' vs. 'En Riesgo'. Esto te ayudará a decidir dónde asignar (o recortar) tu capital de compra."
+            "periodicity": "Al planificar el presupuesto de compras para el próximo trimestre",
+            "recipe": "Usa el reporte para analizar el Valor stock (S/.) de diferentes segmentos. Compara el valor total de tus productos \"Clase A\" vs. \"Clase C\", y el valor de tu inventario \"Saludable\" vs. \"En Riesgo\". Esto te ayudará a decidir dónde asignar (o recortar) tu capital de compra para maximizar el retorno."
         },
         {
             "title": "Misión: Optimización de Catálogo Anual",
-            "periodicity": "Cuándo: Una vez al año",
-            "recipe": "Ordena el reporte por 'Mayor Importancia (Clase ABC)'. Filtra visualmente los productos de 'Clase C' que consistentemente aparecen con un diagnóstico de 'Baja Rotación' o 'Stock Muerto'. Son los candidatos perfectos para ser descontinuados."
+            "periodicity": "Cuándo: Una vez al año, para una limpieza profunda del catálogo",
+            "recipe": "Ordena el reporte por \"Mayor Importancia (Clase ABC)\". Filtra visualmente los productos de \"Clase C\" que consistentemente aparecen con un diagnóstico de \"Baja Rotación\" o \"Stock Muerto\". Estos son los candidatos perfectos para ser descontinuados, liberando capital y espacio."
         },
         {
             "title": "Misión: Entrenamiento del Equipo de Compras",
             "periodicity": "Cuándo: Durante las capacitaciones de tu equipo",
-            "recipe": "Usa el reporte como una herramienta de enseñanza. Elige un producto y muestra cómo sus diferentes métricas (ventas, margen, rotación) se combinan para darle una Clasificación ABC y una Clasificación Diagnóstica. Es la forma perfecta de enseñar a tu equipo a pensar más allá del simple 'comprar lo que se acabó'."
+            "recipe": "Usa el reporte como una herramienta de enseñanza. Elige un producto y muestra cómo sus diferentes métricas (ventas, margen, rotación) se combinan para darle una Clasificación ABC y una Clasificación Diagnóstica. Es la forma perfecta de enseñar a tu equipo a pensar más allá del simple \"comprar lo que se acabó\"."
         }
     ],
     "basic_parameters": [
@@ -413,32 +509,32 @@ REPORTS_CONFIG = {
     "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
     "costo": 8,
-    "description": "Este reporte es tu 'velocímetro' de inventario. Mide la eficiencia y la velocidad con la que tu capital invertido en productos se convierte en ingresos. Responde a la pregunta: '¿Qué tan rápido está trabajando mi dinero para mí?'.",
-    "how_it_works": "La herramienta calcula el 'Índice de Importancia' y la 'Cobertura Actual en Días' para cada producto. Luego, los posiciona en una matriz estratégica para identificar cuatro tipos de productos: 'Estrellas', 'Vacas Lecheras', 'Dilemas' y 'Triviales'.",
+    "description": "Este reporte es tu \"velocímetro\" de inventario. Mide la eficiencia y la velocidad con la que tu capital invertido en productos se convierte en ingresos. Responde a la pregunta fundamental: \"¿Qué tan rápido está trabajando mi dinero para mí?\".",
+    "how_it_works": "La herramienta calcula el Índice de Importancia y la Cobertura Actual (Días) para cada producto. Luego, los posiciona en una matriz estratégica para identificar cuatro tipos de productos: \"Estrellas\" (alta importancia, buena rotación), \"Vacas Lecheras\" (alta importancia, riesgo de quiebre), \"Dilemas\" (baja importancia, sobre-stock) y \"Triviales\".",
     "data_requirements": {
         "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
         "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Cantidad en stock actual"]
     },
     "planes_de_accion": [
         {
-            "title": "Misión: Identificar a tus 'Vacas Lecheras'",
-            "periodicity": "Recomendado: Semanalmente",
-            "recipe": "Ejecuta el reporte ordenando por 'Próximos a Agotarse'. Los primeros productos de la lista que también sean 'Clase A' son tus 'Vacas Lecheras'. La misión es asegurar que estos productos NUNCA se agoten."
+            "title": "Misión: Identificar a tus \"Vacas Lecheras\"",
+            "periodicity": "Recomendado: Semanalmente, para proteger tus ingresos.",
+            "recipe": "Ejecuta el reporte ordenando por \"Próximos a Agotarse (Cobertura)\". Los primeros productos de la lista que también tengan una \"Clasificación\" de \"Clase A\" son tus \"Vacas Lecheras\". La misión es asegurar que estos productos NUNCA se agoten, ya que son tu fuente de ingresos más constante y fiable."
         },
         {
-            "title": "Misión: Cazar los 'Dilemas' (Capital Atrapado)",
-            "periodicity": "Cuándo: Mensualmente",
-            "recipe": "Ejecuta el reporte ordenando por 'Mayor Inversión en Stock'. Los productos al principio de la lista que sean 'Clase C' y tengan 'Sobre-stock' son tus 'Dilemas'. La misión es crear un plan de liquidación agresivo para ellos."
+            "title": "Misión: Cazar los \"Dilemas\" (Capital Atrapado)",
+            "periodicity": "Cuándo: Mensualmente, para liberar flujo de caja.",
+            "recipe": "Ejecuta el reporte ordenando por \"Mayor Inversión en Stock\". Los productos al principio de la lista que tengan una \"Clasificación\" de \"Clase C\" o \"D\" y una \"Alerta de Stock\" de \"Sobre-stock\" son tus \"Dilemas\". La misión es crear un plan de liquidación agresivo para estos 5-10 primeros items."
         },
         {
             "title": "Misión: Análisis Competitivo por Marca",
             "periodicity": "Cuándo: Antes de una negociación importante con un proveedor",
-            "recipe": "Filtra el reporte por una 'Marca' específica. Esto te dará un 'radar estratégico' solo para los productos de ese proveedor. ¿Son mayormente 'Estrellas' y 'Vacas Lecheras', o están llenos de 'Dilemas'? Usa esta información para negociar mejores condiciones de compra, devoluciones o apoyo de marketing."
+            "recipe": "Filtra el reporte por una \"Marca\" específica. Esto te dará un \"radar estratégico\" solo para los productos de ese proveedor. ¿Son mayormente \"Estrellas\" y \"Vacas Lecheras\", o están llenos de \"Dilemas\"? Usa esta información para negociar mejores condiciones de compra, devoluciones o apoyo de marketing."
         },
         {
             "title": "Misión: Validación de Nuevos Productos",
-            "periodicity": "Cuándo: 3 a 6 meses después de un lanzamiento",
-            "recipe": "Filtra el reporte por la 'Categoría' o 'Marca' de los nuevos productos. Esto te mostrará objetivamente si están cumpliendo las expectativas. ¿Están convirtiéndose en 'Estrellas' o están estancándose como 'Dilemas'? Usa estos datos para decidir si duplicas la inversión en ellos o si es mejor descontinuarlos."
+            "periodicity": "Cuándo: 3 a 6 meses después de lanzar una nueva línea de productos",
+            "recipe": "Filtra el reporte por la \"Categoría\" o \"Marca\" de los nuevos productos. Esto te mostrará objetivamente si están cumpliendo las expectativas. ¿Están convirtiéndose en \"Estrellas\" o están estancándose como \"Dilemas\"? Usa estos datos para decidir si duplicas la inversión en ellos o si es mejor descontinuarlos."
         }
     ],
     "basic_parameters": [
@@ -621,23 +717,43 @@ REPORTS_CONFIG = {
     "planes_de_accion": [
         {
             "title": "Misión: Compra de Emergencia (Evitar Pérdidas)",
-            "periodicity": "Recomendado: Diariamente o cada dos días.",
-            "recipe": "Ejecuta el reporte ordenando por 'Más Urgente (Stock vs Alerta)'. La lista resultante son los productos en 'código rojo'. Cómpralos inmediatamente para no perder ventas."
+            "periodicity": "Recomendado: Diariamente o cada dos días",
+            "recipe": "Ejecuta el reporte ordenando por \"Más Urgente (Stock vs Alerta)\". La lista resultante son los productos en \"código rojo\". Cómpralos inmediatamente para no perder ventas por quiebre de stock."
         },
         {
             "title": "Misión: Compra Semanal Optimizada",
-            "periodicity": "Cuándo: Semanalmente, al planificar tu pedido principal.",
-            "recipe": "Ejecuta el reporte ordenando por 'Mayor Importancia'. Asegúrate de reponer todos tus productos 'Clase A'. Para los de 'Clase C', puedes decidir posponer la compra si tu presupuesto es limitado."
+            "periodicity": "Cuándo: Semanalmente, al planificar tu pedido principal",
+            "recipe": "Ejecuta el reporte ordenando por \"Mayor Importancia\". Asegúrate de reponer todos tus productos \"Clase A\", ya que son el motor de tu negocio. Para los de \"Clase C\", puedes decidir posponer la compra si tu presupuesto es limitado."
         },
         {
             "title": "Misión: Negociación con Proveedores",
-            "periodicity": "Cuándo: Antes de enviar una orden de compra.",
-            "recipe": "Filtra por la 'Marca' de un proveedor. La lista resultante es tu 'proforma' inicial. Usa los datos de 'Índice de Importancia' y 'Cobertura' para negociar descuentos o condiciones."
+            "periodicity": "Cuándo: Antes de enviar una orden de compra",
+            "recipe": "Filtra por la \"Marca\" de un proveedor. La lista resultante es tu \"proforma\" inicial. Usa los datos de \"Índice de Importancia\" y \"Cobertura\" para negociar descuentos por volumen o mejores condiciones de compra."
         },
         {
             "title": "Misión: Simulación de Inversión",
-            "periodicity": "Cuándo: Al planificar el presupuesto de compras del mes.",
-            "recipe": "Ejecuta el reporte con tus parámetros de cobertura ideales. El KPI 'Inversión Total Sugerida' te dará una estimación precisa del capital que necesitarás para mantener tu inventario en un estado óptimo."
+            "periodicity": "Cuándo: Al planificar el presupuesto de compras del mes",
+            "recipe": "Ejecuta el reporte con tus parámetros de cobertura ideales. El KPI \"Inversión Total Sugerida\" te dará una estimación precisa del capital de trabajo que necesitarás para mantener tu inventario en un estado óptimo."
+        },
+        {
+            "title": "Misión: Flujo de Caja Inteligente (Modo Supervivencia)",
+            "periodicity": "Recomendado: Cuando el presupuesto es ajustado",
+            "recipe": "Ejecuta el reporte como de costumbre. En el resultado, ignora la columna \"Pedido Ideal Sugerido\" y enfócate en la de \"Pedido Mínimo Sugerido\". Esta columna te dice la cantidad mínima que necesitas comprar para \"sobrevivir\" hasta tu próximo ciclo de compra sin sufrir quiebres de stock. Es la estrategia perfecta para optimizar el flujo de caja."
+        },
+        {
+            "title": "Misión: Preparación para Campaña de Marketing",
+            "periodicity": "Cuándo: Antes de lanzar una promoción (ej. \"Mes del Pintor\")",
+            "recipe": "Filtra el reporte por las \"Categorías\" o \"Marcas\" que planeas promocionar. La lista resultante es tu \"checklist de stock pre-campaña\". Considera aumentar temporalmente los \"Días de Cobertura Ideal\" en los parámetros avanzados para asegurar que tienes suficiente inventario para manejar el pico de ventas esperado."
+        },
+        {
+            "title": "Misión: Consolidación de Pedido a Proveedor",
+            "periodicity": "Cuándo: Al preparar una compra grande para un solo proveedor",
+            "recipe": "Filtra el reporte por la \"Marca\" del proveedor. Revisa el KPI \"Inversión Total Sugerida\" para esa marca. Si estás cerca de alcanzar el monto para un descuento por volumen o envío gratis, usa el reporte \"🎯 Optimizador de Pedido por Línea\" (del plan Estratega) para que la IA te sugiera inteligentemente qué otros productos de esa marca añadir a tu carrito."
+        },
+        {
+            "title": "Misión: Auditoría de la Velocidad de Venta (PDA)",
+            "periodicity": "Cuándo: Cuando una sugerencia de pedido te parezca demasiado alta o baja",
+            "recipe": "Este plan te enseña cómo piensa la herramienta. Ejecuta el reporte. Si una sugerencia te parece extraña, mira la columna \"Promedio Venta Diaria (Unds)\" (PDA). ¿Refleja la realidad de tu negocio? Si no, considera ajustar los \"Períodos de Análisis\" en los parámetros avanzados para que el PDA sea más preciso para el comportamiento de venta de ese producto específico."
         }
     ],
     "accionable_columns": [

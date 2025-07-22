@@ -34,7 +34,7 @@ import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal viv
 import { RegisterToUnlockModal } from './RegisterToUnlockModal';
 
 // Importa los iconos que necesitas
-import { FiX, FiCheck, FiChevronLeft, FiChevronRight, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
+import { FiX, FiCheck, FiChevronLeft, FiHelpCircle, FiChevronRight, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -47,6 +47,36 @@ const KpiCard = ({ label, value, tooltipText }) => (
       <Tooltip text={tooltipText} />
     </div>
     <p className="text-2xl font-bold text-gray-800 mt-1">{value}</p>
+  </div>
+);
+
+const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
+  <div className="absolute inset-0 bg-white p-6 overflow-y-auto">
+    <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-800 mb-4">
+      <FiChevronLeft /> Volver a {modalView == 'parameters' ? 'Parámetros' : 'Resultados'}
+    </button>
+    <div className="space-y-4">
+      <div>
+        <h3 className="font-bold text-lg text-gray-800 mb-2">📄 ¿Qué es este reporte?</h3>
+        <p className="text-sm text-gray-600">{reportItem.description}</p>
+      </div>
+      <div>
+        <h3 className="font-bold text-lg text-gray-800 mb-2">⚙️ ¿Cómo funciona?</h3>
+        <p className="text-sm text-gray-600">{reportItem.how_it_works}</p>
+      </div>
+      <div>
+        <h3 className="font-bold text-lg text-gray-800 mb-2">⚡️ Usos Potentes</h3>
+        <div className="space-y-4">
+          {(reportItem.planes_de_accion || []).map((plan, i) => (
+            <div key={i} className="p-4 border rounded-lg bg-gray-50">
+              <h4 className="font-bold text-purple-700">{plan.title}</h4>
+              <p className="text-xs font-semibold text-gray-500 my-2">🔁 {plan.periodicity}</p>
+              <p className="text-sm text-gray-800">{plan.recipe}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   </div>
 );
 
@@ -66,6 +96,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   // const [truncationInfo, setTruncationInfo] = useState({ shown: 0, total: 0 });
   const [truncationInfo, setTruncationInfo] = useState(null);
   const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
+  const [isInfoVisible, setIsInfoVisible] = useState(false);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [visibleItemsCount, setVisibleItemsCount] = useState(15); // Carga inicial de 15 items
@@ -606,228 +637,247 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
     <div className="fixed h-full inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50 p-4 animate-fade-in overflow-y-auto">
       <div className="h-full flex flex-col bg-white rounded-lg max-w-lg w-full shadow-2xl relative">
         <div className="p-4 border-b bg-white z-10 shadow text-center items-center sticky top-0">
-          <h2 className="text-xl font-bold text-gray-800 relative w-full pr-10 break-words truncate">{reportConfig.label}</h2>
-          <button onClick={onClose} className="absolute top-3 right-0 h-10 w-10 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
+          <h2 className="text-xl text-left font-bold text-gray-800 relative w-full pr-10 break-words truncate">{reportConfig.label}</h2>
+          {/*<button onClick={onClose} className="absolute top-3 right-0 h-10 w-10 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>*/}
+          <div className="absolute top-3 right-0 w-20 gap-0 p-2">
+            <button 
+              onClick={() => setIsInfoVisible(!isInfoVisible)}
+              className={`rounded-full transition-colors ${isInfoVisible ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:bg-gray-100'}`}
+              title="Más información sobre este reporte"
+            >
+              <FiHelpCircle size={24}/>
+            </button>
+            <button onClick={onClose} className="ml-2 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
+          </div>
         </div>
-        
-        <div className="flex-1 min-h-0 overflow-y-auto relative">
-          {modalView === 'loading' && (
-            <div className="flex flex-col items-center justify-center h-full text-gray-500">
-              <FiLoader className="animate-spin text-4xl text-purple-600" />
-              <p className="mt-4">Generando análisis...</p>
-            </div>
-          )}
 
-          {modalView === 'parameters' && (
-            <div className="p-4 text-black">
-              <div className="flex-1 min-h-0 gap-4 p-4 text-black">
-                {(reportConfig.basic_parameters?.length > 0 || reportConfig.advanced_parameters?.length > 0) && (
-                  <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
-                    <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
-                    
-                    {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
-                    {/* Renderizado de parámetros básicos */}
-                    {(reportConfig.basic_parameters || []).map(renderParameter)}
-
-                    {/* --- NUEVA LÓGICA DE UI CONTEXTUAL --- */}
-                    {/* Si el reporte es ABC y el criterio es 'combinado', mostramos el mensaje */}
-                    {reportConfig.key === 'ReporteABC' && modalParams.criterio_abc === 'combinado' && (
-                      <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
-                        ℹ️ Este análisis utilizará los pesos definidos en tu panel de <strong>'Mi Estrategia'</strong> para calcular la importancia de los productos.
-                      </div>
-                    )}
-
-                    {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
-                    {(reportConfig.advanced_parameters && reportConfig.advanced_parameters.length > 0) && (
-                      <div className="mt-6 pt-4 border-t border-gray-200">
-                        <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
-                          {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
-                          {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
-                          <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                        </button>
-                        
-                        {showAdvanced && (
-                          <>
-                            <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
-                              {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
-                              {(reportConfig.advanced_parameters).map(renderParameter)}
-                              {/*{reportConfig.advanced_parameters.map(param => {
-                                if (param.type === 'boolean_select') {
-                                  return (
-                                    <div key={param.name} className="mb-4">
-                                      <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-                                        {param.label}:
-                                        <Tooltip text={tooltips[param.tooltip_key]} />
-                                      </label>
-                                      <select
-                                        id={param.name}
-                                        name={param.name}
-                                        value={modalParams[param.name] || ''}
-                                        onChange={e => handleParamChange(param.name, e.target.value)}
-                                        className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                      >
-                                        {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                      </select>
-                                    </div>
-                                  );
-                                }
-                                if (param.type === 'number') {
-                                  return (
-                                    <div key={param.name} className="mb-4">
-                                      <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-                                        {param.label}:
-                                        <Tooltip text={tooltips[param.tooltip_key]} />
-                                      </label>
-                                      <input
-                                        type="number"
-                                        id={param.name}
-                                        name={param.name}
-                                        value={modalParams[param.name] || ''}
-                                        onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                        min={param.min}
-                                        max={param.max}
-                                        step={param.step}
-                                        className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                      />
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              })}*/}
-                            </div>
-                            {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
-                            {/*<button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
-                              <FiRefreshCw className="text-md"/> Restaurar valores por defecto
-                            </button>*/}
-                          </>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                )}
+        {/* --- CONTENEDOR DEL CUERPO CON ANIMACIÓN DE DESLIZAMIENTO --- */}
+        <div className="flex-1 min-h-0 relative overflow-hidden">
+          {/* Vista de Parámetros */}
+          <div className={`absolute inset-0 transition-transform duration-300 ease-in-out ${isInfoVisible ? '-translate-x-full' : 'translate-x-0'}`}>
+            {modalView === 'loading' && (
+              <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                <FiLoader className="animate-spin text-4xl text-purple-600" />
+                <p className="mt-4">Generando análisis...</p>
               </div>
-            </div>
-          )}
+            )}
 
-          {modalView === 'results' && analysisResult && (
-            <div className="h-full flex flex-col">
-              {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
-              <div className="p-4 sm:p-6 text-left">
-                {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}
-                {/* Insight Clave */}
-                <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
-                  <p className="text-lg mb-2 font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
-                  <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
-                  {/* --- NUEVA FICHA DE CONTEXTO --- */}
-                  <AppliedParameters 
-                    reportConfig={reportConfig}
-                    modalParams={modalParams}
-                  />
-                  {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
-                </div>
-              <hr/>
-                <div className="grid gap-4">
-                  {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
-                  <div className="mb-4 mt-6">
-                    <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
-                    <div className="grid grid-cols-2 gap-4">
-                      {analysisResult && analysisResult.kpis && 
-                        Object.entries(analysisResult.kpis).map(([key, value]) => (
-                          <KpiCard 
-                            key={key} 
-                            label={key} 
-                            value={value}
-                            // Buscamos el texto del tooltip en nuestro glosario
-                            tooltipText={kpiTooltips[key]} 
-                          />
-                        ))
-                      }
-                    </div>
-                  </div>
-                </div>
-                {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
-                {/* Dentro de tu vista de resultados del ReportModal */}
-                <div className="p-4 bg-white shadow border rounded-lg text-center transform transition-all duration-300 hover:scale-104">
-                  <div className="flex items-center justify-center mb-2">
-                    <p className="text-sm text-gray-500">Gráfico Estadístico</p>
-                    <Tooltip text={tooltips['chart_placeholder']} />
-                  </div>
-                  <div className="h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center">
-                      <div role="status" className="relative w-full p-4 rounded-sm shadow-sm border-gray-700 animate-pulse">
-                        <div className="flex items-baseline">
-                            <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-400"></div>
-                            <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-400"></div>
-                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
-                            <div className="w-full h-24 sm:h-44 ms-4 rounded-t-lg bg-gray-400"></div>
-                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
-                            <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
-                            <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+            {modalView === 'parameters' && (
+              <div className="p-4 text-black">
+                <div className="flex-1 min-h-0 gap-4 p-4 text-black">
+                  {(reportConfig.basic_parameters?.length > 0 || reportConfig.advanced_parameters?.length > 0) && (
+                    <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
+                      <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
+                      
+                      {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
+                      {/* Renderizado de parámetros básicos */}
+                      {(reportConfig.basic_parameters || []).map(renderParameter)}
+
+                      {/* --- NUEVA LÓGICA DE UI CONTEXTUAL --- */}
+                      {/* Si el reporte es ABC y el criterio es 'combinado', mostramos el mensaje */}
+                      {reportConfig.key === 'ReporteABC' && modalParams.criterio_abc === 'combinado' && (
+                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
+                          ℹ️ Este análisis utilizará los pesos definidos en tu panel de <strong>'Mi Estrategia'</strong> para calcular la importancia de los productos.
                         </div>
-                      </div>
-                      <button onClick={handleChartPlaceholderClick} className="absolute bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
-                        ⭐ Desbloquear Gráfico
-                      </button>
-                  </div>
-                </div>
-              </div>
-              <hr className="mx-4"/>
-              {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
-              <div className="flex-1 min-h-100 flex flex-col bg-gray-100">
-                {/* --- Barra de Búsqueda "Pegajosa" --- */}
-                <div className="sticky top-0 bg-white z-10 p-4 border-b shadow-md shadow-gray-200">
-                  <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
-                  <div className="relative">
-                    {/*<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />*/}
-                    <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Filtra por SKU, nombre, categoría..." className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-4 pr-4 focus:ring-purple-500 focus:border-purple-500" />
-                  </div>
-                </div>
-                
-                {/* --- Lista de Resultados con Scroll Interno --- */}
-                <div className="overflow-y-auto p-4 space-y-2 mb-10">
-                  {filteredData.length > 0 ? (
-                    filteredData.slice(0, visibleItemsCount).map((item, index) => (
-                      <ResultListItem key={item['SKU / Código de producto'] || index} itemData={item} detailInstructions={reportConfig.preview_details} />
-                    ))
-                  ) : (
-                    <p className="text-center text-gray-500 py-8">Ningún resultado encontrado.</p>
-                  )}
-                  
-                  {/* --- Botón "Cargar Más" --- */}
-                  {/*{filteredData.length > visibleItemsCount && (
-                    <div className="text-center mt-4">
-                      <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
-                        Cargar 10 más...
-                      </button>
+                      )}
+
+                      {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
+                      {(reportConfig.advanced_parameters && reportConfig.advanced_parameters.length > 0) && (
+                        <div className="mt-6 pt-4 border-t border-gray-200">
+                          <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
+                            {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
+                            {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
+                            <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                          </button>
+                          
+                          {showAdvanced && (
+                            <>
+                              <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
+                                {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
+                                {(reportConfig.advanced_parameters).map(renderParameter)}
+                                {/*{reportConfig.advanced_parameters.map(param => {
+                                  if (param.type === 'boolean_select') {
+                                    return (
+                                      <div key={param.name} className="mb-4">
+                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                                          {param.label}:
+                                          <Tooltip text={tooltips[param.tooltip_key]} />
+                                        </label>
+                                        <select
+                                          id={param.name}
+                                          name={param.name}
+                                          value={modalParams[param.name] || ''}
+                                          onChange={e => handleParamChange(param.name, e.target.value)}
+                                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                        >
+                                          {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+                                        </select>
+                                      </div>
+                                    );
+                                  }
+                                  if (param.type === 'number') {
+                                    return (
+                                      <div key={param.name} className="mb-4">
+                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+                                          {param.label}:
+                                          <Tooltip text={tooltips[param.tooltip_key]} />
+                                        </label>
+                                        <input
+                                          type="number"
+                                          id={param.name}
+                                          name={param.name}
+                                          value={modalParams[param.name] || ''}
+                                          onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
+                                          min={param.min}
+                                          max={param.max}
+                                          step={param.step}
+                                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+                                        />
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                })}*/}
+                              </div>
+                              {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
+                              {/*<button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
+                                <FiRefreshCw className="text-md"/> Restaurar valores por defecto
+                              </button>*/}
+                            </>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  )}*/}
-                  {/* --- BOTÓN DE ACCIÓN CONTEXTUAL --- */}
-                  <div className="text-center mt-4">
-                    {context.type === 'anonymous' && truncationInfo ? (
-                      // Para anónimos con resultados truncados, mostramos el botón de desbloqueo
-                      <button 
-                        onClick={() => {
-                          setModalInfo({
-                            title: "Desbloquea la Lista Completa del Resultado",
-                            message: "Esta función es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
-                          });
-                          setActiveModal('registerToUnlock')}} 
-                        className="font-semibold text-purple-600 hover:text-purple-800"
-                      >
-                        ⭐ Ver los {truncationInfo.total - truncationInfo.shown} resultados restantes
-                      </button>
-                    ) : (
-                      // Para usuarios registrados, mostramos el "Cargar más"
-                      filteredData.length > visibleItemsCount && (
-                        <button onClick={() => setVisibleItemsCount(prev => prev + 15)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
-                          Cargar 15 más...
+                  )}
+                </div>
+              </div>
+            )}
+
+            {modalView === 'results' && analysisResult && (
+              <div className="h-full flex flex-col overflow-y-auto">
+                {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
+                <div className="p-4 sm:p-6 text-left">
+                  {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}
+                  {/* Insight Clave */}
+                  <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
+                    <p className="text-lg mb-2 font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
+                    <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
+                    {/* --- NUEVA FICHA DE CONTEXTO --- */}
+                    <AppliedParameters 
+                      reportConfig={reportConfig}
+                      modalParams={modalParams}
+                    />
+                    {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
+                  </div>
+                <hr/>
+                  <div className="grid gap-4">
+                    {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
+                    <div className="mb-4 mt-6">
+                      <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        {analysisResult && analysisResult.kpis && 
+                          Object.entries(analysisResult.kpis).map(([key, value]) => (
+                            <KpiCard 
+                              key={key} 
+                              label={key} 
+                              value={value}
+                              // Buscamos el texto del tooltip en nuestro glosario
+                              tooltipText={kpiTooltips[key]} 
+                            />
+                          ))
+                        }
+                      </div>
+                    </div>
+                  </div>
+                  {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
+                  {/* Dentro de tu vista de resultados del ReportModal */}
+                  <div className="p-4 bg-white shadow border rounded-lg text-center transform transition-all duration-300 hover:scale-104">
+                    <div className="flex items-center justify-center mb-2">
+                      <p className="text-sm text-gray-500">Gráfico Estadístico</p>
+                      <Tooltip text={tooltips['chart_placeholder']} />
+                    </div>
+                    <div className="h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center">
+                        <div role="status" className="relative w-full p-4 rounded-sm shadow-sm border-gray-700 animate-pulse">
+                          <div className="flex items-baseline">
+                              <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-400"></div>
+                              <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-400"></div>
+                              <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
+                              <div className="w-full h-24 sm:h-44 ms-4 rounded-t-lg bg-gray-400"></div>
+                              <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+                              <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
+                              <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+                          </div>
+                        </div>
+                        <button onClick={handleChartPlaceholderClick} className="absolute bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
+                          ⭐ Desbloquear Gráfico
                         </button>
-                      )
+                    </div>
+                  </div>
+                </div>
+                <hr className="mx-4"/>
+                {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
+                <div className="flex-1 min-h-100 flex flex-col bg-gray-100">
+                  {/* --- Barra de Búsqueda "Pegajosa" --- */}
+                  <div className="sticky top-0 bg-white z-10 p-4 border-b shadow-md shadow-gray-200">
+                    <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
+                    <div className="relative">
+                      {/*<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />*/}
+                      <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Filtra por SKU, nombre, categoría..." className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-4 pr-4 focus:ring-purple-500 focus:border-purple-500" />
+                    </div>
+                  </div>
+                  
+                  {/* --- Lista de Resultados con Scroll Interno --- */}
+                  <div className="overflow-y-auto p-4 space-y-2 mb-10">
+                    {filteredData.length > 0 ? (
+                      filteredData.slice(0, visibleItemsCount).map((item, index) => (
+                        <ResultListItem key={item['SKU / Código de producto'] || index} itemData={item} detailInstructions={reportConfig.preview_details} />
+                      ))
+                    ) : (
+                      <p className="text-center text-gray-500 py-8">Ningún resultado encontrado.</p>
                     )}
+                    
+                    {/* --- Botón "Cargar Más" --- */}
+                    {/*{filteredData.length > visibleItemsCount && (
+                      <div className="text-center mt-4">
+                        <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
+                          Cargar 10 más...
+                        </button>
+                      </div>
+                    )}*/}
+                    {/* --- BOTÓN DE ACCIÓN CONTEXTUAL --- */}
+                    <div className="text-center mt-4">
+                      {context.type === 'anonymous' && truncationInfo ? (
+                        // Para anónimos con resultados truncados, mostramos el botón de desbloqueo
+                        <button 
+                          onClick={() => {
+                            setModalInfo({
+                              title: "Desbloquea la Lista Completa del Resultado",
+                              message: "Esta función es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
+                            });
+                            setActiveModal('registerToUnlock')}} 
+                          className="font-semibold text-purple-600 hover:text-purple-800"
+                        >
+                          ⭐ Ver los {truncationInfo.total - truncationInfo.shown} resultados restantes
+                        </button>
+                      ) : (
+                        // Para usuarios registrados, mostramos el "Cargar más"
+                        filteredData.length > visibleItemsCount && (
+                          <button onClick={() => setVisibleItemsCount(prev => prev + 15)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
+                            Cargar 15 más...
+                          </button>
+                        )
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
+          
+          {/* Panel de Ayuda Deslizante */}
+          <div className={`absolute inset-0 transition-transform duration-300 ease-in-out ${isInfoVisible ? 'translate-x-0' : 'translate-x-full'}`}>
+            <ReportInfoPanel reportItem={reportConfig} modalView={modalView} onBack={() => setIsInfoVisible(false)} />
+          </div>
         </div>
 
         {/* --- FOOTER CON BOTONES DE ACCIÓN --- */}
@@ -898,7 +948,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
               className={`absolute bottom-28 z-20 flex items-center justify-center h-14 bg-gray-800 text-white rounded-full shadow-lg transition-all duration-200 ease-in-out hover:bg-gray-600 ${confirmBack ? 'w-64 right-1/8' : 'w-14 right-5'}`}
             >
               {confirmBack ? (
-                <span className="flex items-center gap-2 animate-fade-in-fast">Regresar a Parametros</span>
+                <span className="flex items-center gap-2 animate-fade-in-fast"><FiChevronLeft />Regresar a Parametros</span>
               ) : (
                 <FiChevronLeft />
               )}
