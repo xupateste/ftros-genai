@@ -3097,7 +3097,7 @@ def diagnosticar_catalogo(
         df_filtrado = df_filtrado[
             df_filtrado[MARCA].str.strip().str.lower().isin(marcas_normalizadas)
         ].copy()
-    print(f"filtro_categorias {filtro_categorias}")
+    # print(f"filtro_categorias {filtro_categorias}")
 
     # --- 3. Cálculo de KPIs y Resumen ---
     kpis = {}
@@ -3150,93 +3150,131 @@ def auditar_calidad_datos(
     df_inventario: pd.DataFrame,
     criterios_auditoria: List[str],
     df_ventas: pd.DataFrame = None, # Acepta df_ventas pero no lo usa
+    filtro_categorias: Optional[List[str]] = None,
+    filtro_marcas: Optional[List[str]] = None,
+    ordenar_por: str = 'valor_stock_s',
     **kwargs
 ) -> Dict[str, Any]:
     """
-    Analiza el DataFrame de inventario para encontrar productos con datos
-    críticos faltantes o incorrectos.
+    Analiza el DataFrame de inventario para encontrar una variedad de problemas de
+    calidad de datos, incluyendo datos faltantes, problemas de rentabilidad y duplicados.
     """
-    # --- 1. Pre-procesamiento ---
+    print("Iniciando Auditoría de Calidad de Datos Avanzada...")
+
+    # --- PASO 1: Definición de Nombres y Pre-procesamiento ---
+    SKU = 'SKU / Código de producto'
+    NOMBRE_PROD = 'Nombre del producto'
+    CATEGORIA = 'Categoría'
+    MARCA = 'Marca'
+    PRECIO_COMPRA = 'Precio de compra actual (S/.)'
+    PRECIO_VENTA = 'Precio de venta actual (S/.)' # Nueva columna necesaria
+    STOCK_ACTUAL = 'Cantidad en stock actual'
+    VALOR_STOCK = 'valor_stock_s'
+
     df_audit = df_inventario.copy()
     df_audit.columns = df_audit.columns.str.strip()
     
-    # Nombres de columna esperados
-    SKU = 'SKU / Código de producto'
-    MARCA = 'Marca'
-    CATEGORIA = 'Categoría'
-    PRECIO_COMPRA = 'Precio de compra actual (S/.)'
-    STOCK_ACTUAL = 'Cantidad en stock actual'
-    NOMBRE_PROD = 'Nombre del producto'
-    VALOR_STOCK = 'valor_stock_s'
-    # NOMBRE_PROD = ''
-
-    # Aseguramos que las columnas existan
-    for col in [MARCA, CATEGORIA, PRECIO_COMPRA, STOCK_ACTUAL]:
+    # Aseguramos que todas las columnas necesarias existan
+    for col in [SKU, NOMBRE_PROD, CATEGORIA, MARCA, PRECIO_COMPRA, PRECIO_VENTA, STOCK_ACTUAL]:
         if col not in df_audit.columns:
-            df_audit[col] = np.nan # Si no existe, la creamos vacía
+            df_audit[col] = np.nan
 
     # Limpieza de tipos
-    df_audit[PRECIO_COMPRA] = pd.to_numeric(df_audit[PRECIO_COMPRA], errors='coerce').fillna(0)
-    df_audit[STOCK_ACTUAL] = pd.to_numeric(df_audit[STOCK_ACTUAL], errors='coerce').fillna(0)
-    df_audit[MARCA] = df_audit[MARCA].astype(str).str.strip()
-    df_audit[CATEGORIA] = df_audit[CATEGORIA].astype(str).str.strip()
+    for col in [PRECIO_COMPRA, PRECIO_VENTA, STOCK_ACTUAL]:
+        df_audit[col] = pd.to_numeric(df_audit[col], errors='coerce')
+    
+    df_audit[VALOR_STOCK] = df_audit[STOCK_ACTUAL].fillna(0) * df_audit[PRECIO_COMPRA].fillna(0)
 
-    # --- 2. Aplicación de Criterios de Auditoría ---
-    masks = []
+    # --- PASO 2: Aplicación de Criterios de Auditoría ---
+    problem_dfs = [] # Lista para almacenar los DataFrames de cada problema detectado
+
     if 'marca_faltante' in criterios_auditoria:
-        masks.append(df_audit[MARCA].isin(['', 'nan', 'None']))
+        df_problema = df_audit[pd.isna(df_audit[MARCA]) | (df_audit[MARCA].astype(str).str.strip() == '')].copy()
+        df_problema['Problema Detectado'] = 'Marca Faltante'
+        problem_dfs.append(df_problema)
+        
     if 'categoria_faltante' in criterios_auditoria:
-        masks.append(df_audit[CATEGORIA].isin(['', 'nan', 'None']))
+        df_problema = df_audit[pd.isna(df_audit[CATEGORIA]) | (df_audit[CATEGORIA].astype(str).str.strip() == '')].copy()
+        df_problema['Problema Detectado'] = 'Categoría Faltante'
+        problem_dfs.append(df_problema)
+
     if 'precio_compra_cero' in criterios_auditoria:
-        masks.append(df_audit[PRECIO_COMPRA] == 0)
+        df_problema = df_audit[df_audit[PRECIO_COMPRA].fillna(0) == 0].copy()
+        df_problema['Problema Detectado'] = 'Precio Compra en Cero'
+        problem_dfs.append(df_problema)
+    
+    if 'precio_venta_menor_costo' in criterios_auditoria:
+        df_problema = df_audit[df_audit[PRECIO_VENTA] < df_audit[PRECIO_COMPRA]].copy()
+        df_problema['Problema Detectado'] = 'Precio Venta < Costo'
+        problem_dfs.append(df_problema)
 
-    if not masks:
-        # Si no se seleccionó ningún criterio, devolvemos un resultado vacío
-        return {"data": pd.DataFrame(), "summary": {"insight": "Por favor, selecciona al menos un criterio de auditoría.", "kpis": {}}}
+    if 'nombres_duplicados' in criterios_auditoria:
+        # Buscamos nombres de producto que correspondan a más de un SKU
+        duplicated_names = df_audit.groupby(NOMBRE_PROD)[SKU].nunique()
+        duplicated_names = duplicated_names[duplicated_names > 1].index
+        if not duplicated_names.empty:
+            df_problema = df_audit[df_audit[NOMBRE_PROD].isin(duplicated_names)].copy()
+            df_problema['Problema Detectado'] = 'Nombre Duplicado'
+            problem_dfs.append(df_problema)
 
-    # Combinamos las máscaras con un OR lógico
-    final_mask = np.logical_or.reduce(masks)
-    df_resultado = df_audit[final_mask].copy()
+    if not problem_dfs:
+        return {"data": pd.DataFrame(), "summary": {"insight": "¡Excelente! No se encontraron problemas de calidad de datos con los criterios seleccionados.", "kpis": {}}}
 
-    # --- 3. Cálculo de KPIs y Resumen ---
+    df_resultado = pd.concat(problem_dfs).drop_duplicates(subset=[SKU])
+
+    # --- PASO 3: Aplicación de Filtros Adicionales ---
+    if filtro_categorias and CATEGORIA in df_resultado.columns:
+        # Normalizamos la lista de categorías a minúsculas y sin espacios
+        categorias_normalizadas = [cat.strip().lower() for cat in filtro_categorias]
+        
+        # Comparamos contra la columna del DataFrame también normalizada
+        # El .str.lower() y .str.strip() se aplican a cada valor de la columna antes de la comparación
+        df_resultado = df_resultado[
+            df_resultado[CATEGORIA].str.strip().str.lower().isin(categorias_normalizadas)
+        ].copy()
+
+    if filtro_marcas and MARCA in df_resultado.columns:
+        # Normalizamos la lista de marcas
+        marcas_normalizadas = [marca.strip().lower() for marca in filtro_marcas]
+        
+        # Comparamos contra la columna de marcas normalizada
+        df_resultado = df_resultado[
+            df_resultado[MARCA].str.strip().str.lower().isin(marcas_normalizadas)
+        ].copy()
+
+    # --- 4. Cálculo de KPIs y Resumen ---
     skus_con_problemas = len(df_resultado)
-    valor_en_riesgo = (df_resultado[STOCK_ACTUAL] * df_resultado[PRECIO_COMPRA]).sum()
-
-    df_resultado['valor_stock_s'] = (df_resultado[STOCK_ACTUAL] * df_resultado[PRECIO_COMPRA]).round(2)
-
-    insight_text = f"Se encontraron {skus_con_problemas} productos con datos críticos faltantes. Corregirlos mejorará la precisión de todos tus demás análisis."
+    valor_en_riesgo = df_resultado[VALOR_STOCK].sum()
+    insight_text = f"Se encontraron {skus_con_problemas} productos con problemas de calidad de datos. Corregirlos mejorará la precisión de todos tus análisis."
     kpis = {
-        "# SKUs con Datos Faltantes": skus_con_problemas,
-        "Valor en Riesgo por Datos Faltantes": f"S/ {valor_en_riesgo:,.2f}"
+        "# SKUs con Problemas": skus_con_problemas,
+        "Valor de Stock Afectado": f"S/ {valor_en_riesgo:,.2f}"
     }
 
-    # --- 4. Formateo Final ---
-    def encontrar_problema(row):
-        problemas = []
-        if 'marca_faltante' in criterios_auditoria and row[MARCA] in ['', 'nan', 'None']: problemas.append("Marca Faltante")
-        if 'categoria_faltante' in criterios_auditoria and row[CATEGORIA] in ['', 'nan', 'None']: problemas.append("Categoría Faltante")
-        if 'precio_compra_cero' in criterios_auditoria and row[PRECIO_COMPRA] == 0: problemas.append("Precio Compra en Cero")
-        return ", ".join(problemas)
-
-    if not df_resultado.empty:
-        df_resultado['Problema Detectado'] = df_resultado.apply(encontrar_problema, axis=1)
-
+    # --- PASO 5: ORDENAMIENTO DINÁMICO ---
+    ascending_map = {
+        'valor_stock_s': False,       # Mayor valor primero
+        'stock_actual_unds': False    # Mayor cantidad primero
+    }
+    is_ascending = ascending_map.get(ordenar_por, False)
+    
+    if ordenar_por in df_resultado.columns:
+        df_resultado.sort_values(by=ordenar_por, ascending=is_ascending, inplace=True)
+    
+    
     # ... (Tu lógica para seleccionar, renombrar y limpiar el `df_resultado` para JSON)
         # --- PASO 4: FORMATEO FINAL DE SALIDA ---
     columnas_finales = [SKU, NOMBRE_PROD, CATEGORIA, MARCA, STOCK_ACTUAL, VALOR_STOCK, 'Problema Detectado']
     df_final = df_resultado[[col for col in columnas_finales if col in df_resultado.columns]].copy()
     
+
     df_final.rename(columns={
         SKU: 'SKU / Código de producto', NOMBRE_PROD: 'Nombre del producto',
-        CATEGORIA: 'Categoría', MARCA: 'Marca', STOCK_ACTUAL: 'Stock Actual (Unds)',
-        VALOR_STOCK: 'Valor stock (S/.)'
+        CATEGORIA: 'Categoría', MARCA: 'Marca',
+        STOCK_ACTUAL: 'Stock Actual (Unds)', VALOR_STOCK: 'Valor stock (S/.)'
     }, inplace=True)
 
-
-    # Limpieza para JSON
     df_final = df_final.replace([np.inf, -np.inf], np.nan).where(pd.notna(df_final), None)
-    
-  
     
     return {
         "data": df_final,

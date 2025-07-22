@@ -120,17 +120,6 @@ REPORTS_CONFIG = {
       ],
       "basic_parameters": [
         {
-            "name": "tipo_diagnostico_catalogo",
-            "label": "Buscar productos que están...",
-            "type": "select",
-            "defaultValue": "nunca_vendidos",
-            "tooltip_key": "tipo_diagnostico_catalogo",
-            "options": [
-                { "value": "nunca_vendidos", "label": "En el inventario pero nunca se han vendido" },
-                { "value": "agotados_inactivos", "label": "Agotados y sin ventas por un largo tiempo" }
-            ]
-        },
-        {
             "name": "ordenar_por",
             "label": "Priorizar y Ordenar Por",
             "type": "select",
@@ -140,6 +129,17 @@ REPORTS_CONFIG = {
                 { "value": "valor_stock_s", "label": "Mayor Valor Inmovilizado" },
                 { "value": "stock_actual_unds", "label": "Mayor Cantidad en Stock" },
                 { "value": "categoria", "label": "Categoría (A-Z)" }
+            ]
+        },
+        {
+            "name": "tipo_diagnostico_catalogo",
+            "label": "Buscar productos que están...",
+            "type": "select",
+            "defaultValue": "nunca_vendidos",
+            "tooltip_key": "tipo_diagnostico_catalogo",
+            "options": [
+                { "value": "nunca_vendidos", "label": "En el inventario pero nunca se han vendido" },
+                { "value": "agotados_inactivos", "label": "Agotados y sin ventas por un largo tiempo" }
             ]
         },
         { "name": "incluir_solo_categorias", "label": "Filtrar por Categorías", "type": "multi-select", "optionsKey": "categorias", "defaultValue": [], "tooltip_key": "filtro_categorias" },
@@ -184,7 +184,46 @@ REPORTS_CONFIG = {
       "isPro": False, # Es un reporte "Estratega"
       "costo": 3,
       "categoria": "📋 Auditorías de Datos",
+      "description": "Este reporte es el 'mantenimiento preventivo' de tu base de datos. Su misión es encontrar 'ruido' en tu catálogo: productos con información crítica faltante o inconsistente. Un catálogo limpio es la base para que todos los demás análisis sean precisos y fiables.",
+      "how_it_works": "La herramienta escanea tu archivo de inventario en busca de problemas comunes como campos vacíos (Marca, Categoría), valores ilógicos (Precio de Compra en Cero), inconsistencias de rentabilidad (Precio de Venta menor al Costo) o registros duplicados.",
+      "data_requirements": {
+          "ventas": [], # Este reporte no necesita el archivo de ventas
+          "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Precio de venta actual (S/.)", "Cantidad en stock actual"]
+      },
+      "planes_de_accion": [
+          {
+              "title": "Misión: Fortalecer la Base de Datos (Limpieza General)",
+              "periodicity": "Recomendado: Mensualmente",
+              "recipe": "Ejecuta el reporte seleccionando todos los criterios de auditoría. La lista resultante es tu 'checklist de correcciones'. Dedica una hora a completar esta información en tu sistema. Cada campo que llenes hará que todos tus reportes de rentabilidad y estrategia sean más precisos."
+          },
+          {
+              "title": "Misión: Auditoría de Rentabilidad",
+              "periodicity": "Cuándo: Antes de fijar precios o lanzar promociones.",
+              "recipe": "Selecciona únicamente el criterio 'Precio de Venta < Costo'. Esto te mostrará los productos que te están generando pérdidas directas. Es una auditoría financiera crítica para proteger tus márgenes."
+          },
+          {
+              "title": "Misión: Unificación de Catálogo",
+              "periodicity": "Cuándo: Trimestralmente o si sospechas de errores.",
+              "recipe": "Selecciona el criterio 'Nombres de Producto Duplicados'. Esto revela si tienes el mismo item físico registrado con múltiples SKUs. Unificar estos registros es crucial para que tus cálculos de stock y ventas sean correctos."
+          },
+          {
+              "title": "Misión: Optimización de la Experiencia Online",
+              "periodicity": "Cuándo: Antes de una campaña de marketing digital.",
+              "recipe": "Selecciona los criterios 'Marca Faltante' y 'Categoría Faltante'. Un catálogo con estos datos completos permite a tus clientes usar los filtros de tu tienda online de manera más efectiva, mejorando su experiencia de compra y aumentando la conversión."
+          }
+      ],
       "basic_parameters": [
+          {
+              "name": "ordenar_por",
+              "label": "Priorizar y Ordenar Por",
+              "type": "select",
+              "defaultValue": "valor_stock_s",
+              "tooltip_key": "ordenar_auditoria_por",
+              "options": [
+                  { "value": "valor_stock_s", "label": "Mayor Valor Inmovilizado" },
+                  { "value": "stock_actual_unds", "label": "Mayor Stock Actual" }
+              ]
+          },
           {
               "name": "criterios_auditoria_json",
               "label": "Auditar productos con...",
@@ -196,9 +235,13 @@ REPORTS_CONFIG = {
               "static_options": [
                   { "value": "marca_faltante", "label": "Marca Faltante" },
                   { "value": "categoria_faltante", "label": "Categoría Faltante" },
-                  { "value": "precio_compra_cero", "label": "Precio de Compra en Cero" }
+                  { "value": "precio_compra_cero", "label": "Precio de Compra en Cero" },
+                  { "value": "precio_venta_menor_costo", "label": "Precio de Venta menor al Costo" },
+                  { "value": "nombres_duplicados", "label": "Nombres de Producto Duplicados" }
               ]
-          }
+          },
+          { "name": "incluir_solo_categorias", "label": "Filtrar por Categorías", "type": "multi-select", "optionsKey": "categorias", "defaultValue": [], "tooltip_key": "filtro_categorias" },
+          { "name": "incluir_solo_marcas", "label": "Filtrar por Marcas", "type": "multi-select", "optionsKey": "marcas", "defaultValue": [], "tooltip_key": "filtro_marcas" }
       ],
       "advanced_parameters": [],
       "accionable_columns": [

@@ -2280,7 +2280,10 @@ async def generar_auditoria_calidad_datos(
 
     inventario_file_id: str = Form(...), # Este reporte solo necesita el inventario
     # --- Recibimos los nuevos parámetros del formulario ---
-    criterios_auditoria_json: str = Form(...)
+    criterios_auditoria_json: str = Form(...),
+    incluir_solo_categorias: Optional[str] = Form(None),
+    incluir_solo_marcas: Optional[str] = Form(None),
+    ordenar_por: str = Form("valor_stock_s")
 ):
     user_id = current_user['email'] if current_user else None
     if user_id and not workspace_id:
@@ -2291,8 +2294,17 @@ async def generar_auditoria_calidad_datos(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato de criterios de auditoría inválido.")
 
+    try:
+        filtro_categorias = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        filtro_marcas = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
+
     processing_params = {
-        "criterios_auditoria": criterios_auditoria
+        "criterios_auditoria": criterios_auditoria,
+        "filtro_categorias": filtro_categorias,
+        "ordenar_por": ordenar_por,
+        "filtro_marcas": filtro_marcas
     }
     
     full_params_for_logging = dict(await request.form())

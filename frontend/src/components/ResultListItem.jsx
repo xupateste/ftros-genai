@@ -18,6 +18,7 @@ export function ResultListItem({ itemData, detailInstructions }) {
   const nombre = itemData['Nombre del producto'] || 'N/A';
   const sku = itemData['SKU / Código de producto'] || 'N/A';
   const marca = itemData['Marca'] || 'N/A';
+  const categoria = itemData['Categoría'] || 'N/A';
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 transition-all duration-300 shadow-md shadow-gray-200 transform hover:scale-104">
@@ -28,7 +29,7 @@ export function ResultListItem({ itemData, detailInstructions }) {
         <div>
           <p className="font-semibold text-sm text-gray-800">{nombre}</p>
           <p className="text-xs text-gray-500">
-            SKU: {sku} | Marca: {marca}
+            SKU: {sku} | Marca: {marca} | Categoría: {categoria}
           </p>
         </div>
         {isExpanded ? <FiChevronUp className="text-purple-600" /> : <FiChevronDown className="text-purple-600" />}

@@ -174,7 +174,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
               name={param.name}
               value={modalParams[param.name] || ''}
               onChange={e => handleParamChange(param.name, e.target.value)}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+              className="appearance-none mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
             >
               {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
             </select>
@@ -654,7 +654,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
         {/* --- CONTENEDOR DEL CUERPO CON ANIMACIÓN DE DESLIZAMIENTO --- */}
         <div className="flex-1 min-h-0 relative overflow-hidden">
           {/* Vista de Parámetros */}
-          <div className={`absolute inset-0 transition-transform duration-300 ease-in-out ${isInfoVisible ? '-translate-x-full' : 'translate-x-0'}`}>
+          <div className={`absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto ${isInfoVisible ? '-translate-x-full' : 'translate-x-0'}`}>
             {modalView === 'loading' && (
               <div className="flex flex-col items-center justify-center h-full text-gray-500">
                 <FiLoader className="animate-spin text-4xl text-purple-600" />
@@ -663,7 +663,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
             )}
 
             {modalView === 'parameters' && (
-              <div className="p-4 text-black">
+              <div className="p-4 text-black flex-col">
                 <div className="flex-1 min-h-0 gap-4 p-4 text-black">
                   {(reportConfig.basic_parameters?.length > 0 || reportConfig.advanced_parameters?.length > 0) && (
                     <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
@@ -754,7 +754,7 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
             )}
 
             {modalView === 'results' && analysisResult && (
-              <div className="h-full flex flex-col overflow-y-auto">
+              <div className="h-full flex flex-col">
                 {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
                 <div className="p-4 sm:p-6 text-left">
                   {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}

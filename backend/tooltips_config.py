@@ -1,6 +1,7 @@
 TOOLTIPS_GLOSSARY = {
     # --- Parámetros de Auditoría de Calidad de Datos ---
     "criterios_auditoria": "Selecciona uno o más problemas de calidad de datos que quieras encontrar en tu archivo de inventario. Esto te ayudará a limpiar tu catálogo y mejorar la precisión de todos los demás reportes.",
+    "ordenar_auditoria_por": "Elige el criterio principal para ordenar la lista de problemas. 'Mayor Valor' te mostrará primero los errores en los productos que representan más capital, mientras que 'Mayor Stock' se enfocará en el impacto logístico.",
 
     # --- Parámetros de Auditoría de Stock Fantasma ---
     "tipo_diagnostico_catalogo": "Elige qué tipo de problema de catálogo quieres encontrar. 'Nunca Vendidos' busca productos que existen en tu inventario pero nunca han aparecido en tu historial de ventas. 'Agotados e Inactivos' busca productos con stock cero que no has vendido en mucho tiempo y que podrías eliminar de tu sistema.",
