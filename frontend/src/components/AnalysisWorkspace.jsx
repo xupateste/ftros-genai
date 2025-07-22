@@ -29,6 +29,8 @@ import { UpgradeModal } from './UpgradeModal'; // <-- Importamos el nuevo modal
 import { DateRangePickerModal } from './DateRangePickerModal'; // <-- Importamos el nuevo modal
 import { RechargeCreditsModal } from './RechargeCreditsModal';
 import { BecomeStrategistModal } from './BecomeStrategistModal';
+import { ReportButton } from './ReportButton'; // <-- Importamos el nuevo botón
+import { ReportInfoModal } from './ReportInfoModal'; // <-- Importamos el nuevo modal
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
@@ -157,7 +159,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   // 1. ESTADO DE CARGA PRINCIPAL
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // 2. ESTADOS DEL WORKSPACE (con inicialización segura)
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
   const [credits, setCredits] = useState({ used: 0, remaining: 0 });
@@ -184,6 +186,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isCacheValid, setIsCacheValid] = useState(false);
   const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
+  const [infoModalReport, setInfoModalReport] = useState(null); // Nuevo estado para el modal de info
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
   const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
@@ -538,24 +541,31 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                   </h3>
                   <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
                     {reportes.map((reportItem) => (
-                      <button
-                        key={reportItem.label}
-                        onClick={() => handleReportView(reportItem)}
-                        className={`relative w-full text-left p-4 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group
-                          ${reportItem.isPro 
-                            ? 'bg-gray-700 text-gray-400 hover:bg-gray-600 border border-purple-800' // Estilo Pro
-                            : 'bg-white bg-opacity-90 text-black hover:bg-purple-100' // Estilo Básico
-                          }`
-                        }
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-semibold text-sm">{reportItem.label}</span>
-                          {reportItem.isPro && <FiStar className="text-yellow-500" />}
-                        </div>
-                        {reportItem.isPro && (
-                          <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>
-                        )}
-                      </button>
+                      <ReportButton
+                        key={reportItem.key}
+                        reportItem={reportItem}
+                        onExecute={handleReportView}
+                        onInfoClick={setInfoModalReport} // Abre el modal de info
+                        onFeedbackClick={() => alert("Función de feedback próximamente.")}
+                      />
+                      // <button
+                      //   key={reportItem.label}
+                      //   onClick={() => handleReportView(reportItem)}
+                      //   className={`relative w-full text-left p-4 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group
+                      //     ${reportItem.isPro 
+                      //       ? 'bg-gray-700 text-gray-400 hover:bg-gray-600 border border-purple-800' // Estilo Pro
+                      //       : 'bg-white bg-opacity-90 text-black hover:bg-purple-100' // Estilo Básico
+                      //     }`
+                      //   }
+                      // >
+                      //   <div className="flex items-center justify-between">
+                      //     <span className="font-semibold text-sm">{reportItem.label}</span>
+                      //     {reportItem.isPro && <FiStar className="text-yellow-500" />}
+                      //   </div>
+                      //   {reportItem.isPro && (
+                      //     <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>
+                      //   )}
+                      // </button>
                     ))}
                   </div>
                 </div>
@@ -569,6 +579,14 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         )}
         <FerreterosLogo/>
       </main>
+
+      {/* --- RENDERIZADO DEL NUEVO MODAL DE INFORMACIÓN --- */}
+      {infoModalReport && (
+        <ReportInfoModal 
+          reportItem={infoModalReport} 
+          onClose={() => setInfoModalReport(null)} 
+        />
+      )}
 
       {/* --- RENDERIZADO DEL MODAL DE REPORTE --- */}
       {/* Se renderiza solo si hay un reporte seleccionado */}

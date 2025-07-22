@@ -7,7 +7,7 @@ REPORTS_CONFIG = {
       "label": '💸 Auditoría de Desviación de Margen',
       "endpoint": '/auditoria-margenes',
       "isPro": False, # Es un reporte "Estratega"
-      "costo": 10,
+      "costo": 3,
       "categoria": "📋 Auditorías de Datos",
       "basic_parameters": [
           {
@@ -60,7 +60,7 @@ REPORTS_CONFIG = {
       "label": '🔎 Auditoría de Integridad de Catálogo',
       "endpoint": '/diagnostico-catalogo',
       "isPro": False, # Es un reporte "Estratega"
-      "costo": 5,
+      "costo": 3,
       "categoria": "📋 Auditorías de Datos",
       "basic_parameters": [
         {
@@ -126,7 +126,7 @@ REPORTS_CONFIG = {
       "label": '🧹 Auditoría de Calidad de Datos',
       "endpoint": '/auditoria-calidad-datos',
       "isPro": False, # Es un reporte "Estratega"
-      "costo": 5,
+      "costo": 3,
       "categoria": "📋 Auditorías de Datos",
       "basic_parameters": [
           {
@@ -169,8 +169,31 @@ REPORTS_CONFIG = {
     "endpoint": '/abc',
     # "key": 'ReporteABC',
     "isPro": False,
-    "costo": 5,
+    "costo": 7,
     "categoria": "🧠 Análisis Estratégico",
+    "description": "Aplica el principio de Pareto (80/20) a tu inventario, clasificando cada producto en Clases (A, B, C) para revelar cuáles son los pocos items vitales que generan la mayor parte de tu valor.",
+    "how_it_works": "La herramienta calcula el valor de cada producto según el criterio que elijas (margen, ingresos o unidades). Luego, los ordena y calcula el porcentaje acumulado para asignar la clasificación: el 80% del valor son Clase A, el siguiente 15% son Clase B, y el 5% final son Clase C.",
+    "data_requirements": {
+        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
+        "inventario": ["SKU / Código de producto", "Precio de compra actual (S/.)"]
+    },
+    "planes_de_accion": [
+        {
+            "title": "Misión: Proteger a tus Estrellas (Gestión de Riesgo)",
+            "periodicity": "Recomendado: Semanalmente",
+            "recipe": "Ejecuta el reporte con el criterio 'Por Margen de Ganancia'. Toma la lista de tus 10 productos 'Clase A' y asegúrate de que su nivel de stock sea siempre óptimo. Un quiebre de stock en uno de estos productos es una pérdida directa de rentabilidad."
+        },
+        {
+            "title": "Misión: Rediseño de Tienda (Visual Merchandising)",
+            "periodicity": "Cuándo: Cada 3-6 meses",
+            "recipe": "Ejecuta el reporte por 'Unidades Vendidas'. Tus productos 'Clase A' son los más populares. ¿Están a la altura de la vista, en los estantes principales? Usa esta lista para optimizar la distribución física de tu tienda."
+        },
+        {
+            "title": "Misión: Catálogo Inteligente (Estrategia de Compras)",
+            "periodicity": "Cuándo: Al planificar las compras del próximo trimestre",
+            "recipe": "Ejecuta el reporte por 'Ingresos'. Analiza tu 'Clase C'. ¿Hay productos aquí que te generan muchos problemas (devoluciones, quejas) pero que apenas aportan a tu facturación? Son los candidatos perfectos para ser descontinuados."
+        }
+    ],
     "basic_parameters": [
       { 
         "name": 'criterio_abc', 
@@ -216,7 +239,30 @@ REPORTS_CONFIG = {
     # "key": 'ReporteStockMuerto',
     "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
-    "costo": 5,
+    "costo": 8,
+    "description": "Identifica los productos que no han rotado en un período determinado, representando capital inmovilizado y ocupando espacio valioso en tu almacén.",
+    "how_it_works": "El análisis calcula los días transcurridos desde la última venta de cada producto con stock y lo compara contra un umbral (por defecto o personalizado) para clasificarlo como 'Stock Muerto'.",
+    "data_requirements": {
+        "ventas": ["SKU / Código de producto", "Fecha de venta"],
+        "inventario": ["SKU / Código de producto", "Cantidad en stock actual", "Precio de compra actual (S/.)"]
+    },
+    "planes_de_accion": [
+        {
+            "title": "Misión: Rescate de Capital (Financiero)",
+            "periodicity": "Recomendado: Mensual",
+            "recipe": "Ejecuta el reporte ordenando por 'Mayor Valor Inmovilizado'. La lista resultante son tus prioridades #1. Enfócate en los 5 primeros: cada sol que recuperes de estos productos es un sol que puedes reinvertir en inventario que sí rota."
+        },
+        {
+            "title": "Misión: Guerra de Espacio (Logístico)",
+            "periodicity": "Cuándo: Cuando el almacén esté lleno",
+            "recipe": "Ejecuta el reporte ordenando por 'Mayor Cantidad en Stock'. Esto te mostrará los productos que, aunque no sean caros, están ocupando más espacio físico. Son los candidatos perfectos para una oferta '2x1'."
+        },
+        {
+            "title": "Misión: Entrenamiento de Vendedores (Comercial)",
+            "periodicity": "Cuándo: Semanalmente",
+            "recipe": "Imprime el reporte accionable y conviértelo en un concurso de ventas. Ofrece una comisión o un bono al vendedor que logre mover más unidades de esta lista durante la semana."
+        }
+    ],
     "basic_parameters": [
         {
             "name": "ordenar_por",
@@ -273,7 +319,35 @@ REPORTS_CONFIG = {
     # "key": 'ReporteMaestro',
     "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
-    "costo": 10,
+    "costo": 7,
+    "description": "Este es tu centro de mando unificado. Combina el análisis de Importancia (ABC) con el de Salud (Diagnóstico) en una única vista poderosa para que puedas tomar decisiones complejas que equilibren la rentabilidad, el riesgo y la inversión.",
+    "how_it_works": "La herramienta ejecuta internamente los análisis de ABC y de Salud del Stock. Luego, cruza ambos resultados y aplica un modelo de priorización para asignar una 'Prioridad Estratégica' a cada producto, destacando las oportunidades y los riesgos más críticos.",
+    "data_requirements": {
+        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
+        "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Cantidad en stock actual"]
+    },
+    "planes_de_accion": [
+        {
+            "title": "Misión: Revisión Gerencial Semanal",
+            "periodicity": "Recomendado: Cada lunes por la mañana",
+            "recipe": "Ejecuta el reporte ordenando por 'Prioridad Estratégica'. La lista resultante es tu 'hoja de ruta' para la semana. Enfócate en los 5-10 primeros items para identificar los problemas más urgentes."
+        },
+        {
+            "title": "Misión: Planificación de Inversión Trimestral",
+            "periodicity": "Cuándo: Al planificar el presupuesto de compras",
+            "recipe": "Usa el reporte para comparar el valor total de tus productos 'Clase A' vs. 'Clase C', y tu inventario 'Saludable' vs. 'En Riesgo'. Esto te ayudará a decidir dónde asignar (o recortar) tu capital de compra."
+        },
+        {
+            "title": "Misión: Optimización de Catálogo Anual",
+            "periodicity": "Cuándo: Una vez al año",
+            "recipe": "Ordena el reporte por 'Mayor Importancia (Clase ABC)'. Filtra visualmente los productos de 'Clase C' que consistentemente aparecen con un diagnóstico de 'Baja Rotación' o 'Stock Muerto'. Son los candidatos perfectos para ser descontinuados."
+        },
+        {
+            "title": "Misión: Entrenamiento del Equipo de Compras",
+            "periodicity": "Cuándo: Durante las capacitaciones de tu equipo",
+            "recipe": "Usa el reporte como una herramienta de enseñanza. Elige un producto y muestra cómo sus diferentes métricas (ventas, margen, rotación) se combinan para darle una Clasificación ABC y una Clasificación Diagnóstica. Es la forma perfecta de enseñar a tu equipo a pensar más allá del simple 'comprar lo que se acabó'."
+        }
+    ],
     "basic_parameters": [
       {
         "name": "ordenar_por",
@@ -339,6 +413,34 @@ REPORTS_CONFIG = {
     "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
     "costo": 8,
+    "description": "Este reporte es tu 'velocímetro' de inventario. Mide la eficiencia y la velocidad con la que tu capital invertido en productos se convierte en ingresos. Responde a la pregunta: '¿Qué tan rápido está trabajando mi dinero para mí?'.",
+    "how_it_works": "La herramienta calcula el 'Índice de Importancia' y la 'Cobertura Actual en Días' para cada producto. Luego, los posiciona en una matriz estratégica para identificar cuatro tipos de productos: 'Estrellas', 'Vacas Lecheras', 'Dilemas' y 'Triviales'.",
+    "data_requirements": {
+        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
+        "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Cantidad en stock actual"]
+    },
+    "planes_de_accion": [
+        {
+            "title": "Misión: Identificar a tus 'Vacas Lecheras'",
+            "periodicity": "Recomendado: Semanalmente",
+            "recipe": "Ejecuta el reporte ordenando por 'Próximos a Agotarse'. Los primeros productos de la lista que también sean 'Clase A' son tus 'Vacas Lecheras'. La misión es asegurar que estos productos NUNCA se agoten."
+        },
+        {
+            "title": "Misión: Cazar los 'Dilemas' (Capital Atrapado)",
+            "periodicity": "Cuándo: Mensualmente",
+            "recipe": "Ejecuta el reporte ordenando por 'Mayor Inversión en Stock'. Los productos al principio de la lista que sean 'Clase C' y tengan 'Sobre-stock' son tus 'Dilemas'. La misión es crear un plan de liquidación agresivo para ellos."
+        },
+        {
+            "title": "Misión: Análisis Competitivo por Marca",
+            "periodicity": "Cuándo: Antes de una negociación importante con un proveedor",
+            "recipe": "Filtra el reporte por una 'Marca' específica. Esto te dará un 'radar estratégico' solo para los productos de ese proveedor. ¿Son mayormente 'Estrellas' y 'Vacas Lecheras', o están llenos de 'Dilemas'? Usa esta información para negociar mejores condiciones de compra, devoluciones o apoyo de marketing."
+        },
+        {
+            "title": "Misión: Validación de Nuevos Productos",
+            "periodicity": "Cuándo: 3 a 6 meses después de un lanzamiento",
+            "recipe": "Filtra el reporte por la 'Categoría' o 'Marca' de los nuevos productos. Esto te mostrará objetivamente si están cumpliendo las expectativas. ¿Están convirtiéndose en 'Estrellas' o están estancándose como 'Dilemas'? Usa estos datos para decidir si duplicas la inversión en ellos o si es mejor descontinuarlos."
+        }
+    ],
     "basic_parameters": [
       { 
         "name": 'sort_by', "label": 'Priorizar y Ordenar Por', "type": 'select',
@@ -406,12 +508,40 @@ REPORTS_CONFIG = {
 
   # "📦 Planificación de Compras Estratégicas"
   "ReportePuntosAlertaStock": {
-    "label": '⚙️ Alertas para Punto de Venta',
+    "label": '⚙️ Parámetros de Reposición para POS',
     "endpoint": '/reporte-puntos-alerta-stock',
     # "key": 'ReportePuntosAlertaStock',
     "categoria": "📦 Planificación de Compras Estratégicas",
     "isPro": False,
-    "costo": 6,
+    "costo": 9,
+    "description": "Este reporte es una herramienta de configuración estratégica. Su misión es calcular los Puntos de Alerta de Stock (Mínimo e Ideal) para cada producto, generando un archivo 'maestro' que puedes usar para alimentar tu sistema de punto de venta (POS).",
+    "how_it_works": "La herramienta utiliza el Promedio de Venta Diaria (PDA) y el Índice de Importancia de cada producto, junto con los parámetros que defines (tiempo de entrega y días de seguridad), para calcular los niveles de stock óptimos que previenen quiebres sin generar exceso de inventario.",
+    "data_requirements": {
+        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida"],
+        "inventario": ["SKU / Código de producto", "Cantidad en stock actual", "Precio de compra actual (S/.)"]
+    },
+    "planes_de_accion": [
+        {
+            "title": "Misión: Configuración Inicial del Sistema",
+            "periodicity": "Cuándo: La primera vez que usas la herramienta o al implementar un nuevo POS.",
+            "recipe": "Ejecuta el reporte con los parámetros por defecto. Descarga el Excel y usa las columnas 'Punto de Alerta Mínimo (Unds)' y 'Stock Mínimo Sugerido (Unds)' para poblar los campos de 'stock mínimo' y 'punto de reorden' en tu sistema."
+        },
+        {
+            "title": "Misión: Ajuste por Proveedor",
+            "periodicity": "Cuándo: Al analizar el rendimiento de un proveedor específico.",
+            "recipe": "Filtra tu archivo de inventario para incluir solo los productos de una marca. Sube este archivo y ajusta el 'Tiempo de Entrega' al valor real de ese proveedor (ej. 15 días). Esto te dará los puntos de alerta precisos para esa línea de productos."
+        },
+        {
+            "title": "Misión: Preparación para Temporada Alta",
+            "periodicity": "Cuándo: Un mes antes de una temporada de alta demanda.",
+            "recipe": "Aumenta los 'Días de Colchón de Seguridad' (ej. de 3 a 7) y el 'Multiplicador de Seguridad para Productos A' (ej. de 1.5 a 2.0). Esto recalculará tus alertas para ser más conservador durante el pico de ventas."
+        },
+        {
+            "title": "Misión: Optimización de Flujo de Caja",
+            "periodicity": "Cuándo: Si necesitas reducir la inversión en inventario.",
+            "recipe": "Reduce los 'Días de Colchón de Seguridad' a un valor bajo (ej. 1 o 0). Esto te dará puntos de alerta más ajustados, resultando en compras más pequeñas y frecuentes (estrategia 'Just-in-Time')."
+        }
+    ],
     "basic_parameters": [
       {
         "name": "ordenar_por",
@@ -481,7 +611,35 @@ REPORTS_CONFIG = {
     # "key": 'ReporteListaBasicaReposicionHistorica',
     "categoria": "📦 Planificación de Compras Estratégicas",
     "isPro": False,
-    "costo": 8,
+    "costo": 9,
+    "description": "Este es tu asistente de compras diario o semanal. Toma los parámetros de alerta y los compara con tu stock actual para generar una lista de compra priorizada y cuantificada.",
+    "how_it_works": "La herramienta identifica todos los productos cuyo stock actual está por debajo de su punto de alerta. Luego, calcula la cantidad ideal a pedir para cada uno, considerando su velocidad de venta, importancia y los parámetros de cobertura que has definido.",
+    "data_requirements": {
+        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
+        "inventario": ["SKU / Código de producto", "Cantidad en stock actual", "Precio de compra actual (S/.)"]
+    },
+    "planes_de_accion": [
+        {
+            "title": "Misión: Compra de Emergencia (Evitar Pérdidas)",
+            "periodicity": "Recomendado: Diariamente o cada dos días.",
+            "recipe": "Ejecuta el reporte ordenando por 'Más Urgente (Stock vs Alerta)'. La lista resultante son los productos en 'código rojo'. Cómpralos inmediatamente para no perder ventas."
+        },
+        {
+            "title": "Misión: Compra Semanal Optimizada",
+            "periodicity": "Cuándo: Semanalmente, al planificar tu pedido principal.",
+            "recipe": "Ejecuta el reporte ordenando por 'Mayor Importancia'. Asegúrate de reponer todos tus productos 'Clase A'. Para los de 'Clase C', puedes decidir posponer la compra si tu presupuesto es limitado."
+        },
+        {
+            "title": "Misión: Negociación con Proveedores",
+            "periodicity": "Cuándo: Antes de enviar una orden de compra.",
+            "recipe": "Filtra por la 'Marca' de un proveedor. La lista resultante es tu 'proforma' inicial. Usa los datos de 'Índice de Importancia' y 'Cobertura' para negociar descuentos o condiciones."
+        },
+        {
+            "title": "Misión: Simulación de Inversión",
+            "periodicity": "Cuándo: Al planificar el presupuesto de compras del mes.",
+            "recipe": "Ejecuta el reporte con tus parámetros de cobertura ideales. El KPI 'Inversión Total Sugerida' te dará una estimación precisa del capital que necesitarás para mantener tu inventario en un estado óptimo."
+        }
+    ],
     "accionable_columns": [
         "SKU / Código de producto",
         "Nombre del producto",
