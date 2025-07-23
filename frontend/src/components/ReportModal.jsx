@@ -51,7 +51,7 @@ const KpiCard = ({ label, value, tooltipText }) => (
 );
 
 const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
-  <div className="absolute inset-0 bg-white p-6 overflow-y-auto">
+  <div className="w-full h-full bg-purple-50 p-6 overflow-y-auto">
     <button onClick={onBack} className="flex items-center gap-2 text-sm font-semibold text-purple-600 hover:text-purple-800 mb-4">
       <FiChevronLeft /> Volver a {modalView == 'parameters' ? 'Parámetros' : 'Resultados'}
     </button>
@@ -81,7 +81,7 @@ const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
 );
 
 
-export function ReportModal({ reportConfig, context, availableFilters, onClose, onAnalysisComplete }) {
+export function ReportModal({ reportConfig, context, initialView = 'parameters', availableFilters, onClose, onAnalysisComplete }) {
   const { strategy } = useStrategy();
   const { tooltips, kpiTooltips } = useConfig();
   const { updateCredits } = useWorkspace()
@@ -102,6 +102,19 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
   const [visibleItemsCount, setVisibleItemsCount] = useState(15); // Carga inicial de 15 items
   const [confirmBack, setConfirmBack] = useState(false); // Para el botón de volver
   const backButtonTimer = useRef(null);
+
+    // Efecto para establecer la vista inicial cuando el modal se monta
+  useEffect(() => {
+    if (initialView === 'info') {
+      // Usamos un pequeño timeout para que la animación de deslizamiento sea visible
+      // justo después de que el modal aparece.
+      setTimeout(() => {
+        setIsInfoVisible(true);
+      }, 1300); // 50ms es suficiente para que el ojo lo perciba
+    }
+  }, [initialView]);
+
+
 
   // Efecto para inicializar los parámetros cuando el modal se abre
   useEffect(() => {
@@ -651,234 +664,199 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
           </div>
         </div>
 
-        {/* --- CONTENEDOR DEL CUERPO CON ANIMACIÓN DE DESLIZAMIENTO --- */}
+        {/* --- CONTENEDOR DEL "CARRUSEL" CON TRANSICIONES CSS --- */}
         <div className="flex-1 min-h-0 relative overflow-hidden">
-          {/* Vista de Parámetros */}
-          <div className={`absolute inset-0 transition-transform duration-300 ease-in-out overflow-y-auto ${isInfoVisible ? '-translate-x-full' : 'translate-x-0'}`}>
-            {modalView === 'loading' && (
-              <div className="flex flex-col items-center justify-center h-full text-gray-500">
-                <FiLoader className="animate-spin text-4xl text-purple-600" />
-                <p className="mt-4">Generando análisis...</p>
-              </div>
-            )}
-
-            {modalView === 'parameters' && (
-              <div className="p-4 text-black flex-col">
-                <div className="flex-1 min-h-0 gap-4 p-4 text-black">
-                  {(reportConfig.basic_parameters?.length > 0 || reportConfig.advanced_parameters?.length > 0) && (
-                    <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
-                      <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
-                      
-                      {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
-                      {/* Renderizado de parámetros básicos */}
-                      {(reportConfig.basic_parameters || []).map(renderParameter)}
-
-                      {/* --- NUEVA LÓGICA DE UI CONTEXTUAL --- */}
-                      {/* Si el reporte es ABC y el criterio es 'combinado', mostramos el mensaje */}
-                      {reportConfig.key === 'ReporteABC' && modalParams.criterio_abc === 'combinado' && (
-                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
-                          ℹ️ Este análisis utilizará los pesos definidos en tu panel de <strong>'Mi Estrategia'</strong> para calcular la importancia de los productos.
-                        </div>
-                      )}
-
-                      {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
-                      {(reportConfig.advanced_parameters && reportConfig.advanced_parameters.length > 0) && (
-                        <div className="mt-6 pt-4 border-t border-gray-200">
-                          <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
-                            {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
-                            {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
-                            <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
-                          </button>
-                          
-                          {showAdvanced && (
-                            <>
-                              <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
-                                {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
-                                {(reportConfig.advanced_parameters).map(renderParameter)}
-                                {/*{reportConfig.advanced_parameters.map(param => {
-                                  if (param.type === 'boolean_select') {
-                                    return (
-                                      <div key={param.name} className="mb-4">
-                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-                                          {param.label}:
-                                          <Tooltip text={tooltips[param.tooltip_key]} />
-                                        </label>
-                                        <select
-                                          id={param.name}
-                                          name={param.name}
-                                          value={modalParams[param.name] || ''}
-                                          onChange={e => handleParamChange(param.name, e.target.value)}
-                                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        >
-                                          {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-                                        </select>
-                                      </div>
-                                    );
-                                  }
-                                  if (param.type === 'number') {
-                                    return (
-                                      <div key={param.name} className="mb-4">
-                                        <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-                                          {param.label}:
-                                          <Tooltip text={tooltips[param.tooltip_key]} />
-                                        </label>
-                                        <input
-                                          type="number"
-                                          id={param.name}
-                                          name={param.name}
-                                          value={modalParams[param.name] || ''}
-                                          onChange={e => handleParamChange(param.name, e.target.value === '' ? '' : parseFloat(e.target.value))}
-                                          min={param.min}
-                                          max={param.max}
-                                          step={param.step}
-                                          className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-                                        />
-                                      </div>
-                                    );
-                                  }
-                                  return null;
-                                })}*/}
-                              </div>
-                              {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
-                              {/*<button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
-                                <FiRefreshCw className="text-md"/> Restaurar valores por defecto
-                              </button>*/}
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  )}
+          {/* Contenedor que se desliza */}
+          <div
+            className="flex w-[200%] h-full transition-transform duration-300 ease-in-out"
+            style={{ transform: isInfoVisible ? 'translateX(-50%)' : 'translateX(0%)' }}
+          >
+            {/* Panel 1: Parámetros/Resultados */}
+            <div className="w-1/2 h-full overflow-y-auto">
+              {modalView === 'loading' && (
+                <div className="flex flex-col items-center justify-center h-full text-gray-500">
+                  <FiLoader className="animate-spin text-4xl text-purple-600" />
+                  <p className="mt-4">Generando análisis...</p>
                 </div>
-              </div>
-            )}
+              )}
 
-            {modalView === 'results' && analysisResult && (
-              <div className="h-full flex flex-col">
-                {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
-                <div className="p-4 sm:p-6 text-left">
-                  {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}
-                  {/* Insight Clave */}
-                  <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
-                    <p className="text-lg mb-2 font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
-                    <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
-                    {/* --- NUEVA FICHA DE CONTEXTO --- */}
-                    <AppliedParameters 
-                      reportConfig={reportConfig}
-                      modalParams={modalParams}
-                    />
-                    {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
-                  </div>
-                <hr/>
-                  <div className="grid gap-4">
-                    {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
-                    <div className="mb-4 mt-6">
-                      <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
-                      <div className="grid grid-cols-2 gap-4">
-                        {analysisResult && analysisResult.kpis && 
-                          Object.entries(analysisResult.kpis).map(([key, value]) => (
-                            <KpiCard 
-                              key={key} 
-                              label={key} 
-                              value={value}
-                              // Buscamos el texto del tooltip en nuestro glosario
-                              tooltipText={kpiTooltips[key]} 
-                            />
-                          ))
-                        }
-                      </div>
-                    </div>
-                  </div>
-                  {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
-                  {/* Dentro de tu vista de resultados del ReportModal */}
-                  <div className="p-4 bg-white shadow border rounded-lg text-center transform transition-all duration-300 hover:scale-104">
-                    <div className="flex items-center justify-center mb-2">
-                      <p className="text-sm text-gray-500">Gráfico Estadístico</p>
-                      <Tooltip text={tooltips['chart_placeholder']} />
-                    </div>
-                    <div className="relative h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center">
-                        <div role="status" className="w-full p-4 rounded-sm shadow-sm border-gray-700 animate-pulse">
-                          <div className="flex items-baseline">
-                              <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-400"></div>
-                              <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-400"></div>
-                              <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
-                              <div className="w-full h-24 sm:h-44 ms-4 rounded-t-lg bg-gray-400"></div>
-                              <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
-                              <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
-                              <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+              {modalView === 'parameters' && (
+                <div className="p-4 text-black flex-col">
+                  <div className="flex-1 min-h-0 gap-4 p-4 text-black">
+                    {(reportConfig.basic_parameters?.length > 0 || reportConfig.advanced_parameters?.length > 0) && (
+                      <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
+                        <h3 className="text-lg font-semibold text-gray-700 mb-4">Parámetros del Reporte</h3>
+                        
+                        {/* --- RENDERIZADO DE PARÁMETROS BÁSICOS --- */}
+                        {/* Renderizado de parámetros básicos */}
+                        {(reportConfig.basic_parameters || []).map(renderParameter)}
+
+                        {/* --- NUEVA LÓGICA DE UI CONTEXTUAL --- */}
+                        {/* Si el reporte es ABC y el criterio es 'combinado', mostramos el mensaje */}
+                        {reportConfig.key === 'ReporteABC' && modalParams.criterio_abc === 'combinado' && (
+                          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-md text-sm text-blue-800">
+                            ℹ️ Este análisis utilizará los pesos definidos en tu panel de <strong>'Mi Estrategia'</strong> para calcular la importancia de los productos.
                           </div>
-                        </div>
-                        <button onClick={handleChartPlaceholderClick} className="absolute bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
-                          ⭐ Desbloquear Gráfico
-                        </button>
-                    </div>
-                  </div>
-                </div>
-                <hr className="mx-4"/>
-                {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
-                <div className="flex-1 min-h-100 flex flex-col bg-gray-100">
-                  {/* --- Barra de Búsqueda "Pegajosa" --- */}
-                  <div className="sticky top-0 bg-white z-10 p-4 border-b shadow-md shadow-gray-200">
-                    <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
-                    <div className="relative">
-                      {/*<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />*/}
-                      <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Filtra por SKU, nombre, categoría..." className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-4 pr-4 focus:ring-purple-500 focus:border-purple-500" />
-                    </div>
-                  </div>
-                  
-                  {/* --- Lista de Resultados con Scroll Interno --- */}
-                  <div className="overflow-y-auto p-4 space-y-2 mb-10">
-                    {filteredData.length > 0 ? (
-                      filteredData.slice(0, visibleItemsCount).map((item, index) => (
-                        <ResultListItem key={item['SKU / Código de producto'] || index} itemData={item} detailInstructions={reportConfig.preview_details} />
-                      ))
-                    ) : (
-                      <p className="text-center text-gray-500 py-8">Ningún resultado encontrado.</p>
-                    )}
-                    
-                    {/* --- Botón "Cargar Más" --- */}
-                    {/*{filteredData.length > visibleItemsCount && (
-                      <div className="text-center mt-4">
-                        <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
-                          Cargar 10 más...
-                        </button>
+                        )}
+
+                        {/* --- SECCIÓN AVANZADA PLEGABLE --- */}
+                        {(reportConfig.advanced_parameters && reportConfig.advanced_parameters.length > 0) && (
+                          <div className="mt-6 pt-4 border-t border-gray-200">
+                            <button onClick={() => setShowAdvanced(!showAdvanced)} className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center">
+                              {showAdvanced ? 'Ocultar' : 'Mostrar'} Opciones Avanzadas
+                              {/* Icono de flecha que rota (opcional, pero mejora la UX) */}
+                              <svg className={`w-4 h-4 ml-1 transition-transform transform ${showAdvanced ? 'rotate-180' : 'rotate-0'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+                            </button>
+                            
+                            {showAdvanced && (
+                              <>
+                                <div className="grid sm:grid-cols-1 md:grid-cols-2 gap-x-4 mt-2">
+                                  {/* --- RENDERIZADO DE PARÁMETROS AVANZADOS --- */}
+                                  {(reportConfig.advanced_parameters).map(renderParameter)}
+                                </div>
+                                {/* --- BOTÓN DE RESET PARA PARÁMETROS AVANZADOS --- */}
+                                {/*<button onClick={handleResetAdvanced} className="w-full text-xs font-semibold text-gray-500 hover:text-red-600 mt-2 transition-colors flex items-center justify-center gap-1">
+                                  <FiRefreshCw className="text-md"/> Restaurar valores por defecto
+                                </button>*/}
+                              </>
+                            )}
+                          </div>
+                        )}
                       </div>
-                    )}*/}
-                    {/* --- BOTÓN DE ACCIÓN CONTEXTUAL --- */}
-                    <div className="text-center mt-4">
-                      {context.type === 'anonymous' && truncationInfo ? (
-                        // Para anónimos con resultados truncados, mostramos el botón de desbloqueo
-                        <button 
-                          onClick={() => {
-                            setModalInfo({
-                              title: "Desbloquea la Lista Completa del Resultado",
-                              message: "Esta función es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
-                            });
-                            setActiveModal('registerToUnlock')}} 
-                          className="font-semibold text-purple-600 hover:text-purple-800"
-                        >
-                          ⭐ Ver los {truncationInfo.total - truncationInfo.shown} resultados restantes
-                        </button>
-                      ) : (
-                        // Para usuarios registrados, mostramos el "Cargar más"
-                        filteredData.length > visibleItemsCount && (
-                          <button onClick={() => setVisibleItemsCount(prev => prev + 15)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
-                            Cargar 15 más...
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {modalView === 'results' && analysisResult && (
+                <div className="h-full flex flex-col">
+                  {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
+                  <div className="p-4 sm:p-6 text-left">
+                    {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}
+                    {/* Insight Clave */}
+                    <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">
+                      <p className="text-lg mb-2 font-semibold text-purple-800 tracking-wider">¡Analisis Completado!</p>
+                      <p className="text-sm font-semibold text-purple-800">{analysisResult.insight}</p>
+                      {/* --- NUEVA FICHA DE CONTEXTO --- */}
+                      <AppliedParameters 
+                        reportConfig={reportConfig}
+                        modalParams={modalParams}
+                      />
+                      {filteredData.length > 0 && (<p className="text-xs text-purple-800 mt-2 bg-purple-100 p-2 rounded-lg">💡 Sugerencia: Descarga el reporte Imprimible para usarlo como una lista rápida de acción.</p>)}
+                    </div>
+                  <hr/>
+                    <div className="grid gap-4">
+                      {/* --- KPIs DESTACADOS CON TOOLTIPS --- */}
+                      <div className="mb-4 mt-6">
+                        <h4 className="font-semibold text-gray-700 mb-2">📊 Resumen Ejecutivo</h4>
+                        <div className="grid grid-cols-2 gap-4">
+                          {analysisResult && analysisResult.kpis && 
+                            Object.entries(analysisResult.kpis).map(([key, value]) => (
+                              <KpiCard 
+                                key={key} 
+                                label={key} 
+                                value={value}
+                                // Buscamos el texto del tooltip en nuestro glosario
+                                tooltipText={kpiTooltips[key]} 
+                              />
+                            ))
+                          }
+                        </div>
+                      </div>
+                    </div>
+                    {/* --- RENDERIZADO DEL GRÁFICO PLACEHOLDER --- */}
+                    {/* Dentro de tu vista de resultados del ReportModal */}
+                    <div className="p-4 bg-white shadow border rounded-lg text-center transform transition-all duration-300 hover:scale-104">
+                      <div className="flex items-center justify-center mb-2">
+                        <p className="text-sm text-gray-500">Gráfico Estadístico</p>
+                        <Tooltip text={tooltips['chart_placeholder']} />
+                      </div>
+                      <div className="relative h-30 bg-gray-200 rounded rounded-lg flex items-center justify-center">
+                          <div role="status" className="w-full p-4 rounded-sm shadow-sm border-gray-700 animate-pulse">
+                            <div className="flex items-baseline">
+                                <div className="w-full rounded-t-lg h-32 sm:h-52 bg-gray-400"></div>
+                                <div className="w-full h-16 sm:h-36 ms-4 rounded-t-lg bg-gray-400"></div>
+                                <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
+                                <div className="w-full h-24 sm:h-44 ms-4 rounded-t-lg bg-gray-400"></div>
+                                <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+                                <div className="w-full rounded-t-lg h-32 sm:h-52 ms-4 bg-gray-400"></div>
+                                <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
+                            </div>
+                          </div>
+                          <button onClick={handleChartPlaceholderClick} className="absolute bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
+                            ⭐ Desbloquear Gráfico
                           </button>
-                        )
+                      </div>
+                    </div>
+                  </div>
+                  <hr className="mx-4"/>
+                  {/* --- SECCIÓN DE RESULTADOS CON SCROLL --- */}
+                  <div className="flex-1 min-h-100 flex flex-col bg-gray-100">
+                    {/* --- Barra de Búsqueda "Pegajosa" --- */}
+                    <div className="sticky top-0 bg-white z-10 p-4 border-b shadow-md shadow-gray-200">
+                      <h4 className="font-semibold text-gray-700 mb-2">🔍 Refinar Resultados</h4>
+                      <div className="relative">
+                        {/*<FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />*/}
+                        <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Filtra por SKU, nombre, categoría..." className="w-full bg-white text-gray-800 border border-gray-300 rounded-md py-2 pl-4 pr-4 focus:ring-purple-500 focus:border-purple-500" />
+                      </div>
+                    </div>
+                    
+                    {/* --- Lista de Resultados con Scroll Interno --- */}
+                    <div className="overflow-y-auto p-4 space-y-2 mb-10">
+                      {filteredData.length > 0 ? (
+                        filteredData.slice(0, visibleItemsCount).map((item, index) => (
+                          <ResultListItem key={item['SKU / Código de producto'] || index} itemData={item} detailInstructions={reportConfig.preview_details} />
+                        ))
+                      ) : (
+                        <p className="text-center text-gray-500 py-8">Ningún resultado encontrado.</p>
                       )}
+                      
+                      {/* --- Botón "Cargar Más" --- */}
+                      {/*{filteredData.length > visibleItemsCount && (
+                        <div className="text-center mt-4">
+                          <button onClick={() => setVisibleItemsCount(prev => prev + 10)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
+                            Cargar 10 más...
+                          </button>
+                        </div>
+                      )}*/}
+                      {/* --- BOTÓN DE ACCIÓN CONTEXTUAL --- */}
+                      <div className="text-center mt-4">
+                        {context.type === 'anonymous' && truncationInfo ? (
+                          // Para anónimos con resultados truncados, mostramos el botón de desbloqueo
+                          <button 
+                            onClick={() => {
+                              setModalInfo({
+                                title: "Desbloquea la Lista Completa del Resultado",
+                                message: "Esta función es una herramienta avanzada. Regístrate gratis para desbloquear el acceso a esta y otras funciones."
+                              });
+                              setActiveModal('registerToUnlock')}} 
+                            className="font-semibold text-purple-600 hover:text-purple-800"
+                          >
+                            ⭐ Ver los {truncationInfo.total - truncationInfo.shown} resultados restantes
+                          </button>
+                        ) : (
+                          // Para usuarios registrados, mostramos el "Cargar más"
+                          filteredData.length > visibleItemsCount && (
+                            <button onClick={() => setVisibleItemsCount(prev => prev + 15)} className="text-sm font-semibold text-purple-600 hover:text-purple-800">
+                              Cargar 15 más...
+                            </button>
+                          )
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-          
-          {/* Panel de Ayuda Deslizante */}
-          <div className={`absolute inset-0 transition-transform duration-300 ease-in-out ${isInfoVisible ? 'translate-x-0' : 'translate-x-full'}`}>
-            <ReportInfoPanel reportItem={reportConfig} modalView={modalView} onBack={() => setIsInfoVisible(false)} />
+              )}
+            
+            </div>
+
+            {/* Panel 2: Ayuda */}
+            <div className="w-1/2 h-full">
+              <ReportInfoPanel reportItem={reportConfig} modalView={modalView} onBack={() => setIsInfoVisible(false)} />
+            </div>
           </div>
         </div>
+
 
         {/* --- FOOTER CON BOTONES DE ACCIÓN --- */}
         <div className="p-2 w-full border-t bg-gray-50 z-10 shadow text-center sticky bottom-0">
@@ -894,38 +872,51 @@ export function ReportModal({ reportConfig, context, availableFilters, onClose, 
           ) : (
             // <button onClick={handleGenerateAnalysis} className="w-full flex-row bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2">🚀 Ejecutar Análisis</button>
             <>
-              <button
-                onClick={ handleGenerateAnalysis }
-                disabled={ modalView === 'loading' }
-                className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
-                    ${
-                        // Lógica de estilos condicional
-                        modalView === 'loading' ? 'bg-gray-200 text-gray-500 cursor-wait' : 'text-transparent border-purple-700'
-                    }`
-                }
-                style={{
-                  backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
-                  backgroundClip: 'text'
-                }}
-              >
-                {isLoading ? (
-                      <>
-                          <FiLoader className="animate-spin h-5 w-5" />
-                          <span>Cargando parametros...</span>
-                      </>
-                  ) : modalView === 'loading' ? (
-                      <>
-                          <FiLoader className="animate-spin h-5 w-5" />
-                          <span>Generando...</span>
-                      </>
-                  ) : (
-                      <>
-                          <span className="text-black font-bold text-xl">🚀</span>
-                          <span className="text-lg font-bold">Ejecutar Análisis</span>
-                      </>
-                  )
-                }
-              </button>
+              { isInfoVisible ? (
+                <button
+                  onClick={ () => setIsInfoVisible(false) }
+                  className="px-6 font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2 text-transparent"
+                  style={{
+                    backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
+                    backgroundClip: 'text'
+                  }}
+                >
+                  <FiChevronLeft className="text-purple-800" /> <span className="text-lg font-bold "> Regresar a Parametros</span>
+                </button>
+              ) : (
+                <button
+                  onClick={ handleGenerateAnalysis }
+                  disabled={ modalView === 'loading' }
+                  className={`border px-6 py-3 rounded-lg font-semibold w-full transition-all duration-300 ease-in-out flex items-center justify-center gap-2
+                      ${
+                          // Lógica de estilos condicional
+                          modalView === 'loading' ? 'bg-gray-200 text-gray-500 cursor-wait' : 'text-transparent border-purple-700'
+                      }`
+                  }
+                  style={{
+                    backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
+                    backgroundClip: 'text'
+                  }}
+                >
+                  {isLoading ? (
+                        <>
+                            <FiLoader className="animate-spin h-5 w-5" />
+                            <span>Cargando parametros...</span>
+                        </>
+                    ) : modalView === 'loading' ? (
+                        <>
+                            <FiLoader className="animate-spin h-5 w-5" />
+                            <span>Generando...</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="text-black font-bold text-xl">🚀</span>
+                            <span className="text-lg font-bold">Ejecutar Análisis</span>
+                        </>
+                    )
+                  }
+                </button>
+              )}
               <button
                 onClick={ onClose }
                 className="mt-2 w-full text-white text-xl px-4 py-2 font-bold rounded-lg hover:text-gray-100"

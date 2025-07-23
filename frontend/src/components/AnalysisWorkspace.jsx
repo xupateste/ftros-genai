@@ -187,6 +187,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [isCacheValid, setIsCacheValid] = useState(false);
   const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
   const [infoModalReport, setInfoModalReport] = useState(null); // Nuevo estado para el modal de info
+  const [modalInitialView, setModalInitialView] = useState('parameters');
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
   const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
@@ -248,7 +249,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     loadInitialData();
 
   // Ahora depende de los IDs, que son strings estables, no de objetos que se recrean.
-  // }, [context.type, context.id, context.workspace?.id, loadStrategy]);
   }, [context.type, context.id, context.workspace?.id, loadStrategy]);
 
   // --- NUEVA FUNCIÓN: Actualiza solo créditos e historial ---
@@ -371,8 +371,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     }
     setSelectedReport(reportItem);
     setActiveModal('reportParams');
+    setModalInitialView('parameters'); // Vista por defecto
   };
 
+  const handleInfoClick = (reportItem) => {
+    setModalInitialView('info'); // Le decimos al modal que empiece en la vista de info
+    setSelectedReport(reportItem);
+  };
   const handleGoToRegister = () => {
       // Cerramos cualquier modal que esté abierto y cambiamos a la vista de registro
       setActiveModal(null); 
@@ -406,9 +411,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     return <LoadingScreen message={context.type === 'user' ? `Cargando espacio: ${context.workspace?.nombre}...` : "Iniciando sesión anónima..."} />;
   }
 
-  // if (isConfigLoading || isLoading) {
-  //   return <LoadingScreen message="Cargando..." />;
-  // }
 
   const handleApplyDateFilter = (selectedRange) => {
     console.log("Intento de aplicar filtro Pro con el rango:", selectedRange);
@@ -504,16 +506,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
         </div>
 
-        {/* --- RENDERIZADO CONDICIONAL DEL FILTRO DE FECHAS --- */}
-        {/* Solo se muestra si se ha subido un archivo de ventas */}
-        {/*{dateRangeBounds && (
-          <DateRangeFilter 
-            minDate={new Date(dateRangeBounds.min_date)}
-            maxDate={new Date(dateRangeBounds.max_date)}
-            onApply={handleApplyDateFilter}
-          />
-        )}*/}
-
         {/* El resto de tu JSX para la lista de reportes */}
         {isConfigLoading ? (
           <p>Cargando reportes...</p>
@@ -552,27 +544,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                         reportItem={reportItem}
                         context={context} // <-- Pasa el contexto del usuario
                         onExecute={handleReportView}
-                        onInfoClick={setInfoModalReport}
+                        onInfoClick={handleInfoClick}
+                        // onInfoClick={setInfoModalReport}
                         onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
                       />
-                      // <button
-                      //   key={reportItem.label}
-                      //   onClick={() => handleReportView(reportItem)}
-                      //   className={`relative w-full text-left p-4 rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group
-                      //     ${reportItem.isPro 
-                      //       ? 'bg-gray-700 text-gray-400 hover:bg-gray-600 border border-purple-800' // Estilo Pro
-                      //       : 'bg-white bg-opacity-90 text-black hover:bg-purple-100' // Estilo Básico
-                      //     }`
-                      //   }
-                      // >
-                      //   <div className="flex items-center justify-between">
-                      //     <span className="font-semibold text-sm">{reportItem.label}</span>
-                      //     {reportItem.isPro && <FiStar className="text-yellow-500" />}
-                      //   </div>
-                      //   {reportItem.isPro && (
-                      //     <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>
-                      //   )}
-                      // </button>
                     ))}
                   </div>
                 </div>
@@ -601,6 +576,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         <ReportModal 
           reportConfig={selectedReport}
           context={{...context, fileIds: uploadedFileIds}} // Pasamos toda la info necesaria
+          initialView={modalInitialView} // <-- Pasamos la vista inicial
           availableFilters={availableFilters}
           onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
           onAnalysisComplete={handleAnalysisCompletion}
