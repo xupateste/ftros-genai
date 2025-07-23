@@ -110,7 +110,7 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
       // justo después de que el modal aparece.
       setTimeout(() => {
         setIsInfoVisible(true);
-      }, 1300); // 50ms es suficiente para que el ojo lo perciba
+      }, 300); // 50ms es suficiente para que el ojo lo perciba
     }
   }, [initialView]);
 
@@ -164,6 +164,8 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
 
   // --- FUNCIÓN PARA RENDERIZAR PARÁMETROS DE FORMA DINÁMICA ---
   const renderParameter = (param) => {
+    const key = `${param.name}-${context.id || context.workspace?.id}`;
+    
     switch (param.type) {
       case 'text':
         return (
@@ -175,66 +177,127 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
           </div>
         );
       
+      // case 'select':
+      //   return (
+      //     <div key={param.name} className="mb-4">
+      //       <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+      //         {param.label}:
+      //         <Tooltip text={tooltips[param.tooltip_key]} />
+      //       </label>
+      //       <select
+      //         id={param.name}
+      //         name={param.name}
+      //         value={modalParams[param.name] || ''}
+      //         onChange={e => handleParamChange(param.name, e.target.value)}
+      //         className="appearance-none mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+      //       >
+      //         {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+      //       </select>
+      //     </div>
+      //   );
+
+      // case 'boolean_select':
+      //  return (
+      //     <div key={param.name} className="mb-4">
+      //       <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
+      //         {param.label}:
+      //         <Tooltip text={tooltips[param.tooltip_key]} />
+      //       </label>
+      //       <select
+      //         id={param.name}
+      //         name={param.name}
+      //         value={modalParams[param.name] || ''}
+      //         onChange={e => handleParamChange(param.name, e.target.value)}
+      //         className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
+      //       >
+      //         {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
+      //       </select>
+      //     </div>
+      //   );
+
+      // case 'multi-select':
+      //   {
+      //     // --- INICIO DE LA LÓGICA CORREGIDA ---
+      //     let options = [];
+      //     // 1. Verificamos si el parámetro tiene opciones estáticas definidas en la configuración
+      //     if (param.static_options) {
+      //       // Si las tiene, usamos esas. Son la fuente de verdad.
+      //       options = param.static_options;
+      //     } else {
+      //       // Si no, usamos las opciones dinámicas que vienen de los archivos (ej. categorías, marcas)
+      //       options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
+      //     }
+      //     // --- FIN DE LA LÓGICA CORREGIDA ---
+
+      //     const value = (modalParams[param.name] || []).map(val => {
+      //         // Buscamos la opción completa (value y label) para que el select la muestre
+      //         return options.find(opt => opt.value === val) || { value: val, label: val };
+      //     });
+
+      //     return (
+      //       <div key={param.name} className="mb-4 text-left">
+      //         <label className="block text-sm font-medium text-gray-600 mb-1">
+      //           {param.label}:
+      //           <Tooltip text={tooltips[param.tooltip_key]} />
+      //         </label>
+      //         <Select
+      //           isMulti
+      //           name={param.name}
+      //           options={options}
+      //           className="mt-1 block w-full basic-multi-select"
+      //           classNamePrefix="select"
+      //           value={value} // <-- Usamos el valor formateado
+      //           placeholder="Selecciona..."
+      //           onChange={(selectedOptions) => {
+      //             const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
+      //             handleParamChange(param.name, values);
+      //           }}
+      //         />
+      //       </div>
+      //     );
+      //   }
+
       case 'select':
-        return (
-          <div key={param.name} className="mb-4">
-            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-              {param.label}:
-              <Tooltip text={tooltips[param.tooltip_key]} />
-            </label>
-            <select
-              id={param.name}
-              name={param.name}
-              value={modalParams[param.name] || ''}
-              onChange={e => handleParamChange(param.name, e.target.value)}
-              className="appearance-none mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-            >
-              {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
-          </div>
-        );;
-
+      case 'boolean_select':
       case 'multi-select':
-        {
-          // --- INICIO DE LA LÓGICA CORREGIDA ---
-          let options = [];
-          // 1. Verificamos si el parámetro tiene opciones estáticas definidas en la configuración
-          if (param.static_options) {
-            // Si las tiene, usamos esas. Son la fuente de verdad.
-            options = param.static_options;
-          } else {
-            // Si no, usamos las opciones dinámicas que vienen de los archivos (ej. categorías, marcas)
-            options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-          }
-          // --- FIN DE LA LÓGICA CORREGIDA ---
+        const isMulti = param.type === 'multi-select';
+        
+        // Obtenemos las opciones (estáticas o dinámicas)
+        const options = param.static_options || availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || param.options || [];
 
-          const value = (modalParams[param.name] || []).map(val => {
-              // Buscamos la opción completa (value y label) para que el select la muestre
-              return options.find(opt => opt.value === val) || { value: val, label: val };
-          });
-
-          return (
-            <div key={param.name} className="mb-4 text-left">
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                {param.label}:
-                <Tooltip text={tooltips[param.tooltip_key]} />
-              </label>
-              <Select
-                isMulti
-                name={param.name}
-                options={options}
-                className="mt-1 block w-full basic-multi-select"
-                classNamePrefix="select"
-                value={value} // <-- Usamos el valor formateado
-                placeholder="Selecciona..."
-                onChange={(selectedOptions) => {
-                  const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-                  handleParamChange(param.name, values);
-                }}
-              />
-            </div>
-          );
+        // Formateamos el valor actual para que react-select lo entienda
+        let valueForSelect;
+        if (isMulti) {
+          const currentValues = modalParams[param.name] || [];
+          valueForSelect = currentValues.map(val => options.find(opt => opt.value === val) || { value: val, label: val });
+        } else {
+          const currentValue = modalParams[param.name];
+          valueForSelect = options.find(opt => opt.value == currentValue);
         }
+
+        return (
+          <div key={key} className="mb-4 text-left">
+            <label className="flex items-center text-sm font-medium text-gray-600 mb-1">
+              {param.label}: <Tooltip text={tooltips[param.tooltip_key]} />
+            </label>
+            <Select
+              isMulti={isMulti}
+              name={param.name}
+              options={options}
+              className="mt-1 block w-full basic-multi-select"
+              classNamePrefix="select"
+              value={valueForSelect}
+              placeholder="Selecciona..."
+              onChange={(selectedOption) => {
+                // Extraemos el valor correcto (un string o un array de strings)
+                const newValue = isMulti 
+                  ? (selectedOption ? selectedOption.map(opt => opt.value) : [])
+                  : (selectedOption ? selectedOption.value : null);
+                handleParamChange(param.name, newValue);
+              }}
+            />
+          </div>
+        );
 
       // --- NUEVO CASO PARA INPUTS NUMÉRICOS ---
       case 'number':
@@ -255,25 +318,6 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
               placeholder={param.placeholder || ''}
               className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
             />
-          </div>
-        );
-
-      case 'boolean_select':
-       return (
-          <div key={param.name} className="mb-4">
-            <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-              {param.label}:
-              <Tooltip text={tooltips[param.tooltip_key]} />
-            </label>
-            <select
-              id={param.name}
-              name={param.name}
-              value={modalParams[param.name] || ''}
-              onChange={e => handleParamChange(param.name, e.target.value)}
-              className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-            >
-              {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-            </select>
           </div>
         );
 
