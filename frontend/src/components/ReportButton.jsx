@@ -21,7 +21,7 @@ export function ReportButton({ reportItem, onExecute, onInfoClick }) {
         className={`${containerClasses} ${proClasses} p-4`}
       >
         <div className="flex items-center justify-between w-full">
-          <span className="font-semibold text-sm">{reportItem.label}</span>
+          <span className="font-semibold text-left text-sm">{reportItem.label}</span>
           <FiLock className="text-yellow-500" />
         </div>
       </button>
@@ -34,9 +34,9 @@ export function ReportButton({ reportItem, onExecute, onInfoClick }) {
       {/* Botón de Acción Principal */}
       <button
         onClick={() => onExecute(reportItem)}
-        className="flex-grow text-left p-4 rounded-l-lg"
+        className="flex flex-grow items-center text-left p-4 rounded-l-lg"
       >
-        <span className="font-semibold text-sm">{reportItem.label}</span>
+        <span className="font-semibold text-left text-sm">{reportItem.label}</span>
       </button>
       
       {/* Botón de Información Secundario */}
@@ -46,7 +46,7 @@ export function ReportButton({ reportItem, onExecute, onInfoClick }) {
         aria-label="Más información sobre este reporte"
         title="Más información"
       >
-        <FiInfo size={20}/>
+        <FiInfo size={18}/>
       </button>
     </div>
   );

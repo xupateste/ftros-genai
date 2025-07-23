@@ -34,7 +34,7 @@ import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal viv
 import { RegisterToUnlockModal } from './RegisterToUnlockModal';
 
 // Importa los iconos que necesitas
-import { FiX, FiCheck, FiChevronLeft, FiHelpCircle, FiChevronRight, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
+import { FiX, FiCheck, FiChevronLeft, FiChevronRight, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -702,7 +702,7 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
               className={`rounded-full transition-colors ${isInfoVisible ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:bg-gray-100'}`}
               title="Más información sobre este reporte"
             >
-              <FiHelpCircle size={24}/>
+              <FiInfo size={24}/>
             </button>
             <button onClick={onClose} className="mx-2 text-gray-400 hover:text-gray-600"><FiX size={24}/></button>
           </div>
@@ -925,7 +925,7 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
                     backgroundClip: 'text'
                   }}
                 >
-                  <FiChevronLeft className="text-purple-800" /> <span className="text-lg font-bold "> Regresar a Parametros</span>
+                  <FiChevronLeft className="text-purple-800" /> <span className="text-lg font-bold "> Volver a Parametros</span>
                 </button>
               ) : (
                 <button
@@ -983,7 +983,7 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
               className={`absolute bottom-28 z-20 flex items-center justify-center h-14 bg-gray-800 text-white rounded-full shadow-lg transition-all duration-200 ease-in-out hover:bg-gray-600 ${confirmBack ? 'w-64 right-1/8' : 'w-14 right-5'}`}
             >
               {confirmBack ? (
-                <span className="flex items-center gap-2 animate-fade-in-fast"><FiChevronLeft />Regresar a Parametros</span>
+                <span className="flex items-center gap-2 animate-fade-in-fast"><FiChevronLeft />Volver a Parametros</span>
               ) : (
                 <FiChevronLeft />
               )}
