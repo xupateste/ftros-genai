@@ -66,14 +66,14 @@ export function CreditHistoryModal({ history, onClose, reportData }) {
     <>
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full flex flex-col max-h-[90vh]">
-        <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white">
+        <div className="p-4 border-b flex justify-between gap-2 items-center sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-800">Historial de Actividad de la Sesión</h2>
           {/* --- BOTÓN DE RECARGA --- */}
           <button 
             onClick={() => setIsRechargeModalOpen(true)}
             className="flex items-center gap-2 text-sm font-bold bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
           >
-            <FiPlusCircle /> Recargar Créditos
+            🪙 Recargar Créditos
           </button>
         </div>
         <div className="overflow-y-auto">

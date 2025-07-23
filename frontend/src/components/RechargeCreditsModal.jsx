@@ -57,7 +57,7 @@ export function RechargeCreditsModal({ onClose, onBecomeStrategist }) {
             <div className="flex gap-4 pb-4 overflow-x-auto">
               {PLANS.map(plan => (
                 <div key={plan.id} className={`flex-shrink-0 w-64 border-2 rounded-lg p-6 flex flex-col ${plan.isStrategist ? 'border-yellow-400' : 'border-gray-200 hover:border-purple-500'}`}>
-                  <div className={`bg-purple-100 font-bold text-md mb-2 rounded-md py-1 text-center ${plan.isStrategist ? 'text-yellow-500' : 'text-purple-700'}`}>
+                  <div className={`font-bold text-md mb-2 rounded-md py-1 text-center ${plan.isStrategist ? 'border text-yellow-500' : 'bg-purple-100 text-purple-700'}`}>
                     {plan.isStrategist && <FiAward className="inline mr-2"/> }{plan.credits} {plan.isStrategist ? '' : 'CRÉDITOS'} {!plan.isStrategist && '🪙'}
                   </div>
                   <p className={`text-4xl font-bold text-gray-800 mb-4 text-center ${plan.isStrategist && 'text-2xl'}`}>{plan.isStrategist ? plan.price : `S/ ${plan.price}`}</p>
