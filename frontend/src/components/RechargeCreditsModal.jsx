@@ -54,7 +54,7 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
       <div className={`bg-white rounded-lg shadow-xl ${view === 'confirmation' ? "max-w-2xl" : "max-w-4xl"} w-full flex flex-col max-h-[90vh]`}>
         <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-800">
-            {view === 'confirmation' && 'Necesitas más combustible para tu análisis'}
+            {view === 'confirmation' && '¡Estás a un paso de tu análisis!'}
             {view === 'plans' && 'Elige tu Paquete de Créditos'}
             {view === 'whatsapp' && 'Confirma tu Compra'}
           </h2>
@@ -64,7 +64,7 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
         {/* --- VISTA 1: CONFIRMACIÓN (SI VIENE DE UN REPORTE) --- */}
         {view === 'confirmation' && (
           <div className="p-8 text-center">
-            <FiAlertTriangle className="text-5xl text-yellow-500 mx-auto mb-4" />
+            <div className="text-8xl text-yellow-500 mx-auto mb-4">👛</div>
             <h3 className="text-xl font-bold text-gray-800">Estás a punto de generar un insight valioso</h3>
             <p className="text-gray-600 my-4">
               Este análisis requiere <strong>{contexto.required} créditos</strong> créditos y tu saldo actual es de <strong>{contexto.remaining}</strong>. Para continuar, simplemente elige un paquete y sigue descubriendo oportunidades para tu ferretería.

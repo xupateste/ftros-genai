@@ -383,17 +383,19 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     setModalInitialView('info'); // Le decimos al modal que empiece en la vista de info
     setSelectedReport(reportItem);
   };
-  const handleGoToRegister = () => {
-      // Cerramos cualquier modal que esté abierto y cambiamos a la vista de registro
-      setActiveModal(null); 
-      // setAppState('registering');
-  };
+
+  // const handleGoToRegister = () => {
+  //     // Cerramos cualquier modal que esté abierto y cambiamos a la vista de registro
+  //     setActiveModal(null); 
+  //     // setAppState('registering');
+  // };
 
   const handleUpgradeAction = (action) => {
     // Esta función decide qué hacer cuando el usuario hace clic en el CTA del UpgradeModal
     // setActiveModal(null); // Cerramos el modal de upgrade
     if (action === 'register') {
-      onSwitchToRegister(); // Llamamos a la función del padre para abrir el modal de registro
+      setActiveModal('register')
+      // onSwitchToRegister(); // Llamamos a la función del padre para abrir el modal de registro
     } else if (action === 'verify') {
       alert("La verificación para el plan Estratega estará disponible próximamente.");
     }
@@ -401,6 +403,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   const handleLoginFromModal = (token) => {
     // Cerramos el modal y notificamos al componente App que el login fue exitoso
+    console.log('from AnalysisWorkspace > handleLoginFromModal')
     setActiveModal(null);
     onLoginSuccess(token);
   };
@@ -586,6 +589,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
           onInsufficientCredits={handleInsufficientCredits} // <-- Pasamos la nueva función
           onAnalysisComplete={handleAnalysisCompletion}
+          onLoginSuccess={handleLoginFromModal}
           // onStateUpdate={setCount} // Pasamos la función para que el modal pueda pedir un refresco
         />
       )}

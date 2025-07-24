@@ -60,15 +60,17 @@ const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
         <h3 className="font-bold text-lg text-gray-800 mb-2">📄 ¿Qué es este reporte?</h3>
         <p className="text-sm text-gray-600">{reportItem.description}</p>
       </div>
+      <hr/>
       <div>
         <h3 className="font-bold text-lg text-gray-800 mb-2">⚙️ ¿Cómo funciona?</h3>
         <p className="text-sm text-gray-600">{reportItem.how_it_works}</p>
       </div>
+      <hr/>
       <div>
         <h3 className="font-bold text-lg text-gray-800 mb-2">⚡️ Usos Potentes</h3>
         <div className="space-y-4">
           {(reportItem.planes_de_accion || []).map((plan, i) => (
-            <div key={i} className="p-4 border rounded-lg bg-gray-50">
+            <div key={i} className="p-4 shadow-md rounded-lg bg-gray-50">
               <h4 className="font-bold text-purple-700">{plan.title}</h4>
               <p className="text-xs font-semibold text-gray-500 my-2">🔁 {plan.periodicity}</p>
               <p className="text-sm text-gray-800">{plan.recipe}</p>
@@ -81,7 +83,7 @@ const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
 );
 
 
-export function ReportModal({ reportConfig, context, initialView = 'parameters', availableFilters, onClose, onAnalysisComplete, onInsufficientCredits }) {
+export function ReportModal({ reportConfig, context, initialView = 'parameters', availableFilters, onClose, onAnalysisComplete, onInsufficientCredits, onLoginSuccess }) {
   const { strategy } = useStrategy();
   const { tooltips, kpiTooltips } = useConfig();
   const { updateCredits, credits } = useWorkspace()
@@ -1019,7 +1021,7 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
 
         {activeModal === 'login' && (
           <LoginModal 
-            onLoginSuccess={()=>{}} 
+            onLoginSuccess={onLoginSuccess} 
             onSwitchToRegister={() => setActiveModal('register')}
             onBackToAnalysis={() => setActiveModal(null)} 
             onClose={() => setActiveModal(null)}
