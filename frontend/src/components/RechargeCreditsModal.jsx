@@ -1,8 +1,8 @@
 // src/components/RechargeCreditsModal.jsx
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 // import { useAuth } from '../context/AuthContext'; // Asumiendo que tienes un AuthContext
-import { FiX, FiCreditCard, FiCheckCircle, FiArrowLeft, FiAward, FiArrowRight} from 'react-icons/fi';
+import { FiX, FiCreditCard, FiCheckCircle, FiArrowLeft, FiAward, FiArrowRight, FiAlertTriangle} from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 
 const PLANS = [
@@ -21,10 +21,18 @@ const PLANS = [
   },
 ];
 
-export function RechargeCreditsModal({ onClose, onBecomeStrategist }) {
+export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) {
   // const { user } = useAuth(); // Obtenemos el email del usuario del contexto
-  const [view, setView] = useState('plans'); // 'plans' o 'whatsapp'
+  const [view, setView] = useState('loading'); // 'plans' o 'whatsapp'
   const [selectedPlan, setSelectedPlan] = useState(null);
+
+   useEffect(() => {
+    if (contexto.type === 'insufficient') {
+      setView('confirmation');
+    } else {
+      setView('plans');
+    }
+  }, [contexto]);
 
   const handleSelectPlan = (plan) => {
     if (plan.isStrategist) {
@@ -43,17 +51,34 @@ export function RechargeCreditsModal({ onClose, onBecomeStrategist }) {
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4 animate-fade-in">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full flex flex-col max-h-[90vh]">
+      <div className={`bg-white rounded-lg shadow-xl ${view === 'confirmation' ? "max-w-2xl" : "max-w-4xl"} w-full flex flex-col max-h-[90vh]`}>
         <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-800">
-            {view === 'plans' ? 'Elige tu Paquete de Créditos' : 'Confirma tu Compra'}
+            {view === 'confirmation' && 'Necesitas más combustible para tu análisis'}
+            {view === 'plans' && 'Elige tu Paquete de Créditos'}
+            {view === 'whatsapp' && 'Confirma tu Compra'}
           </h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><FiX size={26}/></button>
         </div>
 
+        {/* --- VISTA 1: CONFIRMACIÓN (SI VIENE DE UN REPORTE) --- */}
+        {view === 'confirmation' && (
+          <div className="p-8 text-center">
+            <FiAlertTriangle className="text-5xl text-yellow-500 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-gray-800">Estás a punto de generar un insight valioso</h3>
+            <p className="text-gray-600 my-4">
+              Este análisis requiere <strong>{contexto.required} créditos</strong> créditos y tu saldo actual es de <strong>{contexto.remaining}</strong>. Para continuar, simplemente elige un paquete y sigue descubriendo oportunidades para tu ferretería.
+              {/*Para ejecutar este análisis necesitas <strong>{contexto.required} créditos</strong>, pero solo te quedan <strong>{contexto.remaining}</strong>.*/}
+            </p>
+            <button onClick={() => setView('plans')} className="w-full bg-purple-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-purple-700">
+              Ver Paquetes de Créditos 🪙
+            </button>
+          </div>
+        )}
+
         {view === 'plans' && (
           <div className="p-6">
-            <p className="text-gray-600 mb-6">Has agotado tus créditos. Adquiere un paquete para seguir generando análisis ilimitados de tus datos.</p>
+            {/*<p className="text-gray-600 mb-6">Has agotado tus créditos. Adquiere un paquete para seguir generando análisis ilimitados de tus datos.</p>*/}
             <div className="flex gap-4 pb-4 overflow-x-auto">
               {PLANS.map(plan => (
                 <div key={plan.id} className={`flex-shrink-0 w-64 border-2 rounded-lg p-6 flex flex-col ${plan.isStrategist ? 'border-yellow-400' : 'border-gray-200 hover:border-purple-500'}`}>
@@ -86,7 +111,7 @@ export function RechargeCreditsModal({ onClose, onBecomeStrategist }) {
                 </div>
               ))}
             </div>
-              <p className="text-gray-600 mb-6 text-center">Los créditos nunca expiran</p>
+              <p className="text-gray-600 mb-6 text-center text-purple-800 font-bold text-sm">** Los créditos nunca expiran **</p>
            <div className="flex flex-col gap-3">
               <button onClick={ onClose } className="flex-1 flex items-center justify-center gap-2 text-gray-700 bg-gray-200 font-bold py-3 px-4 rounded-lg hover:bg-gray-300">
                 <FiArrowLeft /> Regresar

@@ -167,6 +167,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   
   // 3. ESTADOS DE LA UI
   const [activeModal, setActiveModal] = useState(null);
+  const [rechargeContext, setRechargeContext] = useState(null); // <-- Nuevo estado para el contexto de recarga
   const [analysisResult, setAnalysisResult] = useState(null);
   const [dateRangeBounds, setDateRangeBounds] = useState(null); // Nuevo estado para los límites de fecha
   const [isDateModalOpen, setIsDateModalOpen] = useState(false); // Nuevo estado para controlar el modal
@@ -355,7 +356,11 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     // Llama a la función ligera que solo actualiza lo necesario
     refreshCreditsAndHistory(context);
   }, [context, refreshCreditsAndHistory]);
-  
+
+  const handleInsufficientCredits = (info) => {
+    // Esta función la llamará el ReportModal cuando falle por error 402
+    setRechargeContext({ type: 'insufficient', ...info });
+  };
 
   const handleReportView = (reportItem) => {
     // 1. Defensa contra estado nulo (se mantiene)
@@ -579,6 +584,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           initialView={modalInitialView} // <-- Pasamos la vista inicial
           availableFilters={availableFilters}
           onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
+          onInsufficientCredits={handleInsufficientCredits} // <-- Pasamos la nueva función
           onAnalysisComplete={handleAnalysisCompletion}
           // onStateUpdate={setCount} // Pasamos la función para que el modal pueda pedir un refresco
         />
@@ -596,6 +602,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         <CreditHistoryModal
           history={creditHistory}
           reportData={reportData}
+          onRechargeClick={() => {
+            setActiveModal(null); // Cerramos el historial
+            setRechargeContext({ type: 'proactive' }); // Abrimos el de recarga
+          }}
           onClose={() => setActiveModal(null)}
         />
       )}
@@ -685,6 +695,17 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
               // onSwitchToRegister(); // Llama a la función del padre para mostrar el modal de registro real
           }}
           onClose={() => setActiveModal(null)}
+        />
+      )}
+
+      {rechargeContext && (
+        <RechargeCreditsModal
+          contexto={rechargeContext}
+          onClose={() => setRechargeContext(null)}
+          onBecomeStrategist={() => {
+            setRechargeContext(null);
+            setActiveModal('becomeStrategist');
+          }}
         />
       )}
     </div>

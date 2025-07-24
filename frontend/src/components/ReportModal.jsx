@@ -25,7 +25,7 @@ import { ResultListItem } from './ResultListItem';
 
 // --- IMPORTAMOS LOS NUEVOS MODALES ---
 import { TruncatedResultModal } from './TruncatedResultModal';
-import { RechargeCreditsModal } from './RechargeCreditsModal';
+// import { RechargeCreditsModal } from './RechargeCreditsModal';
 import { BecomeStrategistModal } from './BecomeStrategistModal';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
 import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
@@ -81,10 +81,10 @@ const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
 );
 
 
-export function ReportModal({ reportConfig, context, initialView = 'parameters', availableFilters, onClose, onAnalysisComplete }) {
+export function ReportModal({ reportConfig, context, initialView = 'parameters', availableFilters, onClose, onAnalysisComplete, onInsufficientCredits }) {
   const { strategy } = useStrategy();
   const { tooltips, kpiTooltips } = useConfig();
-  const { updateCredits } = useWorkspace()
+  const { updateCredits, credits } = useWorkspace()
 
   // --- ESTADOS INTERNOS DEL MODAL ---
   const [modalView, setModalView] = useState('parameters'); // 'parameters', 'loading', 'results'
@@ -407,7 +407,10 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
         // Si se acaban los créditos
         if (context.type === 'user') {
           // Para usuarios registrados, ofrecemos recarga
-          setActiveModal('recharge');
+          onInsufficientCredits({
+            required: reportConfig.costo,
+            remaining: credits?.remaining || 0
+          });
         } else {
           // Para anónimos, ofrecemos registro
           setModalInfo({
@@ -1011,7 +1014,7 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
             onClose={() => setActiveModal(null)}
           />
         )}
-        {activeModal === 'recharge' && <RechargeCreditsModal onClose={() => setActiveModal(null)} />}
+        {/*{activeModal === 'recharge' && <RechargeCreditsModal onClose={() => setActiveModal(null)} />}*/}
         {activeModal === 'becomeStrategist' && <BecomeStrategistModal onClose={() => setActiveModal(null)} />}
 
         {activeModal === 'login' && (

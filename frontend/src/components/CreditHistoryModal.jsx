@@ -4,8 +4,8 @@ import React, { useState } from 'react';
 import { FiX, FiCheckCircle, FiAlertTriangle, FiPlusCircle } from 'react-icons/fi';
 import { RechargeCreditsModal } from './RechargeCreditsModal'; // Importamos el modal de recarga
 
-export function CreditHistoryModal({ history, onClose, reportData }) {
-  const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
+export function CreditHistoryModal({ history, onClose, reportData, onRechargeClick }) {
+  // const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
 
   const formatTimestamp = (isoString) => {
     if (!isoString) return 'N/A';
@@ -70,7 +70,7 @@ export function CreditHistoryModal({ history, onClose, reportData }) {
           <h2 className="text-xl font-bold text-gray-800">Historial de Actividad de la Sesión</h2>
           {/* --- BOTÓN DE RECARGA --- */}
           <button 
-            onClick={() => setIsRechargeModalOpen(true)}
+            onClick={onRechargeClick}
             className="flex items-center gap-2 text-sm font-bold bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
           >
             🪙 Recargar Créditos
@@ -146,7 +146,7 @@ export function CreditHistoryModal({ history, onClose, reportData }) {
       </div>
     </div>
     {/* --- RENDERIZADO DEL MODAL DE RECARGA --- */}
-    {isRechargeModalOpen && (
+    {/*{isRechargeModalOpen && (
       <RechargeCreditsModal 
         onClose={() => setIsRechargeModalOpen(false)}
         onBecomeStrategist={() => {
@@ -154,7 +154,7 @@ export function CreditHistoryModal({ history, onClose, reportData }) {
           onBecomeStrategist(); // Llamamos a la función del padre para abrir el otro
         }}
       />
-    )}
+    )}*/}
     </>
   );
 }
