@@ -1979,8 +1979,8 @@ async def lista_basica_reposicion_historico(
 
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
-        "dias_analisis_ventas_recientes": 30,
-        "dias_analisis_ventas_general": 180,
+        "dias_analisis_ventas_recientes": dias_analisis_ventas_recientes,
+        "dias_analisis_ventas_general": dias_analisis_ventas_general,
         "ordenar_por": ordenar_por,
         "incluir_solo_categorias": categorias_list,
         "incluir_solo_marcas": marcas_list,
