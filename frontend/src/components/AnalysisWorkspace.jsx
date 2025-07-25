@@ -13,6 +13,7 @@ import { DateRangeFilter } from './DateRangeFilter'; // <-- Importamos el nuevo 
 // Importa todos los componentes visuales y de iconos que este workspace necesita
 import { ReportModal } from './ReportModal'; 
 import CsvImporterComponent from '../assets/CsvImporterComponent';
+import { ConnectionsModal } from './ConnectionsModal';
 import { CreditsPanel } from './CreditsPanel';
 import { CreditHistoryModal } from './CreditHistoryModal';
 import { ProOfferModal } from './ProOfferModal';
@@ -510,7 +511,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             metadata={fileMetadata.inventario}
           />
         </div>
-        <div className="flex flex-row w-full justify-center items-center">
+        <div className="flex flex-row w-full justify-center items-center gap-4">
+          <button onClick={() => setActiveModal('connections')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiKey /> Conectar Sistema</button>
           <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
         </div>
 
@@ -649,6 +651,14 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           onRegisterSuccess={() => setActiveModal('login')}
           onSwitchToLogin={() => setActiveModal('login')}
           onBackToLanding={() => setActiveModal(null)} 
+        />
+      )}
+
+      {activeModal === 'connections' && (
+        <ConnectionsModal 
+          context={context}
+          onClose={() => setActiveModal(null)}
+          onUpgrade={() => setActiveModal('becomeStrategist')}
         />
       )}
 
