@@ -1,7 +1,7 @@
 // src/components/UpgradeModal.jsx
 
 import React from 'react';
-import { FiUserPlus, FiAward, FiX, FiStar } from 'react-icons/fi';
+import { FiUserPlus, FiAward, FiX } from 'react-icons/fi';
 
 // Este componente es un "camaleón". Muestra diferentes mensajes según las props.
 export function UpgradeModal({ context, reportItem, onAction, onClose }) {
@@ -44,7 +44,7 @@ export function UpgradeModal({ context, reportItem, onAction, onClose }) {
           >
             <div className="flex items-center justify-between">
               <span className="font-semibold text-sm">{reportItem.label}</span>
-              <FiStar className="text-yellow-500" />
+              <FiAward className="text-yellow-500" />
             </div>
             <p className="text-xs text-purple-400 mt-1">Función Avanzada</p>
           </button>

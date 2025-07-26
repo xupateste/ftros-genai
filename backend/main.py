@@ -766,6 +766,10 @@ async def get_workspaces(current_user: dict = Depends(get_current_user)):
             "credits": {
                 "used": creditos_usados,
                 "remaining": creditos_restantes
+            },
+            "user": {
+                "email": user_email
+                # Aquí podrías añadir otros datos del perfil si los necesitas en el futuro
             }
         })
 

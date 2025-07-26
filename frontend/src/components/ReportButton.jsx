@@ -1,7 +1,7 @@
 // src/components/ReportButton.jsx
 
 import React from 'react';
-import { FiInfo, FiLock } from 'react-icons/fi';
+import { FiInfo, FiAward } from 'react-icons/fi';
 
 // onExecute abre el modal en la vista de parámetros.
 // onInfoClick abre el modal directamente en la vista de información.
@@ -22,7 +22,7 @@ export function ReportButton({ reportItem, onExecute, onInfoClick }) {
       >
         <div className="flex items-center justify-between w-full">
           <span className="font-semibold text-left text-sm">{reportItem.label}</span>
-          <FiLock className="text-yellow-500" />
+          <FiAward className="text-yellow-500" />
         </div>
       </button>
     );

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 // import { useAuth } from '../context/AuthContext'; // Asumiendo que tienes un AuthContext
 import { FiX, FiCreditCard, FiCheckCircle, FiArrowLeft, FiAward, FiArrowRight, FiAlertTriangle} from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
+import { useWorkspace } from '../context/WorkspaceProvider'; // <-- Usamos el hook correcto
 
 const PLANS = [
   { credits: 210, price: 20, features: ["Ideal para diagnósticos puntuales", "Acceso a todos los reportes básicos"], id: 'plan_210' },
@@ -25,6 +26,7 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
   // const { user } = useAuth(); // Obtenemos el email del usuario del contexto
   const [view, setView] = useState('loading'); // 'plans' o 'whatsapp'
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const { user } = useWorkspace(); 
 
    useEffect(() => {
     if (contexto.type === 'insufficient') {
@@ -44,7 +46,7 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
   };
 
   const handleSendWhatsApp = () => {
-    const message = `Hola Ferretero.IA,\n\nQuiero comprar el Plan de ${selectedPlan.credits} Créditos por S/ ${selectedPlan.price}.\n\nMi correo de usuario es: ${'user.email'}.\n\nPor favor, envíenme las instrucciones para completar el pago.`;
+    const message = `Hola Ferretero.IA,\n\nQuiero comprar el Plan de ${selectedPlan.credits} Créditos por S/ ${selectedPlan.price}.\n\nMi correo de usuario es: ${user.email}.\n\nPor favor, envíenme las instrucciones para completar el pago.`;
     const whatsappUrl = `https://wa.me/51930240108?text=${encodeURIComponent(message)}`; // Reemplaza con tu número de WhatsApp
     window.open(whatsappUrl, '_blank');
   };
@@ -125,7 +127,7 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
             <h3 className="text-lg font-semibold text-gray-800">Mensaje de Confirmación</h3>
             <p className="text-sm text-gray-500 mb-4">Revisa el mensaje y haz clic para enviarlo por WhatsApp.</p>
             <div className="p-4 bg-green-100 border rounded-lg text-left text-sm text-gray-700 whitespace-pre-wrap mb-4 font-mono">
-              {`Hola Ferretero.IA,\n\nQuiero comprar el Plan de ${selectedPlan.credits} Créditos por S/ ${selectedPlan.price}.\n\nMi correo de usuario es: ${'user.email'}.\n\nPor favor, envíenme las instrucciones para completar el pago.`}
+              {`Hola Ferretero.IA,\n\nQuiero comprar el Plan de ${selectedPlan.credits} Créditos por S/ ${selectedPlan.price}.\n\nMi correo de usuario es: ${user.email}.\n\nPor favor, envíenme las instrucciones para completar el pago.`}
             </div>
             <div className="flex flex-col sm:flex-row gap-4">
               <button onClick={handleSendWhatsApp} className="flex-1 py-4 flex items-center justify-center gap-2 bg-green-500 text-white font-bold text-lg py-3 px-4 rounded-lg hover:bg-green-600">

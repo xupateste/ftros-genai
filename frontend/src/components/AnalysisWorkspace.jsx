@@ -22,7 +22,7 @@ import { StrategyPanelModal } from './StrategyPanelModal';
 import { RegisterPage } from './RegisterPage';
 import { WorkspaceSelector } from './WorkspaceSelector';
 import { LoadingScreen } from './LoadingScreen';
-import { FiDownload, FiCalendar, FiStar, FiLogIn, FiRefreshCw, FiLogOut, FiLock, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
+import { FiDownload, FiCalendar, FiAward, FiLogIn, FiRefreshCw, FiLogOut, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el modal
 import { Tooltip } from './Tooltip';
 import { FerreterosLogo } from './FerreterosLogo'
@@ -530,7 +530,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                 >
                   <FiCalendar />
                   <span>{getFilterButtonText()}</span>
-                  <FiStar className="text-yellow-400" />
+                  <FiAward className="text-yellow-400" />
                 </button>
                 {/* Mostramos el botón de limpiar solo si hay un filtro activo */}
                 {activeDateFilter && (

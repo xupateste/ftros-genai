@@ -5,7 +5,7 @@ import { DateRange } from 'react-date-range';
 import 'react-date-range/dist/styles.css'; // Importa los estilos principales
 import 'react-date-range/dist/theme/default.css'; // Importa el tema por defecto
 import { es } from 'date-fns/locale'; // Importa la localización en español
-import { FiCalendar, FiStar } from 'react-icons/fi';
+import { FiCalendar, FiAward } from 'react-icons/fi';
 
 export function DateRangeFilter({ minDate, maxDate, onApply }) {
   const [showPicker, setShowPicker] = useState(false);
@@ -51,7 +51,7 @@ export function DateRangeFilter({ minDate, maxDate, onApply }) {
               onClick={() => onApply(selectionRange)}
               className="mt-4 w-full bg-yellow-500 text-gray-900 font-bold py-2 px-4 rounded-lg hover:bg-yellow-400 flex items-center justify-center gap-2"
             >
-              <FiStar /> Aplicar Filtro y Ejecutar
+              <FiAward /> Aplicar Filtro y Ejecutar
             </button>
           </div>
         </div>

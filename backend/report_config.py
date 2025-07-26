@@ -536,13 +536,13 @@ REPORTS_CONFIG = {
     ],
     "accionable_columns": [
         "SKU / Código de producto", "Nombre del producto", "Clasificación ABC", 
-        "Clasificación Diagnóstica", "Índice de Importancia", "Cobertura Actual (Días)"
+        "Clasificación Diagnóstica", "Prioridad Estratégica", "Días sin venta"
     ],
     "preview_details": [
         { "label": "Clasificación ABC", "data_key": "Clasificación ABC" },
         { "label": "Diagnóstico de Salud", "data_key": "Clasificación Diagnóstica" },
-        { "label": "Importancia", "data_key": "Índice de Importancia" },
-        { "label": "Cobertura Actual", "data_key": "Cobertura Actual (Días)", "suffix": " días" }
+        { "label": "Prioridad", "data_key": "Prioridad Estratégica" },
+        { "label": "Días sin venta", "data_key": "Días sin venta", "suffix": " días" }
     ]
   },
   "ReporteAnalisisEstrategicoRotacion": {

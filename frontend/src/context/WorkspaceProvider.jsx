@@ -11,10 +11,12 @@ import { useStrategy } from './StrategyProvider'; // Usamos nuestro cliente de A
 const WorkspaceContext = createContext();
 
 export function WorkspaceProvider({ children }) {
+  const [user, setUser] = useState(null);
   const [workspaces, setWorkspaces] = useState([]);
   const [activeWorkspace, setActiveWorkspace] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
+
   const { loadStrategy } = useStrategy();
   // --- NUEVO ESTADO PARA LOS CRÉDITOS, AHORA VIVE AQUÍ ---
   const [credits, setCredits] = useState(null);
@@ -24,11 +26,12 @@ export function WorkspaceProvider({ children }) {
     try {
       const response = await api.get('/workspaces');
 
-      const { workspaces: fetchedWorkspaces, credits: fetchedCredits } = response.data || {};
+      const { workspaces: fetchedWorkspaces, credits: fetchedCredits, user: fetchedUser } = response.data || {};
 
       setWorkspaces(fetchedWorkspaces || []);
       setCredits(fetchedCredits || { used: 0, remaining: 0 });
-      
+      setUser(fetchedUser || null); // <-- Guardamos el perfil del usuario
+
       // Si hay workspaces, establecemos el primero como activo por defecto
       // Establece el primer espacio de trabajo como activo por defecto
       if (fetchedWorkspaces && fetchedWorkspaces.length > 0) {
@@ -178,6 +181,7 @@ export function WorkspaceProvider({ children }) {
   }, []);
 
   const value = {
+    user, // <-- Exponemos el usuario
     workspaces,
     activeWorkspace,
     setActiveWorkspace,
