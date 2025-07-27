@@ -40,11 +40,29 @@ from tooltips_config import TOOLTIPS_GLOSSARY, KPI_TOOLTIPS_GLOSSARY
 
 INITIAL_CREDITS = 25
 
-app = FastAPI(
-    title="Ferretero.IA API",
-    description="API para análisis de datos de ferreterías.",
-    version="1.0.0"
-)
+
+
+# Leemos la variable de entorno. Si no existe, asumimos que estamos en 'development'.
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
+
+# Preparamos los argumentos para FastAPI
+fastapi_kwargs = {
+    "title": "Ferretero.IA API",
+    "description": "API para análisis de datos de ferreterías.",
+    "version": "1.0.0"
+}
+
+# Si estamos en producción, desactivamos la documentación
+if ENVIRONMENT == "production":
+    print("🚀 Iniciando en modo PRODUCCIÓN: La documentación de la API está desactivada.")
+    fastapi_kwargs["docs_url"] = None
+    fastapi_kwargs["redoc_url"] = None
+    fastapi_kwargs["openapi_url"] = None
+else:
+    print("🔧 Iniciando en modo DESARROLLO: La documentación de la API está activa en /docs.")
+
+# Inicializamos la aplicación con los argumentos correctos
+app = FastAPI(**fastapi_kwargs)
 
 # allow frontend to connect to backend
 app.add_middleware(
@@ -257,6 +275,64 @@ class StrategyData(BaseModel):
     dias_analisis_ventas_general: int = Field(..., ge=1)
     excluir_sin_ventas: str
     peso_ventas_historicas: float = Field(..., ge=0, le=1)
+
+
+# ===================================================================================
+# --- AUDITORIA DE CREDITOS ---
+# ===================================================================================
+@app.post("/admin/recharge", summary="[ADMIN] Recarga créditos a un usuario", tags=["Administración"])
+async def admin_recharge_credits(
+    secret_key: str = Form(...),
+    user_email: str = Form(...),
+    credits_to_add: int = Form(...),
+    reason: Optional[str] = Form("Recarga manual de administrador")
+):
+    """
+    Endpoint privado para que el administrador añada créditos a una cuenta de usuario.
+    Requiere una clave secreta para la autorización.
+    """
+    # 1. Verificación de la "Llave Maestra"
+    # La clave se lee de una variable de entorno para máxima seguridad.
+    ADMIN_KEY = os.environ.get("ADMIN_SECRET_KEY")
+    if not ADMIN_KEY or secret_key != ADMIN_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado: Clave secreta inválida.")
+
+    # 2. Lógica de Recarga
+    try:
+        user_ref = db.collection('usuarios').document(user_email)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail=f"Usuario '{user_email}' no encontrado.")
+
+        # Usamos una transacción para seguridad y consistencia
+        @firestore.transactional
+        def recharge_transaction(transaction, user_ref):
+            # Incrementamos los créditos del usuario
+            transaction.update(user_ref, {
+                "creditos_iniciales": firestore.Increment(credits_to_add),
+                "creditos_restantes": firestore.Increment(credits_to_add)
+            })
+            
+            # Creamos un registro de auditoría
+            audit_ref = user_ref.collection('auditoria_creditos').document()
+            transaction.set(audit_ref, {
+                "fecha": datetime.now(timezone.utc),
+                "cantidad": credits_to_add,
+                "motivo": reason,
+                "tipo": "recarga_admin"
+            })
+
+        transaction = db.transaction()
+        recharge_transaction(transaction, user_ref)
+        
+        print(f"✅ RECARGA ADMIN: Se añadieron {credits_to_add} créditos a {user_email}.")
+        return {"message": f"Éxito: Se han añadido {credits_to_add} créditos a la cuenta de {user_email}."}
+
+    except Exception as e:
+        print(f"🔥 ERROR ADMIN RECHARGE: {e}")
+        raise HTTPException(status_code=500, detail="Ocurrió un error al procesar la recarga.")
+
 
 
 # ===================================================================================

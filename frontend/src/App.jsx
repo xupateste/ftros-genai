@@ -10,6 +10,7 @@ import LandingPage from './pages/LandingPage';
 import { Dashboard } from './components/Dashboard';
 import { LoadingScreen } from './components/LoadingScreen'; // Asumiendo que creas este componente
 import { AnalysisWorkspace } from './components/AnalysisWorkspace'; // Asumiendo que creas este componente
+import { AdminRechargePage } from './pages/AdminRechargePage'; // <-- Importa la nueva página
 
 // Este componente hijo contiene la lógica para evitar problemas con el contexto
 function AppContent() {
@@ -77,6 +78,10 @@ function AppContent() {
     // 2. Una vez que los datos están frescos, cambiamos la vista
     setCurrentView('dashboard');
   };
+
+  if (window.location.pathname === '/sys/recharge') {
+    return <AdminRechargePage />;
+  }
 
   if (currentView === 'loading') {
     return <LoadingScreen message="Inicializando Ferretero.IA..." />;
