@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 // import { useAuth } from '../context/AuthContext'; // Asumiendo que tienes un AuthContext
-import { FiX, FiCreditCard, FiCheckCircle, FiArrowLeft, FiAward, FiArrowRight, FiAlertTriangle} from 'react-icons/fi';
+import { FiX, FiCreditCard, FiCheckCircle, FiArrowLeft, FiAward, FiArrowRight, FiAlertTriangle, FiExternalLink } from 'react-icons/fi';
 import { FaWhatsapp } from 'react-icons/fa';
 import { useWorkspace } from '../context/WorkspaceProvider'; // <-- Usamos el hook correcto
 
@@ -22,6 +22,26 @@ const PLANS = [
   },
 ];
 
+const openVerificationForm = (userEmail) => {
+  // --- ¡CONFIGURACIÓN IMPORTANTE! ---
+  // Reemplaza estos valores con los de tu propio Google Form.
+  const GOOGLE_FORM_ID = "1FAIpQLScRhAM5M5_rAnTU9X_giZYH1ZrDBrR0ME_vKp8dcJ9DrrkSww"; // Ej: 1FAIpQLSc...
+  const EMAIL_FIELD_ID = "entry.1889241237"; // Ej: entry.123456789
+
+  // Construimos la URL base
+  const formUrl = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/viewform`;
+  
+  // Creamos un objeto URL para añadir los parámetros de forma segura
+  const urlWithParams = new URL(formUrl);
+  if (userEmail) {
+    urlWithParams.searchParams.append(EMAIL_FIELD_ID, userEmail);
+  }
+
+  // Abrimos la URL final en una nueva pestaña
+  window.open(urlWithParams.toString(), '_blank');
+};
+
+
 export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) {
   // const { user } = useAuth(); // Obtenemos el email del usuario del contexto
   const [view, setView] = useState('loading'); // 'plans' o 'whatsapp'
@@ -38,7 +58,8 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
 
   const handleSelectPlan = (plan) => {
     if (plan.isStrategist) {
-      onBecomeStrategist();
+      openVerificationForm(user?.email);
+      onClose();
     } else {
       setSelectedPlan(plan);
       setView('whatsapp');
@@ -101,13 +122,13 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
                     </button>
                   ) : (
                     <button
-                      onClick={ () => {} }
+                      onClick={ () => handleSelectPlan(plan) }
                       className="flex items-center justify-center gap-2 mt-2 w-full text-gray-700 px-4 text-lg py-2 font-bold rounded-lg hover:text-gray-800"
                       style={{
                         backgroundImage: 'linear-gradient(297deg, #E5C100, #FFFFD6, #FFD700, #FFFFD6, #E5C100)',
                       }}
                     >
-                      <span>Afiliarme</span><FiArrowRight />
+                      <FiExternalLink /> Afiliarme
                     </button>
                   )}
                 </div>

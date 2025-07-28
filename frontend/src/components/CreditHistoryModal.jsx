@@ -1,11 +1,28 @@
 // src/components/CreditHistoryModal.jsx (Versión Final)
 
 import React, { useState } from 'react';
-import { FiX, FiCheckCircle, FiAlertTriangle, FiPlus } from 'react-icons/fi';
+import { FiX, FiCheckCircle, FiAlertTriangle, FiPlus, FiUserPlus } from 'react-icons/fi';
 import { RechargeCreditsModal } from './RechargeCreditsModal'; // Importamos el modal de recarga
 
-export function CreditHistoryModal({ history, onClose, reportData, onRechargeClick }) {
+export function CreditHistoryModal({ history, context, onClose, reportData, onRechargeClick, onRegisterClick}) {
   // const [isRechargeModalOpen, setIsRechargeModalOpen] = useState(false);
+  const isUser = context?.type === 'user';
+
+  const ctaButton = isUser ? (
+    <button 
+      onClick={onRechargeClick}
+      className="flex items-center gap-2 text-sm font-bold bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+    >
+      <FiPlus />Recargar Créditos 🪙
+    </button>
+  ) : (
+    <button 
+      onClick={onRegisterClick}
+      className="flex items-center gap-2 text-sm font-bold bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
+    >
+      <FiUserPlus /> Registrarse para Recargar
+    </button>
+  );
 
   const formatTimestamp = (isoString) => {
     if (!isoString) return 'N/A';
@@ -69,12 +86,13 @@ export function CreditHistoryModal({ history, onClose, reportData, onRechargeCli
         <div className="p-4 border-b flex justify-between gap-2 items-center sticky top-0 bg-white">
           <h2 className="text-xl font-bold text-gray-800">Historial de Actividad de la Sesión</h2>
           {/* --- BOTÓN DE RECARGA --- */}
-          <button 
+          {/*<button 
             onClick={onRechargeClick}
             className="flex items-center gap-2 text-sm font-bold bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
           >
             <FiPlus />Recargar Créditos 🪙
-          </button>
+          </button>*/}
+          {ctaButton}
         </div>
         <div className="overflow-y-auto">
           {history.length > 0 ? (

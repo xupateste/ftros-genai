@@ -608,6 +608,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         <CreditHistoryModal
           history={creditHistory}
           reportData={reportData}
+          context={context}
+          onRegisterClick={() => {
+            setActiveModal('register')
+          }}
           onRechargeClick={() => {
             setActiveModal(null); // Cerramos el historial
             setRechargeContext({ type: 'proactive' }); // Abrimos el de recarga

@@ -122,7 +122,7 @@ export function WorkspaceInfoModal({ onClose }) {
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 animate-fade-in">
       <div className="bg-white rounded-lg shadow-xl max-w-3xl w-full flex flex-col max-h-[90vh]">
         <div className="p-4 border-b flex justify-between items-center sticky top-0 bg-white">
-          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2"><FiZap className="text-yellow-400 fill-current"/> Desbloquea el Poder de los Espacios de Trabajo</h2>
+          <h2 className="text-xl font-bold text-gray-800 flex items-center gap-2">Desbloquea el Poder de los Espacios de Trabajo</h2>
           <button onClick={onClose} className="text-gray-500 hover:text-gray-700"><FiX size={26}/></button>
         </div>
         <div className="overflow-y-auto p-6 text-gray-700 space-y-4">

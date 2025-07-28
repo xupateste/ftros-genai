@@ -34,7 +34,7 @@ import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal viv
 import { RegisterToUnlockModal } from './RegisterToUnlockModal';
 
 // Importa los iconos que necesitas
-import { FiX, FiCheck, FiChevronLeft, FiChevronRight, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
+import { FiX, FiCheck, FiChevronLeft, FiAward, FiChevronRight, FiLoader, FiDownload, FiRefreshCw, FiTable, FiFileText, FiClipboard, FiPrinter, FiInfo, FiCheckCircle, FiSearch} from 'react-icons/fi';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -832,8 +832,8 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
                                 <div className="w-full rounded-t-lg h-40 sm:h-60 ms-4 bg-gray-400"></div>
                             </div>
                           </div>
-                          <button onClick={handleChartPlaceholderClick} className="absolute bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
-                            ⭐ Desbloquear Gráfico
+                          <button onClick={handleChartPlaceholderClick} className="absolute flex items-center bg-purple-600 text-white font-bold py-2 px-4 rounded-lg">
+                            ⭐️ Desbloquear Gráfico
                           </button>
                       </div>
                     </div>

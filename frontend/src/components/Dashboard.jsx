@@ -141,7 +141,7 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
               {/* Botón de Información Secundario */}
               <button
                 onClick={() => setIsWorkspaceInfoModalOpen(true)}
-                className="right-0 absolute p-4 flex-shrink-0 px-3 hover:bg-black hover:bg-opacity-10 rounded-r-lg text-white"
+                className="right-0 absolute p-4 flex-shrink-0 pr-4 hover:bg-black hover:bg-opacity-10 rounded-r-lg text-white"
                 title="¿Por qué usar múltiples espacios de trabajo?"
               >
                 <FiInfo size={20} />

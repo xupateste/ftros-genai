@@ -4,7 +4,7 @@
 PLANS_CONFIG = {
     "gratis": {
         "plan_name": "Gratuito",
-        "workspace_limit": 3, # Límite para usuarios registrados gratuitos
+        "workspace_limit": 5, # Límite para usuarios registrados gratuitos
         "can_access_pro_reports": False,
         "can_edit_strategy": False,
         "max_file_rows": 5000 # Límite de filas en los archivos CSV/Excel
