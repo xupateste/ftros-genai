@@ -1,7 +1,7 @@
 // src/components/CreditHistoryModal.jsx (Versión Final)
 
 import React, { useState } from 'react';
-import { FiX, FiCheckCircle, FiAlertTriangle, FiPlusCircle } from 'react-icons/fi';
+import { FiX, FiCheckCircle, FiAlertTriangle, FiPlus } from 'react-icons/fi';
 import { RechargeCreditsModal } from './RechargeCreditsModal'; // Importamos el modal de recarga
 
 export function CreditHistoryModal({ history, onClose, reportData, onRechargeClick }) {
@@ -73,7 +73,7 @@ export function CreditHistoryModal({ history, onClose, reportData, onRechargeCli
             onClick={onRechargeClick}
             className="flex items-center gap-2 text-sm font-bold bg-purple-600 text-white px-4 py-2 rounded-lg hover:bg-purple-700"
           >
-            🪙 Recargar Créditos
+            <FiPlus />Recargar Créditos 🪙
           </button>
         </div>
         <div className="overflow-y-auto">

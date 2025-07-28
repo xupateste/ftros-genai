@@ -511,7 +511,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             metadata={fileMetadata.inventario}
           />
         </div>
-        <div className="flex flex-row w-full justify-center items-center gap-4">
+        <div className="flex flex-row w-full justify-center items-center gap-2">
           <button onClick={() => setActiveModal('connections')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiKey /> Conectar Sistema</button>
           <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
         </div>
@@ -541,7 +541,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
               </div>
             )}
 
-            <div className="w-full space-y-8 px-4 mb-10">
+            <div className="w-full mt-8 space-y-8 px-4 mb-10">
               {Object.entries(reportData).map(([categoria, reportes]) => (
                 <div key={categoria} className="mb-6">
                   <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">

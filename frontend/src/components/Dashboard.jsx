@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useWorkspace } from '../context/WorkspaceProvider'; // Asumimos que WorkspaceProvider ya existe
 import { WorkspaceSelector } from './WorkspaceSelector'; // Y que WorkspaceSelector ya existe
-import { FiPlusCircle, FiLogOut, FiLoader, FiArrowRight, FiSettings} from 'react-icons/fi';
+import { FiPlus, FiLogOut, FiLoader, FiArrowRight, FiSettings, FiInfo} from 'react-icons/fi';
 // import api from '../utils/api'; // Usaremos nuestro cliente API centralizado
 import { WorkspaceCard } from './WorkspaceCard';
 import { ConfirmationModal } from './ConfirmationModal';
@@ -13,6 +13,7 @@ import { StrategyPanelModal } from './StrategyPanelModal'; // Importa el nuevo m
 import { FerreterosLogo } from './FerreterosLogo'
 import { CreditsPanel } from './CreditsPanel'; // <-- 1. Importamos el panel
 import { CreditHistoryModal } from './CreditHistoryModal'; // <-- 2. Importamos el modal de historial
+import { WorkspaceInfoModal } from './WorkspaceInfoModal'; // <-- 1. Importamos el nuevo modal
 
 // Este es el placeholder de tu vista de análisis. En el futuro, aquí
 // importarías el componente que contiene los CsvImporters y la lista de reportes.
@@ -36,6 +37,8 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
   const [newWorkspaceName, setNewWorkspaceName] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isStrategyModalOpen, setStrategyModalOpen] = useState(false);
+  const [isWorkspaceInfoModalOpen, setIsWorkspaceInfoModalOpen] = useState(false);
+
   const { pinnedWorkspaces, regularWorkspaces } = useMemo(() => {
     if (!workspaces) return { pinnedWorkspaces: [], recentWorkspaces: [] };
 
@@ -124,11 +127,26 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
           <button onClick={() => setStrategyModalOpen(true)} className="flex gap-2 items-center justify-center">
             <FiSettings /> Mi Estrategia Global
           </button>
-          <button 
-              onClick={() => setIsCreateModalOpen(true)}
-              className="w-full flex items-center max-w-xl justify-center gap-2 px-6 py-3 font-bold bg-purple-600 hover:bg-purple-700 rounded-lg">
-              <FiPlusCircle /> Crear Nuevo Espacio de Trabajo
-          </button>
+          {/* --- BOTÓN DE CREACIÓN REESTRUCTURADO --- */}
+          {/*<div className="mb-10 p-6 bg-gray-800 bg-opacity-50 rounded-lg border border-gray-700">*/}
+
+          {/*</div>*/}
+            <div className="flex relative w-full items-center rounded-lg shadow-md font-bold bg-purple-600 text-white hover:bg-purple-700 group">
+              {/* Botón de Acción Principal */}
+              <button 
+                  onClick={() => setIsCreateModalOpen(true)}
+                  className="flex flex-grow justify-center gap-2 items-center text-left p-4 rounded-l-lg">
+                  <FiPlus /> Crear Nuevo Espacio de Trabajo
+              </button>
+              {/* Botón de Información Secundario */}
+              <button
+                onClick={() => setIsWorkspaceInfoModalOpen(true)}
+                className="right-0 absolute p-4 flex-shrink-0 px-3 hover:bg-black hover:bg-opacity-10 rounded-r-lg text-white"
+                title="¿Por qué usar múltiples espacios de trabajo?"
+              >
+                <FiInfo size={20} />
+              </button>
+            </div>
         </div>
       {/*</header>*/}
 
@@ -181,6 +199,12 @@ export function Dashboard({ onLogout, onEnterWorkspace, onBackToDashboard }) {
               onClose={() => setIsCreateModalOpen(false)}
               onSuccess={handleCreationSuccess}
           />
+      )}
+
+      {isWorkspaceInfoModalOpen && (
+        <WorkspaceInfoModal 
+          onClose={() => setIsWorkspaceInfoModalOpen(false)} 
+        />
       )}
 
       {isStrategyModalOpen && (
