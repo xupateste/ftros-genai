@@ -1,7 +1,7 @@
 import os
 import uvicorn
 import json
-
+import asyncio
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -31,19 +31,39 @@ from track_expenses import process_csv, summarise_expenses, clean_data, get_top_
 from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
-from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos
+from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos_nuevo
+from track_expenses import auditar_margenes_de_productos, diagnosticar_catalogo, auditar_calidad_datos
 from report_config import REPORTS_CONFIG
 from plan_config import PLANS_CONFIG
 from strategy_config import DEFAULT_STRATEGY
 from tooltips_config import TOOLTIPS_GLOSSARY, KPI_TOOLTIPS_GLOSSARY
+from audit_knowledge_base import AUDIT_KNOWLEDGE_BASE
 
 INITIAL_CREDITS = 25
 
-app = FastAPI(
-    title="Ferretero.IA API",
-    description="API para análisis de datos de ferreterías.",
-    version="1.0.0"
-)
+
+
+# Leemos la variable de entorno. Si no existe, asumimos que estamos en 'development'.
+ENVIRONMENT = os.environ.get("ENVIRONMENT", "development")
+
+# Preparamos los argumentos para FastAPI
+fastapi_kwargs = {
+    "title": "Ferretero.IA API",
+    "description": "API para análisis de datos de ferreterías.",
+    "version": "1.0.0"
+}
+
+# Si estamos en producción, desactivamos la documentación
+if ENVIRONMENT == "production":
+    print("🚀 Iniciando en modo PRODUCCIÓN: La documentación de la API está desactivada.")
+    fastapi_kwargs["docs_url"] = None
+    fastapi_kwargs["redoc_url"] = None
+    fastapi_kwargs["openapi_url"] = None
+else:
+    print("🔧 Iniciando en modo DESARROLLO: La documentación de la API está activa en /docs.")
+
+# Inicializamos la aplicación con los argumentos correctos
+app = FastAPI(**fastapi_kwargs)
 
 # allow frontend to connect to backend
 app.add_middleware(
@@ -200,6 +220,179 @@ async def get_current_user_optional(token: Optional[str] = Depends(oauth2_scheme
         # El token es inválido o ha expirado
         return None
 
+def get_metadata_from_context(base_ref):
+    """
+    Lee los metadatos cacheados directamente desde los documentos de Firestore
+    para una carga de estado ultra-rápida.
+    """
+    state = {
+        "files": {"ventas": None, "inventario": None},
+        "files_metadata": {"ventas": None, "inventario": None}
+    }
+    files_ref = base_ref.collection('archivos_cargados')
+
+    # Buscamos el último archivo de ventas y leemos su metadata
+    query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+    last_venta_doc = next(query_ventas, None)
+    if last_venta_doc:
+        state["files"]["ventas"] = last_venta_doc.id
+        ventas_metadata = last_venta_doc.to_dict().get("metadata", {})
+        # --- CAMBIO CLAVE: Convertimos las fechas en los metadatos ANTES de guardarlos ---
+        if 'fecha_primera_venta' in ventas_metadata and hasattr(ventas_metadata['fecha_primera_venta'], 'isoformat'):
+            ventas_metadata['fecha_primera_venta'] = ventas_metadata['fecha_primera_venta'].isoformat()
+        if 'fecha_ultima_venta' in ventas_metadata and hasattr(ventas_metadata['fecha_ultima_venta'], 'isoformat'):
+            ventas_metadata['fecha_ultima_venta'] = ventas_metadata['fecha_ultima_venta'].isoformat()
+
+        state["files_metadata"]["ventas"] = ventas_metadata
+            
+    # Buscamos el último archivo de inventario y leemos su metadata
+    query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+    last_inventario_doc = next(query_inventario, None)
+    if last_inventario_doc:
+        state["files"]["inventario"] = last_inventario_doc.id
+        state["files_metadata"]["inventario"] = last_inventario_doc.to_dict().get("metadata", {})
+        
+    return state
+
+
+# ===================================================================================
+# --- FUNCIÓN DE AUDITORÍA ---
+# ===================================================================================
+# Esta sería tu función principal que genera la lista de tareas.
+# La modificamos para que adjunte el conocimiento.
+def generar_auditoria_inventario(
+    df_ventas: pd.DataFrame,
+    df_inventario: pd.DataFrame,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Función principal que ejecuta una auditoría completa del inventario,
+    manejando correctamente la estructura de retorno de las sub-funciones.
+    """
+    tasks = []
+    
+    # --- Lógica para detectar problemas ---
+
+    # 1. Análisis de Salud del Stock
+    # La función `procesar_stock_muerto` devuelve un diccionario.
+    resultado_salud = procesar_stock_muerto(df_ventas.copy(), df_inventario.copy())
+    # --- CAMBIO CLAVE: Extraemos el DataFrame de la clave "data" ---
+    df_salud = resultado_salud.get("data") if isinstance(resultado_salud, dict) else resultado_salud
+
+    # 2. Análisis de Importancia (ABC)
+    resultado_abc = process_csv_abc(df_ventas.copy(), df_inventario.copy(), criterio_abc='margen', periodo_abc=6)
+    df_abc = resultado_abc.get("data") if isinstance(resultado_abc, dict) else resultado_abc
+    # print(f"df_abc {df_abc}")
+
+    # --- Tarea 1: Encontrar productos Clase A sin stock ---
+    if df_abc is not None and not df_abc.empty:
+        # df_inventario['SKU / Código de producto'] = df_inventario['SKU / Código de producto'].astype(str).str.strip()
+        # df_abc['SKU / Código de producto'] = df_abc['SKU / Código de producto'].astype(str).str.strip()
+        productos_clase_a = df_abc[df_abc['Clasificación ABC'] == 'A']['SKU / Código de producto']
+        df_inventario_a = df_abc[df_abc['SKU / Código de producto'].isin(productos_clase_a)].copy()
+        df_inventario_a['Cantidad en stock actual'] = pd.to_numeric(df_inventario_a['Cantidad en stock actual'], errors='coerce').fillna(0)
+        clase_a_sin_stock = df_inventario_a[df_inventario_a['Cantidad en stock actual'] <= 0]
+        if not clase_a_sin_stock.empty:
+            preview_df = clase_a_sin_stock.head(3)
+            preview_df_clean = preview_df.replace([np.inf, -np.inf], np.nan)
+            preview_data_safe = preview_df_clean.where(pd.notna(preview_df_clean), None).to_dict(orient='records')
+            venta_perdida_estimada = 5800 # Placeholder
+            tasks.append({
+                "id": "task_quiebre_stock_a", "type": "error",
+                "title": f"Tienes {len(clase_a_sin_stock)} productos 'Clase A' con stock en cero.",
+                "impact": f"Riesgo de venta perdida: S/ {venta_perdida_estimada:,.2f} este mes.",
+                "solution_button_text": "Ver Productos y Generar Plan de Compra",
+                "target_report": "ReporteListaBasicaReposicionHistorica",
+                "knowledge": AUDIT_KNOWLEDGE_BASE.get("quiebre_stock_clase_a"),
+                "preview_data": preview_data_safe # Usamos los datos ya limpios
+            })
+
+    # --- Tarea 2: Encontrar stock muerto de alto valor ---
+    if df_salud is not None and not df_salud.empty:
+        # Usamos el nombre de columna interno 'clasificacion' que devuelve la función
+        # df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
+        df_stock_muerto = df_salud[df_salud['Clasificación Diagnóstica'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
+        if not df_stock_muerto.empty:
+            capital_inmovilizado = df_stock_muerto['Valor stock (S/.)'].sum()
+            task = {
+                "id": "task_stock_muerto_valor", "type": "warning",
+                "title": f"Tienes {len(df_stock_muerto)} productos con más de 180 días sin ventas.",
+                "impact": f"Capital inmovilizado: S/ {capital_inmovilizado:,.2f}.",
+                "solution_button_text": "Ver Productos y Crear Plan de Liquidación",
+                "target_report": "ReporteDiagnosticoStockMuerto",
+                "knowledge": AUDIT_KNOWLEDGE_BASE.get("stock_muerto_alto_valor"),
+                "preview_data": df_stock_muerto.head(3).to_dict(orient='records')
+            }
+            tasks.append(task)
+
+    # --- CÁLCULO DE KPIs Y PUNTAJE ---
+    puntaje_salud = 62 # Placeholder
+    kpis_dolor = {
+        "Capital Inmovilizado": f"S/ {capital_inmovilizado:,.2f}" if 'capital_inmovilizado' in locals() else "S/ 0.00",
+        "Venta Perdida Potencial": f"S/ {venta_perdida_estimada:,.2f}" if 'venta_perdida_estimada' in locals() else "S/ 0.00",
+        "Margen Bruto Congelado": "S/ 9,200" # Placeholder
+    }
+
+    return {
+        "puntaje_salud": puntaje_salud,
+        "kpis_dolor": kpis_dolor,
+        "plan_de_accion": tasks
+    }
+
+# @app.post("/auditoria-inventario", summary="Ejecuta la auditoría de eficiencia de inventario", tags=["Auditoría"])
+# async def ejecutar_auditoria_inventario(
+#     # ... (tus parámetros de contexto y file_ids)
+#     request: Request, 
+#     current_user: Optional[dict] = Depends(get_current_user_optional),
+#     X_Session_ID: str = Header(..., alias="X-Session-ID"),
+#     workspace_id: Optional[str] = Form(None),
+#     ventas_file_id: str = Form(...),
+#     inventario_file_id: str = Form(...)
+# ):
+#     # ... (tu lógica para cargar los DataFrames)
+#     df_ventas = pd.DataFrame() # Default: DataFrame vacío
+#     df_inventario = pd.DataFrame() # Default: DataFrame vacío
+        
+#     # Llamamos a la función que genera las tareas enriquecidas
+#     auditoria_result = generar_auditoria_inventario(df_ventas, df_inventario)
+#     print(f"auditoria_result {auditoria_result}")
+    
+#     return JSONResponse(content=auditoria_result)
+
+@app.post("/auditoria-inicial", summary="Ejecuta la auditoría de eficiencia inicial", tags=["Auditoría"])
+async def ejecutar_auditoria_inicial(
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+    ventas_file_id: str = Form(...),
+    inventario_file_id: str = Form(...)
+):
+    """
+    Este endpoint se dedica a ejecutar la auditoría inicial.
+    Llama a la función de lógica directamente porque su formato de respuesta es diferente.
+    """
+    # 1. Determinamos el contexto
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+    
+    try:
+        # 2. Cargamos los DataFrames
+        ventas_contents = await descargar_contenido_de_storage(user_id, workspace_id, X_Session_ID, ventas_file_id)
+        inventario_contents = await descargar_contenido_de_storage(user_id, workspace_id, X_Session_ID, inventario_file_id)
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+
+        # 3. Llamamos a la función de lógica que devuelve el resumen
+        auditoria_result = generar_auditoria_inventario(df_ventas, df_inventario)
+        
+        return JSONResponse(content=auditoria_result)
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error crítico durante la auditoría: {e}")
+
 
 # ===================================================================================
 # --- MODELOS DE DATOS ---
@@ -223,6 +416,64 @@ class StrategyData(BaseModel):
     dias_analisis_ventas_general: int = Field(..., ge=1)
     excluir_sin_ventas: str
     peso_ventas_historicas: float = Field(..., ge=0, le=1)
+
+
+# ===================================================================================
+# --- AUDITORIA DE CREDITOS ---
+# ===================================================================================
+@app.post("/admin/recharge", summary="[ADMIN] Recarga créditos a un usuario", tags=["Administración"])
+async def admin_recharge_credits(
+    secret_key: str = Form(...),
+    user_email: str = Form(...),
+    credits_to_add: int = Form(...),
+    reason: Optional[str] = Form("Recarga manual de administrador")
+):
+    """
+    Endpoint privado para que el administrador añada créditos a una cuenta de usuario.
+    Requiere una clave secreta para la autorización.
+    """
+    # 1. Verificación de la "Llave Maestra"
+    # La clave se lee de una variable de entorno para máxima seguridad.
+    ADMIN_KEY = os.environ.get("ADMIN_SECRET_KEY")
+    if not ADMIN_KEY or secret_key != ADMIN_KEY:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acceso denegado: Clave secreta inválida.")
+
+    # 2. Lógica de Recarga
+    try:
+        user_ref = db.collection('usuarios').document(user_email)
+        user_doc = user_ref.get()
+
+        if not user_doc.exists:
+            raise HTTPException(status_code=404, detail=f"Usuario '{user_email}' no encontrado.")
+
+        # Usamos una transacción para seguridad y consistencia
+        @firestore.transactional
+        def recharge_transaction(transaction, user_ref):
+            # Incrementamos los créditos del usuario
+            transaction.update(user_ref, {
+                "creditos_iniciales": firestore.Increment(credits_to_add),
+                "creditos_restantes": firestore.Increment(credits_to_add)
+            })
+            
+            # Creamos un registro de auditoría
+            audit_ref = user_ref.collection('auditoria_creditos').document()
+            transaction.set(audit_ref, {
+                "fecha": datetime.now(timezone.utc),
+                "cantidad": credits_to_add,
+                "motivo": reason,
+                "tipo": "recarga_admin"
+            })
+
+        transaction = db.transaction()
+        recharge_transaction(transaction, user_ref)
+        
+        print(f"✅ RECARGA ADMIN: Se añadieron {credits_to_add} créditos a {user_email}.")
+        return {"message": f"Éxito: Se han añadido {credits_to_add} créditos a la cuenta de {user_email}."}
+
+    except Exception as e:
+        print(f"🔥 ERROR ADMIN RECHARGE: {e}")
+        raise HTTPException(status_code=500, detail="Ocurrió un error al procesar la recarga.")
+
 
 
 # ===================================================================================
@@ -294,7 +545,10 @@ async def register_user(
     # Creamos el primer espacio de trabajo por defecto
     default_workspace_data = {
         "nombre": "Mi Primera Ferretería",
-        "fechaCreacion": now_utc
+        "fechaCreacion": now_utc,
+        "fechaUltimoAcceso": now_utc,
+        "fechaUltimoAcceso": now_utc,
+        "isPinned": False # Inicializamos el campo de fijado
     }
     # Creamos un nuevo documento para el espacio de trabajo
     # (podríamos usar un ID autogenerado o uno predecible)
@@ -450,58 +704,97 @@ async def get_session_state(
     X_Session_ID: str = Header(..., alias="X-Session-ID")
 ):
     """
-    Busca en Firestore el estado actual de una sesión, incluyendo el saldo de
-    créditos y el historial de reportes generados, para restaurar el estado en el frontend.
+    Obtiene el estado completo de una sesión anónima, incluyendo créditos,
+    historial y metadatos de archivos, con un manejo de fechas robusto.
     """
     if not X_Session_ID:
         raise HTTPException(status_code=400, detail="La cabecera X-Session-ID es requerida.")
 
     try:
-        # --- 1. Obtener el estado del "monedero" ---
         session_ref = db.collection('sesiones_anonimas').document(X_Session_ID)
         session_doc = session_ref.get()
 
         if not session_doc.exists:
-            # Es importante manejar el caso en que el frontend envíe un ID de sesión antiguo o inválido
             raise HTTPException(status_code=404, detail="La sesión no existe o ha expirado.")
 
         session_data = session_doc.to_dict()
+        
+        # --- 1. Obtener créditos ---
         creditos_restantes = session_data.get("creditos_restantes", 0)
         creditos_usados = session_data.get("creditos_iniciales", 20) - creditos_restantes
+        credits_data = {"used": creditos_usados, "remaining": creditos_restantes}
 
         # --- 2. Obtener el historial de reportes ---
         historial_ref = session_ref.collection('reportes_generados')
-        # Pedimos los reportes ordenados por fecha, del más reciente al más antiguo
-        query = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(5)
-        
-        docs_historial = query.stream()
+        query = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(10)
         
         historial_list = []
-        for doc in docs_historial:
+        for doc in query.stream():
             doc_data = doc.to_dict()
-
-            if 'fechaGeneracion' in doc_data and isinstance(doc_data['fechaGeneracion'], datetime):
-                # Convertimos la fecha a un string en formato ISO 8601, que es compatible con JSON
+            # Usamos hasattr para una conversión de fecha segura
+            if 'fechaGeneracion' in doc_data and hasattr(doc_data['fechaGeneracion'], 'isoformat'):
                 doc_data['fechaGeneracion'] = doc_data['fechaGeneracion'].isoformat()
-        
             historial_list.append(doc_data)
 
-        # --- 3. Construir y devolver la respuesta ---
-        return JSONResponse(content={
-            "credits": {
-                "used": creditos_usados,
-                "remaining": creditos_restantes
-            },
-            "history": historial_list
-        })
+        # --- 3. Obtener metadatos de archivos (Lógica Optimizada) ---
+        files_ref = session_ref.collection('archivos_cargados')
+        
+        files_map = {"ventas": None, "inventario": None}
+        date_range_bounds = None
+        available_filters = {"categorias": [], "marcas": []}
+
+        # Usamos la sintaxis posicional estable para las consultas
+        query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+        last_venta_doc = next(query_ventas, None)
+        if last_venta_doc:
+            files_map["ventas"] = last_venta_doc.id
+            metadata = last_venta_doc.to_dict().get("metadata", {})
+        
+        query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction="DESCENDING").limit(1).stream()
+        last_inventario_doc = next(query_inventario, None)
+        if last_inventario_doc:
+            files_map["inventario"] = last_inventario_doc.id
+            metadata = last_inventario_doc.to_dict().get("metadata", {})
+            available_filters = {"categorias": metadata.get("lista_completa_categorias", []), "marcas": metadata.get("lista_completa_marcas", [])}
+
+        # --- 4. Construir y devolver la respuesta completa ---
+
+        date_range_bounds = session_data.get("fechas_disponibles") # Asumiendo que se guarda aquí
+
+        # --- INICIO DEL BLOQUE DE AUDITORÍA DE SERIALIZACIÓN ---
+        # print("\n--- DEBUG: Auditoría de Serialización JSON ---")
+        metadata_payload = get_metadata_from_context(session_ref)
+        final_content = {
+            "credits": credits_data,
+            "history": historial_list,
+            "files": files_map,
+            "available_filters": available_filters,
+            "date_range_bounds": date_range_bounds,
+            **metadata_payload
+        }
+        
+        # for key, value in final_content.items():
+        #     try:
+        #         json.dumps(value, default=str) # Usamos `default=str` como un fallback seguro
+        #         print(f"✅ La sección '{key}' se puede serializar correctamente.")
+        #         print(f"{value}")
+        #     except TypeError as e:
+        #         print(f"🔥🔥🔥 ¡ERROR ENCONTRADO! La sección '{key}' no se puede serializar. Causa: {e}")
+        #         print(f"Datos problemáticos en '{key}': {value}")
+        # print("--------------------------------------------\n")
+        # --- FIN DEL BLOQUE DE AUDITORÍA ---
+
+
+
+        return JSONResponse(content=final_content)
 
     except HTTPException as http_exc:
-        # Relanzamos los errores HTTP que nosotros mismos generamos (ej: 404)
         raise http_exc
     except Exception as e:
-        # Capturamos cualquier otro error inesperado con Firebase
         print(f"🔥 Error al recuperar estado de sesión para {X_Session_ID}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado de la sesión desde el servidor.")
+
 
 
 # ===================================================================================
@@ -513,14 +806,13 @@ async def get_workspace_state(
     current_user: dict = Depends(get_current_user)
 ):
     """
-    Busca en Firestore el estado completo de un espacio de trabajo.
-    Ahora, prioriza la lectura de los filtros cacheados directamente desde el
-    documento del workspace para una carga más rápida.
+    Obtiene el estado completo de un workspace, con un bloque de depuración
+    para auditar la serialización de cada componente de la respuesta.
     """
     try:
         user_email = current_user.get("email")
         
-        # --- 1. Obtener datos del usuario y del workspace ---
+        # --- Lógica de obtención de datos (sin cambios) ---
         user_ref = db.collection('usuarios').document(user_email)
         workspace_ref = user_ref.collection('espacios_trabajo').document(workspace_id)
         
@@ -533,64 +825,61 @@ async def get_workspace_state(
         user_data = user_doc.to_dict()
         workspace_data = workspace_doc.to_dict()
 
-        # --- 2. LÓGICA DE CACHÉ PARA LOS FILTROS ---
-        available_filters = None
-        
-        # Primero, intentamos leer los filtros directamente desde el caché en el documento del workspace
-        if "filtros_disponibles" in workspace_data:
-            print(f"✅ Filtros encontrados en el caché de Firestore para el workspace '{workspace_id}'.")
-            available_filters = workspace_data["filtros_disponibles"]
-        
-        # --- 3. Obtener los últimos archivos cargados (la lógica no cambia) ---
-        files_ref = workspace_ref.collection('archivos_cargados')
-        query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1)
-        query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1)
-        
-        last_venta_id = next(query_ventas.stream(), None)
-        last_inventario_id = next(query_inventario.stream(), None)
-
-        files_map = {
-            "ventas": last_venta_id.id if last_venta_id else None,
-            "inventario": last_inventario_id.id if last_inventario_id else None
-        }
-
-        # --- 4. Fallback (Plan B): Si no hay caché, lo generamos al vuelo ---
-        # Esto da robustez al sistema si se trabaja con un workspace antiguo que no tenía el caché.
-        if available_filters is None and files_map["inventario"]:
-            print(f"⚠️ Filtros no encontrados en caché. Generando al vuelo para el workspace '{workspace_id}'.")
-            inventario_contents = descargar_contenido_de_storage(user_email, workspace_id, None, files_map["inventario"])
-            df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
-            metadata = extraer_metadatos_df(df_inventario, 'inventario')
-            available_filters = {
-                "categorias": metadata.get("lista_completa_categorias", []),
-                "marcas": metadata.get("lista_completa_marcas", [])
-            }
-
-        # --- 5. Obtener el resto de la información (créditos e historial) ---
         creditos_restantes = user_data.get("creditos_restantes", 0)
-        creditos_iniciales = user_data.get("creditos_iniciales", 0)
-        creditos_usados = creditos_iniciales - creditos_restantes
-        
+        creditos_usados = user_data.get("creditos_iniciales", 0) - creditos_restantes
+        credits_data = {"used": creditos_usados, "remaining": creditos_restantes}
+
         historial_ref = workspace_ref.collection('reportes_generados')
         query_historial = historial_ref.order_by("fechaGeneracion", direction=firestore.Query.DESCENDING).limit(10)
-        
         historial_list = []
         for doc in query_historial.stream():
             doc_data = doc.to_dict()
-            if 'fechaGeneracion' in doc_data and isinstance(doc_data['fechaGeneracion'], datetime):
-                doc_data['fechaGeneracion'] = doc_data['fechaGeneracion'].isoformat()
+            for field in ['fechaGeneracion', 'fechaUltimoAcceso', 'fechaCreacion']:
+                if field in doc_data and hasattr(doc_data[field], 'isoformat'):
+                    doc_data[field] = doc_data[field].isoformat()
             historial_list.append(doc_data)
 
-        # --- 6. Construir y devolver la respuesta completa ---
-        return JSONResponse(content={
-            "credits": {"used": creditos_usados, "remaining": creditos_restantes},
+        files_ref = workspace_ref.collection('archivos_cargados')
+        # --- CORRECCIÓN PROACTIVA: Volvemos a la sintaxis que sabemos que es estable ---
+        query_ventas = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "ventas")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1).stream()
+        query_inventario = files_ref.where(filter=FieldFilter("tipoArchivo", "==", "inventario")).order_by("fechaCarga", direction=firestore.Query.DESCENDING).limit(1).stream()
+        
+        last_venta_doc = next(query_ventas, None)
+        last_inventario_doc = next(query_inventario, None)
+        files_map = {"ventas": last_venta_doc.id if last_venta_doc else None, "inventario": last_inventario_doc.id if last_inventario_doc else None}
+        
+        available_filters = workspace_data.get("filtros_disponibles", {"categorias": [], "marcas": []})
+        date_range_bounds = workspace_data.get("fechas_disponibles") # Asumiendo que se guarda aquí
+
+        # --- INICIO DEL BLOQUE DE AUDITORÍA DE SERIALIZACIÓN ---
+        # print("\n--- DEBUG: Auditoría de Serialización JSON ---")
+        metadata_payload = get_metadata_from_context(workspace_ref)
+
+        final_content = {
+            "credits": credits_data,
             "history": historial_list,
             "files": files_map,
-            "available_filters": available_filters or {"categorias": [], "marcas": []} # Aseguramos que siempre sea un objeto
-        })
+            "available_filters": available_filters,
+            "date_range_bounds": date_range_bounds,
+            **metadata_payload
+        }
+        
+        # for key, value in final_content.items():
+        #     try:
+        #         json.dumps(value, default=str) # Usamos `default=str` como un fallback seguro
+        #         print(f"✅ La sección '{key}' se puede serializar correctamente.")
+        #         print(f"{value}")
+        #     except TypeError as e:
+        #         print(f"🔥🔥🔥 ¡ERROR ENCONTRADO! La sección '{key}' no se puede serializar. Causa: {e}")
+        #         print(f"Datos problemáticos en '{key}': {value}")
+        # print("--------------------------------------------\n")
+        # # --- FIN DEL BLOQUE DE AUDITORÍA ---
+
+        return JSONResponse(content=final_content)
 
     except Exception as e:
         print(f"🔥 Error al recuperar estado del workspace {workspace_id}: {e}")
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail="No se pudo recuperar el estado del espacio de trabajo.")
 
 
@@ -694,6 +983,10 @@ async def get_workspaces(current_user: dict = Depends(get_current_user)):
             "credits": {
                 "used": creditos_usados,
                 "remaining": creditos_restantes
+            },
+            "user": {
+                "email": user_email
+                # Aquí podrías añadir otros datos del perfil si los necesitas en el futuro
             }
         })
 
@@ -1069,8 +1362,8 @@ async def upload_file(
 
     # --- Lógica de Determinación de Contexto (sin cambios) ---
     if current_user:
-        if not workspace_id:
-            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        # if not workspace_id:
+        #     raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
         user_id = current_user['email']
         print(f"Contexto de carga: Usuario Registrado ({user_id}), Workspace ({workspace_id})")
     elif X_Session_ID:
@@ -1150,7 +1443,9 @@ async def upload_file(
             timestamp_obj=now
         )
 
-        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ ---
+        # print(f"✅ Metadata en '{metadata}'.")
+
+        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ PARA INVENTARIO---
         # Si la carga es de un usuario registrado y el archivo es un inventario...
         if user_id and workspace_id and tipo_archivo == 'inventario':
             print(f"Detectado archivo de inventario para usuario registrado. Cacheando filtros...")
@@ -1170,20 +1465,84 @@ async def upload_file(
             print(f"✅ Filtros cacheados exitosamente en el workspace '{workspace_id}'.")
         # --- FIN DE LA NUEVA LÓGICA DE CACHÉ ---
 
+        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ PARA VENTAS---
+        # Si la carga es de un usuario registrado y el archivo es un inventario...
+        if user_id and workspace_id and tipo_archivo == 'ventas':
+            print(f"Detectado archivo de ventas para usuario registrado. Cacheando fechas...")
+            
+            # Obtenemos las listas de filtros desde los metadatos que ya extrajimos
+            fechas_a_guardar = {
+                "min_date": metadata["fecha_primera_venta"].isoformat(),
+                "max_date": metadata["fecha_ultima_venta"].isoformat()
+            }
+
+            # Obtenemos la referencia al documento del ESPACIO DE TRABAJO
+            workspace_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+            
+            # Actualizamos el documento del workspace con los filtros disponibles
+            workspace_ref.update({"fechas_disponibles": fechas_a_guardar})
+            
+            print(f"✅ Fechas cacheados exitosamente en el workspace '{workspace_id}'.")
+        # --- FIN DE LA NUEVA LÓGICA DE CACHÉ ---
+
+        # --- INICIO DE LA NUEVA LÓGICA DE CACHÉ PARA VENTAS - ANONIMAS ---
+        # Si la carga es de un usuario registrado y el archivo es un inventario...
+        if session_id_to_use and tipo_archivo == 'ventas':
+            print(f"Detectado archivo de ventas para usuario anonimo. Cacheando fechas...")
+            
+            # Obtenemos las listas de filtros desde los metadatos que ya extrajimos
+            fechas_a_guardar = {
+                "min_date": metadata["fecha_primera_venta"].isoformat(),
+                "max_date": metadata["fecha_ultima_venta"].isoformat()
+            }
+
+            # Obtenemos la referencia al documento del ESPACIO DE TRABAJO
+            workspace_anonimo_ref = db.collection('sesiones_anonimas').document(session_id_to_use)
+            
+            # Actualizamos el documento del workspace con los filtros disponibles
+            workspace_anonimo_ref.update({"fechas_disponibles": fechas_a_guardar})
+            
+            print(f"✅ Fechas cacheados exitosamente para anonimo en '{session_id_to_use}'.")
+        # --- FIN DE LA NUEVA LÓGICA DE CACHÉ ---
+
+        response_content = {}
+
+        # Devolvemos los metadatos extraídos para que la UI se actualice al instante
+        if tipo_archivo == 'ventas' and metadata.get("fecha_primera_venta"):
+            response_content["date_range_bounds"] = {
+                "min_date": metadata["fecha_primera_venta"].isoformat(),
+                "max_date": metadata["fecha_ultima_venta"].isoformat()
+            }
+        
+
+        # Si es un inventario (para cualquier tipo de usuario), devolvemos los filtros para uso inmediato
+        if tipo_archivo == 'inventario':
+            response_content["available_filters"] = {
+                "categorias": metadata.get("lista_completa_categorias", []),
+                "marcas": metadata.get("lista_completa_marcas", [])
+            }
+
+        # --- CAMBIO CLAVE: Convertimos las fechas en los metadatos ANTES de guardarlos ---
+        if 'fecha_primera_venta' in metadata and hasattr(metadata['fecha_primera_venta'], 'isoformat'):
+            metadata['fecha_primera_venta'] = metadata['fecha_primera_venta'].isoformat()
+        if 'fecha_ultima_venta' in metadata and hasattr(metadata['fecha_ultima_venta'], 'isoformat'):
+            metadata['fecha_ultima_venta'] = metadata['fecha_ultima_venta'].isoformat()
+
         # La construcción de la respuesta no cambia
         response_content = {
             "message": f"Archivo de {tipo_archivo} subido exitosamente.",
             "file_id": file_id,
             "tipo_archivo": tipo_archivo,
-            "nombre_original": file.filename
+            "nombre_original": file.filename,
+            "metadata": metadata
         }
-        
+
         # --- CAMBIO CLAVE: Añadimos el rango de fechas a la respuesta ---
         if tipo_archivo == 'ventas':
             if metadata.get("fecha_primera_venta") and metadata.get("fecha_ultima_venta"):
                 response_content["date_range_bounds"] = {
-                    "min_date": metadata["fecha_primera_venta"].isoformat(),
-                    "max_date": metadata["fecha_ultima_venta"].isoformat()
+                    "min_date": metadata["fecha_primera_venta"],
+                    "max_date": metadata["fecha_ultima_venta"]
                 }
 
         # Si es un inventario (para cualquier tipo de usuario), devolvemos los filtros para uso inmediato
@@ -1303,7 +1662,9 @@ async def upload_csvs_abc_analysis(
     # --- NUEVO: Recibimos los scores de la estrategia ---
     score_ventas: Optional[int] = Form(None),
     score_ingreso: Optional[int] = Form(None),
-    score_margen: Optional[int] = Form(None)
+    score_margen: Optional[int] = Form(None),
+    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas.")
 
 ):
     user_id = None
@@ -1335,6 +1696,13 @@ async def upload_csvs_abc_analysis(
     #     }
     
     # Preparamos el diccionario de parámetros para la función de lógica
+    try:
+        # Parseamos los strings JSON para convertirlos en listas de Python
+        categorias_list = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        marcas_list = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
+
     processing_params = {
         "criterio_abc": criterio_abc.lower(),
         "periodo_abc": periodo_abc,
@@ -1343,7 +1711,9 @@ async def upload_csvs_abc_analysis(
         "periodo_abc": periodo_abc,
         "score_ventas": score_ventas,
         "score_ingreso": score_ingreso,
-        "score_margen": score_margen
+        "score_margen": score_margen,
+        "filtro_categorias": categorias_list,
+        "filtro_marcas": marcas_list
     }
 
     full_params_for_logging = dict(await request.form())
@@ -1389,7 +1759,12 @@ async def run_analisis_estrategico_rotacion(
     dias_analisis_ventas_general: Optional[int] = Form(None, description="Ventana secundaria de análisis para productos sin ventas recientes."),
     umbral_sobre_stock_dias: int = Form(180, description="Días a partir de los cuales un producto se considera 'Sobre-stock'."),
     umbral_stock_bajo_dias: int = Form(15, description="Días por debajo de los cuales un producto se considera con 'Stock Bajo'."),
-    pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+    # pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+    # --- NUEVO: Recibimos los scores de la estrategia desde el frontend ---
+    score_ventas: int = Form(...),
+    score_ingreso: int = Form(...),
+    score_margen: int = Form(...),
+    score_dias_venta: int = Form(...)
 ):
     user_id = None
     
@@ -1412,14 +1787,30 @@ async def run_analisis_estrategico_rotacion(
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
     # --- 2. Procesar Parámetros Complejos desde JSON ---
-    pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
     filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
     filtro_marcas = json.loads(filtro_marcas_json) if filtro_marcas_json else None
     # (Se podría añadir un try-except más robusto aquí si se desea)
 
+    # pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+    # 1. Sumamos los scores recibidos
+    total_scores = score_ventas + score_ingreso + score_margen + score_dias_venta
+
+    # 2. Calculamos los pesos prorrateados, manejando el caso de división por cero
+    if total_scores == 0:
+        # Si todos los scores son 0, asignamos un peso equitativo
+        pesos_calculados = {'ventas': 0.25, 'ingreso': 0.25, 'margen': 0.25, 'dias_venta': 0.25}
+    else:
+        pesos_calculados = {
+            'ventas': score_ventas / total_scores,
+            'ingreso': score_ingreso / total_scores,
+            'margen': score_margen / total_scores,
+            'dias_venta': score_dias_venta / total_scores
+        }
+    
+
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
-        "pesos_importancia": pesos_importancia,
+        "pesos_importancia": pesos_calculados,
         "dias_analisis_ventas_recientes": dias_analisis_ventas_recientes,
         "dias_analisis_ventas_general": dias_analisis_ventas_general,
         "umbral_sobre_stock_dias": umbral_sobre_stock_dias,
@@ -1539,10 +1930,17 @@ async def generar_reporte_maestro_endpoint(
     criterio_abc: str = Form("margen", description="Criterio para el análisis ABC: 'ingresos', 'unidades', 'margen', o 'combinado'."),
     periodo_abc: int = Form(6, description="Número de meses hacia atrás para el análisis ABC."),
     
+    ordenar_por: str = Form("prioridad"),
+    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
     # --- Parámetros Opcionales para el Criterio 'Combinado' ---
-    peso_ingresos: Optional[float] = Form(None, description="Peso para ingresos (ej: 0.5) si el criterio es 'combinado'."),
-    peso_margen: Optional[float] = Form(None, description="Peso para margen (ej: 0.3) si el criterio es 'combinado'."),
-    peso_unidades: Optional[float] = Form(None, description="Peso para unidades (ej: 0.2) si el criterio es 'combinado'."),
+    # peso_ingresos: Optional[float] = Form(None, description="Peso para ingresos (ej: 0.5) si el criterio es 'combinado'."),
+    # peso_margen: Optional[float] = Form(None, description="Peso para margen (ej: 0.3) si el criterio es 'combinado'."),
+    # peso_unidades: Optional[float] = Form(None, description="Peso para unidades (ej: 0.2) si el criterio es 'combinado'."),  
+    score_ventas: int = Form(...),
+    score_ingreso: int = Form(...),
+    score_margen: int = Form(...),
+    # score_dias_venta: int = Form(...),
 
     # --- Parámetros Opcionales para el Análisis de Salud ---
     meses_analisis_salud: Optional[int] = Form(None, description="Meses para analizar ventas recientes en el diagnóstico de salud."),
@@ -1569,29 +1967,43 @@ async def generar_reporte_maestro_endpoint(
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
 
     # --- Validación de Parámetros ---
-    pesos_combinado = None
-    if criterio_abc == 'combinado':
-        if not all([peso_ingresos, peso_margen, peso_unidades]):
-            raise HTTPException(status_code=400, detail="Para el criterio 'combinado', se deben proveer los tres pesos: peso_ingresos, peso_margen y peso_unidades.")
+    # pesos_combinado = None
+    # if criterio_abc == 'combinado':
+    #     if not all([peso_ingresos, peso_margen, peso_unidades]):
+    #         raise HTTPException(status_code=400, detail="Para el criterio 'combinado', se deben proveer los tres pesos: peso_ingresos, peso_margen y peso_unidades.")
         
-        total_pesos = peso_ingresos + peso_margen + peso_unidades
-        if not math.isclose(total_pesos, 1.0):
-            raise HTTPException(status_code=400, detail=f"La suma de los pesos debe ser 1.0, pero es {total_pesos}.")
+    #     total_pesos = peso_ingresos + peso_margen + peso_unidades
+    #     if not math.isclose(total_pesos, 1.0):
+    #         raise HTTPException(status_code=400, detail=f"La suma de los pesos debe ser 1.0, pero es {total_pesos}.")
             
-        pesos_combinado = {
-            "ingresos": peso_ingresos,
-            "margen": peso_margen,
-            "unidades": peso_unidades
-        }
+    #     pesos_combinado = {
+    #         "ingresos": peso_ingresos,
+    #         "margen": peso_margen,
+    #         "unidades": peso_unidades
+    #     }
+    try:
+        # Parseamos los strings JSON para convertirlos en listas de Python
+        categorias_list = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        marcas_list = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
 
+   
 
     # 1. Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
         "criterio_abc": criterio_abc,
         "periodo_abc": periodo_abc,
-        "pesos_combinado": pesos_combinado,
-        "meses_analisis": meses_analisis_salud,
-        "dias_sin_venta_muerto": dias_sin_venta_muerto
+        # "pesos_combinado": pesos_combinado,
+        "score_ventas": score_ventas,
+        "score_ingreso": score_ingreso,
+        "score_margen": score_margen,
+        # "score_dias_venta": score_dias_venta,
+        "meses_analisis_salud": meses_analisis_salud,
+        "dias_sin_venta_muerto": dias_sin_venta_muerto,
+        "ordenar_por": ordenar_por,
+        "incluir_solo_categorias": categorias_list,
+        "incluir_solo_marcas": marcas_list
     }
 
     full_params_for_logging = dict(await request.form())
@@ -1620,11 +2032,15 @@ async def reporte_puntos_alerta_stock(
     current_user: Optional[dict] = Depends(get_current_user_optional),
     X_Session_ID: str = Header(..., alias="X-Session-ID"),
     workspace_id: Optional[str] = Form(None),
-    
     ventas_file_id: str = Form(...),
     inventario_file_id: str = Form(...),
-    lead_time_dias: int = Form(...),
-    dias_seguridad_base: int = Form(...)
+    lead_time_dias: int = Form(7.0),
+    dias_seguridad_base: int = Form(0),
+    factor_importancia_seguridad: float = Form(1.12),
+    ordenar_por: str = Form("Diferencia_vs_Alerta_Minima"),
+    excluir_sin_ventas: str = Form("true", description="String 'true' o 'false' para excluir productos sin ventas."),
+    filtro_categorias_json: Optional[str] = Form(None),
+    filtro_marcas_json: Optional[str] = Form(None)
 ):
     user_id = None
     
@@ -1645,6 +2061,13 @@ async def reporte_puntos_alerta_stock(
     else:
         # CASO 3: No hay identificador, denegamos el acceso
         raise HTTPException(status_code=401, detail="No se proporcionó autenticación ni ID de sesión.")
+
+    try:
+        excluir_bool = excluir_sin_ventas.lower() == 'true'
+        filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
+        filtro_marcas = json.loads(filtro_marcas_json) if filtro_marcas_json else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
 
 
     # Preparamos el diccionario de parámetros para la función de lógica
@@ -1669,7 +2092,11 @@ async def reporte_puntos_alerta_stock(
         # --- NUEVOS PARÁMETROS PARA EL PUNTO DE ALERTA ---
         "lead_time_dias": lead_time_dias,
         "dias_seguridad_base": dias_seguridad_base,
-        "factor_importancia_seguridad": 1.0
+        "factor_importancia_seguridad": factor_importancia_seguridad,
+        "ordenar_por": ordenar_por,
+        "excluir_sin_ventas": excluir_bool,
+        "filtro_categorias": filtro_categorias,
+        "filtro_marcas": filtro_marcas,
     }
     
     full_params_for_logging = dict(await request.form())
@@ -1717,7 +2144,12 @@ async def lista_basica_reposicion_historico(
     lead_time_dias: float = Form(7.0),
     dias_cobertura_ideal_base: int = Form(10),
     peso_ventas_historicas: float = Form(0.6),
-    pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+    # pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+    # --- NUEVO: Recibimos los scores de la estrategia desde el frontend ---
+    score_ventas: int = Form(...),
+    score_ingreso: int = Form(...),
+    score_margen: int = Form(...),
+    score_dias_venta: int = Form(...)
 ):
     user_id = None
     
@@ -1746,14 +2178,30 @@ async def lista_basica_reposicion_historico(
         # Parseamos los strings JSON para convertirlos en listas de Python
         categorias_list = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
         marcas_list = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
-        pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+        # pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
 
+    # pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
+    # 1. Sumamos los scores recibidos
+    total_scores = score_ventas + score_ingreso + score_margen + score_dias_venta
+
+    # 2. Calculamos los pesos prorrateados, manejando el caso de división por cero
+    if total_scores == 0:
+        # Si todos los scores son 0, asignamos un peso equitativo
+        pesos_calculados = {'ventas': 0.25, 'ingreso': 0.25, 'margen': 0.25, 'dias_venta': 0.25}
+    else:
+        pesos_calculados = {
+            'ventas': score_ventas / total_scores,
+            'ingreso': score_ingreso / total_scores,
+            'margen': score_margen / total_scores,
+            'dias_venta': score_dias_venta / total_scores
+        }
+
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
-        "dias_analisis_ventas_recientes": 30,
-        "dias_analisis_ventas_general": 180,
+        "dias_analisis_ventas_recientes": dias_analisis_ventas_recientes,
+        "dias_analisis_ventas_general": dias_analisis_ventas_general,
         "ordenar_por": ordenar_por,
         "incluir_solo_categorias": categorias_list,
         "incluir_solo_marcas": marcas_list,
@@ -1761,7 +2209,7 @@ async def lista_basica_reposicion_historico(
         "lead_time_dias": lead_time_dias,
         "dias_cobertura_ideal_base": dias_cobertura_ideal_base,
         "peso_ventas_historicas": peso_ventas_historicas,
-        "pesos_importancia": pesos_importancia,
+        "pesos_importancia": pesos_calculados,
     }
 
     full_params_for_logging = dict(await request.form())
@@ -1933,6 +2381,170 @@ async def upload_csvs(
     )
 
 
+# --- 4. CREA EL NUEVO ENDPOINT ---
+@app.post("/auditoria-margenes", summary="Genera el reporte de Auditoría de Márgenes", tags=["Reportes"])
+async def generar_auditoria_margenes(
+    # Inyectamos el request para el logging
+    request: Request, 
+    # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
+    ventas_file_id: str = Form(...),
+    inventario_file_id: str = Form(...),
+    incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
+
+    # --- Recibimos los nuevos parámetros del formulario ---
+    tipo_analisis_margen: str = Form("desviacion_negativa"),
+    umbral_desviacion_porcentaje: float = Form(10.0),
+    ordenar_por: str = Form("impacto_financiero")
+):
+    
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+
+    try:
+        filtro_categorias = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        filtro_marcas = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
+
+
+    processing_params = {
+        "tipo_analisis_margen": tipo_analisis_margen,
+        "umbral_desviacion_porcentaje": umbral_desviacion_porcentaje,
+        "filtro_categorias": filtro_categorias,
+        "filtro_marcas": filtro_marcas,
+        "ordenar_por": ordenar_por
+    }
+    
+    full_params_for_logging = dict(await request.form())
+    
+    return await _handle_report_generation(
+        full_params_for_logging=full_params_for_logging,
+        report_key="ReporteAuditoriaMargenes",
+        processing_function=auditar_margenes_de_productos_nuevo, # La nueva función de lógica
+        processing_params=processing_params,
+        output_filename="Auditoria_Margenes.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=X_Session_ID,
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id
+    )
+
+
+@app.post("/diagnostico-catalogo", summary="Genera el Diagnóstico de Catálogo", tags=["Reportes"])
+async def generar_diagnostico_catalogo(
+    request: Request,
+    # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
+    ventas_file_id: str = Form(...),
+    inventario_file_id: str = Form(...),
+    # --- Recibimos los nuevos parámetros del formulario ---
+    tipo_diagnostico_catalogo: str = Form(...),
+    filtro_stock: str = Form("todos"),
+    dias_inactividad: int = Form(365),
+    ordenar_por: str = Form("valor_stock_s"),
+    incluir_solo_categorias: Optional[str] = Form(None),
+    incluir_solo_marcas: Optional[str] = Form(None)
+):
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+
+    try:
+        filtro_categorias = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        filtro_marcas = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
+
+    processing_params = {
+        "tipo_diagnostico_catalogo": tipo_diagnostico_catalogo,
+        "filtro_stock": filtro_stock,
+        "dias_inactividad": dias_inactividad,
+        "filtro_categorias": filtro_categorias,
+        "filtro_marcas": filtro_marcas,
+        "ordenar_por": ordenar_por
+    }
+
+    full_params_for_logging = dict(await request.form())
+    
+    return await _handle_report_generation(
+        full_params_for_logging=full_params_for_logging,
+        report_key="ReporteDiagnosticoCatalogo",
+        processing_function=diagnosticar_catalogo, # La nueva función de lógica
+        processing_params=processing_params,
+        # ... (el resto de los argumentos para el manejador)
+        output_filename="Diagnostico_Catalogo.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=X_Session_ID,
+        ventas_file_id=ventas_file_id,
+        inventario_file_id=inventario_file_id
+    )
+
+
+@app.post("/auditoria-calidad-datos", summary="Genera la Auditoría de Calidad de Datos", tags=["Reportes"])
+async def generar_auditoria_calidad_datos(
+    request: Request,
+    # Definimos explícitamente los parámetros que la LÓGICA necesit
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: str = Header(..., alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+
+    inventario_file_id: str = Form(...), # Este reporte solo necesita el inventario
+    # --- Recibimos los nuevos parámetros del formulario ---
+    criterios_auditoria_json: str = Form(...),
+    incluir_solo_categorias: Optional[str] = Form(None),
+    incluir_solo_marcas: Optional[str] = Form(None),
+    ordenar_por: str = Form("valor_stock_s")
+):
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+
+    try:
+        criterios_auditoria = json.loads(criterios_auditoria_json)
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de criterios de auditoría inválido.")
+
+    try:
+        filtro_categorias = json.loads(incluir_solo_categorias) if incluir_solo_categorias else None
+        filtro_marcas = json.loads(incluir_solo_marcas) if incluir_solo_marcas else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
+
+    processing_params = {
+        "criterios_auditoria": criterios_auditoria,
+        "filtro_categorias": filtro_categorias,
+        "ordenar_por": ordenar_por,
+        "filtro_marcas": filtro_marcas
+    }
+    
+    full_params_for_logging = dict(await request.form())
+
+    return await _handle_report_generation(
+        full_params_for_logging=full_params_for_logging,
+        report_key="ReporteAuditoriaCalidadDatos",
+        processing_function=auditar_calidad_datos, # La nueva función de lógica
+        processing_params=processing_params,
+        inventario_file_id=inventario_file_id,
+        # Pasamos None para el archivo de ventas, ya que no se necesita
+        ventas_file_id=None, 
+        output_filename="Auditoria_Calidad_de_Datos.xlsx",
+        user_id=user_id,
+        workspace_id=workspace_id,
+        session_id=X_Session_ID,
+    )
+
+
 # ----------------------------------------------------------
 # ------------------ FUNCIONES AUXILIARES ------------------
 # ----------------------------------------------------------
@@ -1976,8 +2588,8 @@ async def _handle_report_generation(
     workspace_id: Optional[str],
     session_id: Optional[str],
     # IDs de los archivos a procesar
-    ventas_file_id: str,
-    inventario_file_id: str
+    ventas_file_id: Optional[str],
+    inventario_file_id: Optional[str]
 ):
     """
     Función central refactorizada que maneja la generación de CUALQUIER reporte
@@ -1991,7 +2603,7 @@ async def _handle_report_generation(
     report_cost = report_config['costo']
     is_pro_report = report_config['isPro']
 
-# Esta es la lógica clave. `entity_ref` apuntará al documento que contiene los créditos.
+    # Esta es la lógica clave. `entity_ref` apuntará al documento que contiene los créditos.
     if user_id:
         # CONTEXTO: Usuario Registrado
         print(f"Procesando para usuario registrado: {user_id}")
@@ -2023,15 +2635,63 @@ async def _handle_report_generation(
     # --- PASO 3: PROCESAMIENTO Y GENERACIÓN (DENTRO DE UN TRY/EXCEPT) ---
     # Si algo falla aquí, es un error de ejecución. Lo registraremos como "fallido" sin cobrar.
     try:
-         # La llamada a las funciones auxiliares ahora incluye el contexto completo
-        ventas_contents = descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id)
-        inventario_contents = descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id)
+        # --- INICIO DE LA NUEVA LÓGICA DE CARGA CONDICIONAL ---
+        print("Iniciando carga de datos condicional...")
         
-        df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
-        df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+        tasks = []
+        # Creamos una lista de tareas de descarga solo para los archivos que existen
+        if ventas_file_id:
+            tasks.append(descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id))
+        if inventario_file_id:
+            tasks.append(descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id))
+
+        # Ejecutamos las tareas que se añadieron
+        results = await asyncio.gather(*tasks)
+
+        # Asignamos los resultados de vuelta con cuidado
+        df_ventas = pd.DataFrame() # Default: DataFrame vacío
+        df_inventario = pd.DataFrame() # Default: DataFrame vacío
         
-        # La función ahora devuelve un diccionario
-        processing_result = processing_function(df_ventas, df_inventario, **processing_params)
+        result_index = 0
+        if ventas_file_id:
+            df_ventas = pd.read_csv(io.BytesIO(results[result_index]))
+            result_index += 1
+        if inventario_file_id:
+            df_inventario = pd.read_csv(io.BytesIO(results[result_index]))
+
+        print("✅ Datos cargados y convertidos a DataFrames exitosamente.")
+        # --- FIN DE LA NUEVA LÓGICA DE CARGA ---
+
+
+
+        # # --- INICIO DE LA NUEVA LÓGICA DE CARGA CENTRALIZADA ---
+        # print("Iniciando carga de datos centralizada...")
+        
+        # # 1. Descargamos ambos archivos en paralelo para máxima eficiencia
+        # ventas_contents_task = descargar_contenido_de_storage(user_id, workspace_id, session_id, ventas_file_id)
+        # inventario_contents_task = descargar_contenido_de_storage(user_id, workspace_id, session_id, inventario_file_id)
+        
+        # # Esperamos a que ambas descargas terminen
+        # ventas_contents, inventario_contents = await asyncio.gather(
+        #     ventas_contents_task,
+        #     inventario_contents_task
+        # )
+
+        # # 2. Creamos los DataFrames una sola vez
+        # # Aquí puedes poner tu lógica robusta para leer CSVs con diferentes formatos
+        # df_ventas = pd.read_csv(io.BytesIO(ventas_contents), sep=',')
+        # df_inventario = pd.read_csv(io.BytesIO(inventario_contents), sep=',')
+        
+        # print("✅ Datos cargados y convertidos a DataFrames exitosamente.")
+        # # --- FIN DE LA NUEVA LÓGICA DE CARGA ---
+
+
+        # Ahora, pasamos los DataFrames ya cargados a la función de lógica
+        processing_result = processing_function(
+            df_ventas=df_ventas.copy(), 
+            df_inventario=df_inventario.copy(), 
+            **processing_params
+        )
         
         # Extraemos las partes del resultado
         resultado_df = processing_result.get("data")

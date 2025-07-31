@@ -6,6 +6,7 @@ import numpy as np
 from typing import Optional, Dict, Any, Tuple, List # Any para pd.ExcelWriter
 from datetime import datetime # Para pd.Timestamp.now()
 from dateutil.relativedelta import relativedelta
+from audit_knowledge_base import AUDIT_KNOWLEDGE_BASE
 
 # Narrative Filters
 INCLUDE_CODES = [
@@ -177,7 +178,7 @@ def process_csv_abc(
             raise ValueError(f"Columna requerida '{col}' no encontrada en el archivo de ventas.")
 
     # Verificar columnas requeridas en df_inventario
-    required_inventory_cols = ['SKU / Código de producto', 'Precio de compra actual (S/.)', 'Categoría', 'Subcategoría', 'Marca']
+    required_inventory_cols = ['SKU / Código de producto', 'Precio de compra actual (S/.)', 'Categoría', 'Subcategoría', 'Marca', 'Cantidad en stock actual']
     for col in required_inventory_cols:
         if col not in df_inventario.columns:
             raise ValueError(f"Columna requerida '{col}' no encontrada en el archivo de inventario.")
@@ -238,7 +239,8 @@ def process_csv_abc(
         'Margen total': 'sum',
         'Categoría': 'first', # Tomar la primera categoría (debería ser única por SKU)
         'Subcategoría': 'first', # Tomar la primera subcategoría
-        'Marca': 'first'
+        'Marca': 'first',
+        'Cantidad en stock actual': 'first'
     }
     ventas_agrupadas = df_merged.groupby(
         ['SKU / Código de producto', 'Nombre del producto'], as_index=False
@@ -322,6 +324,7 @@ def process_csv_abc(
         'Categoría',
         'Subcategoría',
         'Marca',
+        'Cantidad en stock actual',
         columna_criterio_display_name, # La métrica principal del ABC
     ]
     # Añadir otras métricas relevantes para contexto, si no son la principal
@@ -367,7 +370,7 @@ def process_csv_abc(
     if filtro_marcas and "Marca" in resultado.columns:
         resultado = resultado[resultado["Marca"].isin(filtro_marcas)]
     
-    print(f"filtro_categorias {filtro_categorias}")
+    # print(f"filtro_categorias {filtro_categorias}")
 
     # --- PASO 8: CÁLCULO DE KPIs Y RESUMEN ---
     
@@ -817,15 +820,17 @@ def process_csv_analisis_estrategico_rotacion(
         "Rotación Promedio (Ejemplo)": "90 días" # Placeholder para un futuro cálculo
     }
 
+    # print(f"df_resultado.columns.tolist() {df_resultado.columns.tolist()}")
+
     # --- 9. Selección y Renombrado de Columnas Finales ---
     columnas_salida_optimas = [
         # Identificación
         sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock,
         # Situación Actual y Financiera
-        stock_actual_col_stock, precio_compra_actual_col_stock, 'Inversion_Stock_Actual',
+        stock_actual_col_stock, precio_compra_actual_col_stock, "Precio de venta actual (S/.)", 'Inversion_Stock_Actual',
         # Diagnóstico y Rendimiento
         'Ventas_Total_Reciente', 'Dias_Cobertura_Stock_Actual', 'Alerta_Stock',
-        'Importancia_Dinamica', 'Clasificacion'
+        'Importancia_Dinamica', 'Clasificacion', 'PDA_Final'
     ]
     
     df_final = df_resultado[[col for col in columnas_salida_optimas if col in df_resultado.columns]].copy()
@@ -838,6 +843,7 @@ def process_csv_analisis_estrategico_rotacion(
     column_rename_map = {
         stock_actual_col_stock: 'Stock Actual (Unds)',
         precio_compra_actual_col_stock: 'Precio Compra (S/.)',
+        'Precio de venta actual (S/.)': 'Precio Venta (S/.)',
         'Inversion_Stock_Actual': 'Inversión Stock Actual (S/.)',
         'Ventas_Total_Reciente': f'Ventas Recientes ({final_dias_recientes}d)',
         'Dias_Cobertura_Stock_Actual': 'Cobertura Actual (Días)',
@@ -2297,7 +2303,7 @@ def procesar_stock_muerto(
     # Calcular Días para Agotar Stock (DPS)
     dias_periodo_analisis = meses_analisis_calc * 30.44
     ventas_diarias_promedio = df_resultado[col_ventas_recientes_nombre] / dias_periodo_analisis if dias_periodo_analisis > 0 else 0
-    
+    df_resultado['ventas_diarias_promedio'] = ventas_diarias_promedio
     df_resultado['dias_para_agotar_stock'] = np.where(
         ventas_diarias_promedio > 0,
         df_resultado['stock_actual_unds'] / ventas_diarias_promedio,
@@ -2351,13 +2357,13 @@ def procesar_stock_muerto(
     # --- PASO 3: Filtrado Principal (El Corazón del Reporte) ---
     valor_total_inventario_antes_de_filtros = df_resultado['valor_stock_s'].sum()
 
-    print(f"Filtrando por productos con más de {dias_sin_venta_muerto} días sin venta.")
+    # print(f"Filtrando por productos con más de {dias_sin_venta_muerto} días sin venta.")
     # df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
     df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
 
     # Aplicamos el filtro de valor si el usuario lo especificó
     if umbral_valor_stock and umbral_valor_stock > 0:
-        print(f"Filtrando adicionalmente por valor de stock >= S/ {umbral_valor_stock}")
+        # print(f"Filtrando adicionalmente por valor de stock >= S/ {umbral_valor_stock}")
         df_resultado = df_resultado[df_resultado['valor_stock_s'] >= umbral_valor_stock]
 
     if incluir_solo_categorias and "categoria" in df_resultado.columns:
@@ -2369,7 +2375,7 @@ def procesar_stock_muerto(
         df_resultado = df_resultado[
             df_resultado["categoria"].str.strip().str.lower().isin(categorias_normalizadas)
         ].copy()
-    print(f"DEBUG: 3. Después de filtrar por categorías, quedan {len(df_resultado)} filas.")
+    # print(f"DEBUG: 3. Después de filtrar por categorías, quedan {len(df_resultado)} filas.")
 
     if incluir_solo_marcas and "marca" in df_resultado.columns:
         # Normalizamos la lista de marcas
@@ -2379,7 +2385,7 @@ def procesar_stock_muerto(
         df_resultado = df_resultado[
             df_resultado["marca"].str.strip().str.lower().isin(marcas_normalizadas)
         ].copy()
-    print(f"DEBUG: 4. Después de filtrar por marcas, quedan {len(df_resultado)} filas.")
+    # print(f"DEBUG: 4. Después de filtrar por marcas, quedan {len(df_resultado)} filas.")
     
 
     # --- PASO 4: CÁLCULO DE KPIs Y RESUMEN (Ahora se hace sobre los datos ya filtrados) ---
@@ -2405,7 +2411,7 @@ def procesar_stock_muerto(
 
 
     # --- PASO 5: ORDENAMIENTO DINÁMICO (Ahora se aplica sobre el resultado filtrado) ---
-    print(f"Ordenando resultados por: '{ordenar_por}'")
+    # print(f"Ordenando resultados por: '{ordenar_por}'")
     # Definimos la dirección del ordenamiento para cada criterio
     ascending_map = {
         'valor_stock_s': False,       # Mayor valor primero
@@ -2453,7 +2459,8 @@ def procesar_stock_muerto(
         'ventas_totales_unds', col_ventas_recientes_final,
         'ultima_venta', 'dias_sin_venta',
         col_dps_nombre_final,
-        'clasificacion', col_prioridad_nombre_final
+        'clasificacion', col_prioridad_nombre_final,
+        'ventas_diarias_promedio'
     ]
     # # Añadir columnas opcionales si existen en el dataframe de inventario
     # for col_opcional in ['Marca']:
@@ -2482,7 +2489,7 @@ def procesar_stock_muerto(
     df_final['Días sin venta'] = df_final['Días sin venta'].astype('Int64')
     
     # --- PASO 7: LIMPIEZA PARA JSON (El último paso antes de devolver) ---
-    print("Limpiando DataFrame de stock muerto para JSON...")
+    # print("Limpiando DataFrame de stock muerto para JSON...")
     if not df_final.empty:
         df_final = df_final.replace([np.inf, -np.inf], np.nan).where(pd.notna(df_final), None)
     
@@ -3281,6 +3288,78 @@ def auditar_calidad_datos(
         "summary": { "insight": insight_text, "kpis": kpis }
     }
 
+
+
+def generar_auditoria_inventario(
+    df_ventas: pd.DataFrame,
+    df_inventario: pd.DataFrame,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Función orquestadora que ejecuta una auditoría de 360°, reutilizando la
+    inteligencia de otros reportes para generar un plan de acción priorizado.
+    """
+    print("Iniciando Auditoría de Eficiencia de Inventario de 360 Grados...")
+    tasks = []
+
+    # --- FASE 1: La "Mesa de Preparación" - Enriquecimiento de Datos ---
+    print("Fase 1: Ejecutando análisis fundamentales...")
+    
+    # 1.1 Ejecutamos el Análisis de Rotación para obtener el DataFrame base
+    resultado_rotacion = process_csv_analisis_estrategico_rotacion(df_ventas.copy(), df_inventario.copy())
+    df_maestro = resultado_rotacion.get("data")
+    
+    if df_maestro is None or df_maestro.empty:
+        return {"puntaje_salud": 0, "kpis_dolor": {}, "plan_de_accion": []}
+
+    # 1.2 Ejecutamos el Plan de Compra para obtener métricas de reposición
+    resultado_reposicion = process_csv_lista_basica_reposicion_historico(df_ventas.copy(), df_inventario.copy())
+    df_reposicion = resultado_reposicion.get("data")
+    if df_reposicion is not None and not df_reposicion.empty:
+        cols_a_unir = ['SKU / Código de producto', 'Sugerencia_Pedido_Minimo_Unds', 'Accion_Requerida']
+        df_maestro = pd.merge(df_maestro, df_reposicion[[col for col in cols_a_unir if col in df_reposicion.columns]], on='SKU / Código de producto', how='left')
+
+    # 1.3 Ejecutamos la Auditoría de Márgenes para obtener la rentabilidad real
+    resultado_margenes = auditar_margenes_de_productos(df_ventas.copy(), df_inventario.copy())
+    df_margenes = resultado_margenes.get("data")
+    if df_margenes is not None and not df_margenes.empty:
+        cols_a_unir = ['SKU / Código de producto', 'Margen Real (S/.)']
+        df_maestro = pd.merge(df_maestro, df_margenes[[col for col in cols_a_unir if col in df_margenes.columns]], on='SKU / Código de producto', how='left')
+
+    # --- FASE 2: Detección de Alertas ---
+    print("Fase 2: Detectando alertas y oportunidades...")
+
+    # Alerta 1: Quiebre de Stock en "Vacas Lecheras"
+    alerta1_df = df_maestro[(df_maestro['Clasificación'].str.startswith('Clase A')) & (df_maestro['Alerta de Stock'].isin(['Agotado', 'Stock Bajo']))]
+    if not alerta1_df.empty:
+        venta_perdida_estimada = (alerta1_df['PDA_Final'] * alerta1_df['Precio Venta (S/.)'] * 30).sum()
+        tasks.append({ "id": "task_quiebre_stock_a", "type": "error", "title": f"Tienes {len(alerta1_df)} productos 'Clase A' en riesgo de quiebre de stock.", "impact": f"Riesgo de venta perdida: S/ {venta_perdida_estimada:,.2f} este mes.", "solution_button_text": "Ver y Reponer Urgentes", "target_report": "ReportePlanDeCompra", "knowledge": AUDIT_KNOWLEDGE_BASE.get("quiebre_stock_clase_a"), "preview_data": alerta1_df.head(5).to_dict(orient='records') })
+
+    # Alerta 2: Margen Negativo en Productos de Alta Rotación
+    margen_producto = df_maestro['Precio Compra (S/.)'] - df_maestro['Precio Venta (S/.)']
+    alerta2_df = df_maestro[(df_maestro['Clasificación'].isin(['Clase A (Crítico)', 'Clase B (Importante)'])) & (margen_producto < 0)]
+    if not alerta2_df.empty:
+        perdida_realizada = abs((margen_producto * alerta2_df['Ventas Recientes (30d)']).sum())
+        tasks.append({ "id": "task_margen_negativo_rotacion", "type": "error", "title": f"Tienes {len(alerta2_df)} productos importantes con margen de venta negativo.", "impact": f"Pérdida generada: S/ {perdida_realizada:,.2f} en el último mes.", "solution_button_text": "Auditar Rentabilidad", "target_report": "ReporteAuditoriaMargenes", "knowledge": AUDIT_KNOWLEDGE_BASE.get("margen_negativo_alta_rotacion"), "preview_data": alerta2_df.head(5).to_dict(orient='records') })
+
+    # ... (Aquí iría la lógica para las otras 5 alertas que diseñamos)
+
+    # --- FASE 3: Cálculo de KPIs y Puntaje ---
+    print("Fase 3: Calculando resumen ejecutivo...")
+    puntaje_salud = 85 # Placeholder
+    kpis_dolor = {
+        "Capital Inmovilizado": "S/ 16,300", # Placeholder
+        "Venta Perdida Potencial": f"S/ {venta_perdida_estimada:,.2f}" if 'venta_perdida_estimada' in locals() else "S/ 0.00",
+        "Pérdida por Margen Negativo": f"S/ {perdida_realizada:,.2f}" if 'perdida_realizada' in locals() else "S/ 0.00"
+    }
+
+    # --- FASE 4: Ensamblaje Final ---
+    print("Fase 4: Ensamblando respuesta final.")
+    return {
+        "puntaje_salud": puntaje_salud,
+        "kpis_dolor": kpis_dolor,
+        "plan_de_accion": tasks
+    }
 
 
 

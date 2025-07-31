@@ -32,6 +32,7 @@ import { RechargeCreditsModal } from './RechargeCreditsModal';
 import { BecomeStrategistModal } from './BecomeStrategistModal';
 import { ReportButton } from './ReportButton'; // <-- Importamos el nuevo botón
 import { ReportInfoModal } from './ReportInfoModal'; // <-- Importamos el nuevo modal
+import { AuditDashboard } from './AuditDashboard'; // <-- Importamos el nuevo componente
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
@@ -195,6 +196,11 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
   const [fileMetadata, setFileMetadata] = useState({ ventas: null, inventario: null });
 
+  // -- NUEVOS ESTADOS PARA AUDITORIA COMPONENT --
+  const [view, setView] = useState('audit'); // 'audit' o 'reports'
+  const [auditResult, setAuditResult] = useState(null);
+  const [isLoadingAudit, setIsLoadingAudit] = useState(true);
+
   // --- ESTADOS SIMPLIFICADOS ---
   // El estado del modal de reporte ahora es mucho más simple
   const [selectedReport, setSelectedReport] = useState(null); 
@@ -291,7 +297,42 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   useEffect(() => {
     setFilesReady(!!uploadedFileIds.ventas && !!uploadedFileIds.inventario);
+
+    if (filesReady) {
+      const runInitialAudit = async () => {
+        setIsLoadingAudit(true);
+        const formData = new FormData();
+        formData.append("ventas_file_id", uploadedFileIds.ventas);
+        formData.append("inventario_file_id", uploadedFileIds.inventario);
+        
+        if (context.type === 'user') {
+          formData.append("workspace_id", context.workspace.id);
+        }
+
+        try {
+          const response = await api.post('/auditoria-inicial', formData, {
+            headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
+          });
+          setAuditResult(response.data);
+        } catch (error) {
+          console.error("Error al ejecutar la auditoría inicial:", error);
+          alert("No se pudo completar la auditoría inicial.");
+        } finally {
+          setIsLoadingAudit(false);
+        }
+      };
+      runInitialAudit();
+    }
+
   }, [uploadedFileIds]);
+
+  const handleSolveClick = (reportKey) => {
+    // Esta función se llama desde una AuditTaskCard
+    const reportConfig = Object.values(reportData).flat().find(r => r.key === reportKey);
+    if (reportConfig) {
+      setSelectedReport(reportConfig);
+    }
+  };
 
   // Función para limpiar el estado al cambiar de workspace
   const resetWorkspaceState = () => {
@@ -541,27 +582,50 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
               </div>
             )}
 
-            <div className="w-full mt-8 space-y-8 px-4 mb-10">
-              {Object.entries(reportData).map(([categoria, reportes]) => (
-                <div key={categoria} className="mb-6">
-                  <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
-                    {categoria}
-                  </h3>
-                  <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                    {reportes.map((reportItem) => (
-                      <ReportButton
-                        key={reportItem.key}
-                        reportItem={reportItem}
-                        context={context} // <-- Pasa el contexto del usuario
-                        onExecute={handleReportView}
-                        onInfoClick={handleInfoClick}
-                        // onInfoClick={setInfoModalReport}
-                        onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
-                      />
-                    ))}
-                  </div>
-                </div>
-              ))}
+
+            <div className="mt-8">
+              {/* --- NAVEGACIÓN SIN PESTAÑAS (AUDITORÍA PRIMERO) --- */}
+              
+              {isLoadingAudit ? (
+                <LoadingScreen message="Realizando auditoría de tu negocio..." /> 
+              ) : (
+                <AuditDashboard auditResult={auditResult} onSolveClick={handleSolveClick} />
+              )}
+
+              {/* Invitación a explorar más */}
+              <div className="text-center mt-12">
+                  <h3 className="text-xl font-semibold text-gray-300">¿Necesitas análisis más profundos o personalizados?</h3>
+                  <button 
+                      // onClick={() => document.getElementById('tools-section')?.scrollIntoView({ behavior: 'smooth', block: 'start'})}
+                      className="mt-4 text-purple-400 font-bold"
+                  >
+                      ↓ Explorar todas las Herramientas de Análisis
+                  </button>
+              </div>
+
+              <div id="tools-section" className="w-full space-y-8 pt-12 px-4">
+                {Object.entries(reportData).map(([categoria, reportes]) => (
+                    <div key={categoria} className="mb-6">
+                      <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
+                        {categoria}
+                      </h3>
+                      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {reportes.map((reportItem) => (
+                          <ReportButton
+                            key={reportItem.key}
+                            reportItem={reportItem}
+                            context={context} // <-- Pasa el contexto del usuario
+                            onExecute={handleReportView}
+                            onInfoClick={handleInfoClick}
+                            // onInfoClick={setInfoModalReport}
+                            onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+              </div>
+
             </div>
           </>
         ) : (

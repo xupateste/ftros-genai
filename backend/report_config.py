@@ -3,6 +3,15 @@
 # ===================================================================================
 REPORTS_CONFIG = {
   # "🧠 Análisis Estratégico": [
+  # "ReporteAuditoriaInventario": {
+  #     "label": 'Auditoría de Eficiencia de Inventario',
+  #     "endpoint": '/auditoria-inventario',
+  #     "isPro": False,
+  #     "costo": 0, # La auditoría inicial es gratuita
+  #     "categoria": "Auditoría",
+  #     "basic_parameters": [], # No tiene parámetros
+  #     "advanced_parameters": []
+  # },
   "ReporteAuditoriaMargenes": {
       "label": '💸 Auditoría de Desviación de Margen',
       "endpoint": '/auditoria-margenes',
