@@ -3371,8 +3371,8 @@ def generar_auditoria_inventario(
     # --- FASE 2: Detección de Alertas ---
     print("Fase 2: Detectando alertas y oportunidades...")
 
-    print(f"df_maestr.colums {df_maestro.columns.tolist()}")
-    print(f"df_maestro {df_maestro}")
+    # print(f"df_maestr.colums {df_maestro.columns.tolist()}")
+    # print(f"df_maestro {df_maestro}")
 
     # Alerta 1: Quiebre de Stock en "Vacas Lecheras"
     alerta1_df = df_maestro[(df_maestro['Clasificación'].isin(['Clase A (Crítico)'])) & (df_maestro['Alerta de Stock'].isin(['Agotado', 'Stock Bajo']))]

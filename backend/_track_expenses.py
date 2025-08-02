@@ -6,6 +6,7 @@ import numpy as np
 from typing import Optional, Dict, Any, Tuple, List # Any para pd.ExcelWriter
 from datetime import datetime # Para pd.Timestamp.now()
 from dateutil.relativedelta import relativedelta
+from audit_knowledge_base import AUDIT_KNOWLEDGE_BASE
 
 # Narrative Filters
 INCLUDE_CODES = [
@@ -819,15 +820,17 @@ def process_csv_analisis_estrategico_rotacion(
         "Rotación Promedio (Ejemplo)": "90 días" # Placeholder para un futuro cálculo
     }
 
+    # print(f"df_resultado.columns.tolist() {df_resultado.columns.tolist()}")
+
     # --- 9. Selección y Renombrado de Columnas Finales ---
     columnas_salida_optimas = [
         # Identificación
         sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock,
         # Situación Actual y Financiera
-        stock_actual_col_stock, precio_compra_actual_col_stock, 'Inversion_Stock_Actual',
+        stock_actual_col_stock, precio_compra_actual_col_stock, "Precio de venta actual (S/.)", 'Inversion_Stock_Actual',
         # Diagnóstico y Rendimiento
         'Ventas_Total_Reciente', 'Dias_Cobertura_Stock_Actual', 'Alerta_Stock',
-        'Importancia_Dinamica', 'Clasificacion'
+        'Importancia_Dinamica', 'Clasificacion', 'PDA_Final'
     ]
     
     df_final = df_resultado[[col for col in columnas_salida_optimas if col in df_resultado.columns]].copy()
@@ -840,6 +843,7 @@ def process_csv_analisis_estrategico_rotacion(
     column_rename_map = {
         stock_actual_col_stock: 'Stock Actual (Unds)',
         precio_compra_actual_col_stock: 'Precio Compra (S/.)',
+        'Precio de venta actual (S/.)': 'Precio Venta (S/.)',
         'Inversion_Stock_Actual': 'Inversión Stock Actual (S/.)',
         'Ventas_Total_Reciente': f'Ventas Recientes ({final_dias_recientes}d)',
         'Dias_Cobertura_Stock_Actual': 'Cobertura Actual (Días)',
@@ -2483,6 +2487,7 @@ def procesar_stock_muerto(
 
     df_final['Última venta'] = pd.to_datetime(df_final['Última venta'], errors='coerce').dt.strftime('%Y-%m-%d').fillna('Nunca vendido')
     df_final['Días sin venta'] = df_final['Días sin venta'].astype('Int64')
+    df_final['SKU / Código de producto'] = df_final['SKU / Código de producto'].astype(str).str.strip()
     
     # --- PASO 7: LIMPIEZA PARA JSON (El último paso antes de devolver) ---
     # print("Limpiando DataFrame de stock muerto para JSON...")
@@ -3284,6 +3289,165 @@ def auditar_calidad_datos(
         "summary": { "insight": insight_text, "kpis": kpis }
     }
 
+def _clean_preview_data(df: pd.DataFrame) -> list:
+    """Función auxiliar para limpiar un DataFrame para la vista previa en JSON."""
+    if df.empty:
+        return []
+    # Reemplaza infinitos con NaN, luego NaN con None, y convierte a dict
+    df_clean = df.replace([np.inf, -np.inf], np.nan)
+    df_clean = df_clean.infer_objects(copy=False)
+    return df_clean.where(pd.notna(df_clean), None).to_dict(orient='records')
+
+
+def generar_auditoria_inventario(
+    df_ventas: pd.DataFrame,
+    df_inventario: pd.DataFrame,
+    **kwargs
+) -> Dict[str, Any]:
+    """
+    Función orquestadora que ejecuta una auditoría de 360°, reutilizando la
+    inteligencia de otros reportes para generar un plan de acción priorizado.
+    """
+    # --- INICIO DE LA SOLUCIÓN: ESTANDARIZACIÓN DE TIPOS ---
+    
+    # 1. Definimos los nombres de las columnas clave
+    SKU_COL = 'SKU / Código de producto'
+
+    # 2. Hacemos una copia para trabajar de forma segura
+    df_ventas_proc = df_ventas.copy()
+    df_inventario_proc = df_inventario.copy()
+
+    # 3. Forzamos la columna SKU a ser de tipo string y sin espacios en AMBOS DataFrames.
+    # Esta es la política de consistencia que evita errores de merge.
+    if SKU_COL in df_ventas_proc.columns:
+        df_ventas_proc[SKU_COL] = df_ventas_proc[SKU_COL].astype(str).str.strip()
+    if SKU_COL in df_inventario_proc.columns:
+        df_inventario_proc[SKU_COL] = df_inventario_proc[SKU_COL].astype(str).str.strip()
+
+    # --- FIN DE LA SOLUCIÓN ---
+
+    print("Iniciando Auditoría de Eficiencia de Inventario de 360 Grados...")
+    tasks = []
+
+    # --- FASE 1: La "Mesa de Preparación" - Enriquecimiento de Datos ---
+    print("Fase 1: Ejecutando análisis fundamentales...")
+    
+    # 1.1 Ejecutamos el Análisis de Rotación para obtener el DataFrame base
+    resultado_rotacion = process_csv_analisis_estrategico_rotacion(df_ventas.copy(), df_inventario.copy())
+    df_maestro = resultado_rotacion.get("data")
+    
+    if df_maestro is None or df_maestro.empty:
+        return {"puntaje_salud": 0, "kpis_dolor": {}, "plan_de_accion": []}
+
+    # 1.2 Ejecutamos el Plan de Compra para obtener métricas de reposición
+    resultado_reposicion = process_csv_lista_basica_reposicion_historico(df_ventas.copy(), df_inventario.copy())
+    df_reposicion = resultado_reposicion.get("data")
+    if df_reposicion is not None and not df_reposicion.empty:
+        cols_a_unir = [SKU_COL, 'Pedido Mínimo Sugerido (Unds)', '¿Pedir Ahora?', 'Ventas Periodo General (180d) (Unds)', 'Punto de Alerta Mínimo (Unds)']
+        df_maestro = pd.merge(df_maestro, df_reposicion[[col for col in cols_a_unir if col in df_reposicion.columns]], on=SKU_COL, how='left')
+
+    # 1.3 Ejecutamos la Auditoría de Márgenes para obtener la rentabilidad real
+    resultado_margenes = auditar_margenes_de_productos_nuevo(df_ventas.copy(), df_inventario.copy())
+    df_margenes = resultado_margenes.get("data")
+    if df_margenes is not None and not df_margenes.empty:
+        cols_a_unir = [SKU_COL, 'Margen Real (S/.)']
+        df_maestro = pd.merge(df_maestro, df_margenes[[col for col in cols_a_unir if col in df_margenes.columns]], on=SKU_COL, how='left')
+        df_maestro['Margen Real (S/.)'].fillna(0, inplace=True)
+    else:
+        # Si el reporte de márgenes no devuelve nada, creamos la columna con ceros
+        df_maestro['Margen Real (S/.)'] = 0
+
+    # 1.4. Ejecutamos el Análisis de Salud del Stock
+    # La función `procesar_stock_muerto` devuelve un diccionario.
+    resultado_salud = procesar_stock_muerto(df_ventas.copy(), df_inventario.copy())
+    # --- CAMBIO CLAVE: Extraemos el DataFrame de la clave "data" ---
+    df_salud = resultado_salud.get("data")
+    if df_salud is not None and not df_salud.empty:
+        cols_a_unir = [SKU_COL, 'Clasificación Diagnóstica']
+        df_maestro = pd.merge(df_maestro, df_salud[[col for col in cols_a_unir if col in df_salud.columns]], on=SKU_COL, how='left')
+
+
+
+    # --- FASE 2: Detección de Alertas ---
+    print("Fase 2: Detectando alertas y oportunidades...")
+
+    # print(f"df_maestr.colums {df_maestro.columns.tolist()}")
+    # print(f"df_maestro {df_maestro}")
+
+    # Alerta 1: Quiebre de Stock en "Vacas Lecheras"
+    alerta1_df = df_maestro[(df_maestro['Clasificación'].isin(['Clase A (Crítico)'])) & (df_maestro['Alerta de Stock'].isin(['Agotado', 'Stock Bajo']))]
+    print(f"alerta1_df {alerta1_df}")
+    if not alerta1_df.empty:
+        venta_perdida_estimada = (alerta1_df['PDA_Final'] * alerta1_df['Precio Venta (S/.)'] * 15).sum()
+        tasks.append({ "id": "task_quiebre_stock_a", "type": "error", "title": f"Tienes {len(alerta1_df)} productos 'Clase A' en riesgo de quiebre de stock.", "impact": f"Riesgo de venta perdida: S/ {venta_perdida_estimada:,.2f} este mes.", "solution_button_text": "Ver y Reponer Urgentes", "target_report": "ReporteListaBasicaReposicionHistorica", "knowledge": AUDIT_KNOWLEDGE_BASE.get("quiebre_stock_clase_a"), "preview_data": _clean_preview_data(alerta1_df.head(3)) })
+
+    # Alerta 2: Margen Negativo en Productos de Alta Rotación
+    # margen_producto = df_maestro['Precio Compra (S/.)'] - df_maestro['Precio Venta (S/.)']
+    # alerta2_df = df_maestro[(df_maestro['Clasificación'].isin(['Clase A (Crítico)', 'Clase B (Importante)'])) & (margen_producto < 0)]
+    # if not alerta2_df.empty:
+    #     perdida_realizada = abs((margen_producto * alerta2_df['Ventas Recientes (30d)']).sum())
+    #     tasks.append({ "id": "task_margen_negativo_rotacion", "type": "error", "title": f"Tienes {len(alerta2_df)} productos importantes con margen de venta negativo.", "impact": f"Pérdida generada: S/ {perdida_realizada:,.2f} en el último mes.", "solution_button_text": "Auditar Rentabilidad", "target_report": "ReporteAuditoriaMargenes", "knowledge": AUDIT_KNOWLEDGE_BASE.get("margen_negativo_alta_rotacion"), "preview_data": alerta2_df.head(3).to_dict(orient='records') })
+    alerta2_df = df_maestro[
+        (df_maestro['Clasificación'].isin(['Clase A (Crítico)', 'Clase B (Importante)'])) & 
+        (df_maestro['Margen Real (S/.)'] <= 0)
+    ].copy()
+    if not alerta2_df.empty:
+        # Calculamos el impacto: la pérdida total generada por estos productos en el período reciente.
+        # Usamos abs() para mostrar la pérdida como un número positivo.
+        perdida_realizada = abs((alerta2_df['Margen Real (S/.)'] * alerta2_df['Ventas Recientes (30d)']).sum())
+        tasks.append({ "id": "task_margen_negativo_rotacion", "type": "error", "title": f"Tienes {len(alerta2_df)} productos importantes con margen de venta negativo.", "impact": f"Pérdida generada: S/ {perdida_realizada:,.2f} en el último mes.", "solution_button_text": "Auditar Rentabilidad", "target_report": "ReporteAuditoriaMargenes", "knowledge": AUDIT_KNOWLEDGE_BASE.get("margen_negativo_alta_rotacion"), "preview_data": alerta2_df.head(3).to_dict(orient='records') })
+      
+
+    # Alerta 3: Stock Muerto de Alto Valor
+    alerta3_df = df_maestro[(df_maestro['Clasificación Diagnóstica'] == 'Stock Muerto') & (df_maestro['Inversión Stock Actual (S/.)'] > 300)]
+    if not alerta3_df.empty:
+        capital_inmovilizado = alerta3_df['Inversión Stock Actual (S/.)'].sum()
+        tasks.append({ "id": "task_stock_muerto_valor", "type": "warning", "title": f"Tienes {len(alerta3_df)} productos de stock muerto con un valor significativo.", "impact": f"Capital inmovilizado: S/ {capital_inmovilizado:,.2f}.", "solution_button_text": "Ver y Crear Plan de Liquidación", "target_report": "ReporteDiagnosticoStockMuerto", "knowledge": AUDIT_KNOWLEDGE_BASE.get("stock_muerto_alto_valor"), "preview_data": _clean_preview_data(alerta3_df.head(3)) })
+        
+    # Alerta 4: Exceso de Stock en Productos Clase A o B
+    alerta4_df = df_maestro[(df_maestro['Clasificación'].isin(['Clase A (Crítico)', 'Clase B (Importante)'])) & (df_maestro['Alerta de Stock'] == 'Sobre-stock')]
+    if not alerta4_df.empty:
+        capital_excedente = ( (alerta4_df['Stock Actual (Unds)'] - alerta4_df['Punto de Alerta Mínimo (Unds)']) * alerta4_df['Precio Compra (S/.)'] ).sum()
+        tasks.append({ "id": "task_exceso_stock_importantes", "type": "warning", "title": f"Tienes {len(alerta4_df)} productos importantes con exceso de stock.", "impact": f"Capital excedente inmovilizado: S/ {capital_excedente:,.2f}.", "solution_button_text": "Analizar Rotación y Cobertura", "target_report": "ReporteAnalisisEstrategicoRotacion", "knowledge": AUDIT_KNOWLEDGE_BASE.get("exceso_stock_clase_ab"), "preview_data": _clean_preview_data(alerta4_df.head(3)) })
+    
+    # Alerta 5: Potenciales "Estrellas" Emergentes
+    alerta5_df = df_maestro[df_maestro['Clasificación'] == 'Clase B (Importante)'].copy()
+    if not alerta5_df.empty and 'Ventas Recientes (30d)' in alerta5_df.columns and 'Ventas Periodo General (180d) (Unds)' in alerta5_df.columns:
+        alerta5_df['tendencia'] = alerta5_df['Ventas Recientes (30d)'] / 30 > alerta5_df['Ventas Periodo General (180d) (Unds)'] / 180
+        estrellas_emergentes = alerta5_df[alerta5_df['tendencia'] == True]
+        if not estrellas_emergentes.empty:
+            tasks.append({ "id": "task_estrellas_emergentes", "type": "opportunity", "title": f"Se han detectado {len(estrellas_emergentes)} productos 'Clase B' con ventas en aceleración.", "impact": "Potencial de convertirse en tus nuevas 'vacas lecheras'.", "solution_button_text": "Analizar Productos de Alto Potencial", "target_report": "ReporteAnalisisEstrategicoRotacion", "knowledge": AUDIT_KNOWLEDGE_BASE.get("oportunidad_clase_b"), "preview_data": _clean_preview_data(estrellas_emergentes.head(3)) })
+
+    # Alerta 6: Inversión Ineficiente en Productos Clase C
+    alerta6_df = df_maestro[(df_maestro['¿Pedir Ahora?'].str.contains('Sí', na=False)) & (df_maestro['Clasificación'] == 'Clase C (Regular)')]
+    if not alerta6_df.empty:
+        inversion_ineficiente = (alerta6_df['Pedido Mínimo Sugerido (Unds)'] * alerta6_df['Precio Compra (S/.)']).sum()
+        tasks.append({ "id": "task_inversion_ineficiente", "type": "opportunity", "title": f"Se sugiere reponer {len(alerta6_df)} productos de 'Clase C' (baja importancia).", "impact": f"Inversión de baja prioridad sugerida: S/ {inversion_ineficiente:,.2f}.", "solution_button_text": "Optimizar Plan de Compra", "target_report": "ReportePlanDeCompra", "knowledge": AUDIT_KNOWLEDGE_BASE.get("inversion_ineficiente_clase_c"), "preview_data": _clean_preview_data(alerta6_df.head(3)) })
+
+    # Alerta 7: Inconsistencias de Datos Críticas
+    alerta7_df = df_maestro[(df_maestro['Clasificación'].isin(['Clase A (Crítico)', 'Clase B (Importante)'])) & ((df_maestro['Precio Compra (S/.)'] == 0) | (df_maestro['Categoría'].isnull()) | (df_maestro['Marca'].isnull()))]
+    if not alerta7_df.empty:
+        tasks.append({ "id": "task_datos_criticos", "type": "warning", "title": f"Tienes {len(alerta7_df)} productos importantes con datos críticos faltantes.", "impact": "La falta de estos datos afecta la precisión de todos tus análisis.", "solution_button_text": "Corregir Datos del Catálogo", "target_report": "ReporteAuditoriaCalidadDatos", "knowledge": AUDIT_KNOWLEDGE_BASE.get("inconsistencias_datos_criticos"), "preview_data": _clean_preview_data(alerta7_df.head(3)) })
+
+
+    # ... (Aquí iría la lógica para las otras 5 alertas que diseñamos)
+
+    # --- FASE 3: Cálculo de KPIs y Puntaje ---
+    print("Fase 3: Calculando resumen ejecutivo...")
+    puntaje_salud = 65 # Placeholder
+    kpis_dolor = {
+        "Capital Inmovilizado": "S/ 16,300", # Placeholder
+        "Venta Perdida Potencial": f"S/ {venta_perdida_estimada:,.2f}" if 'venta_perdida_estimada' in locals() else "S/ 0.00",
+        "Pérdida por Margen Negativo": f"S/ {perdida_realizada:,.2f}" if 'perdida_realizada' in locals() else "S/ 0.00"
+    }
+
+    # --- FASE 4: Ensamblaje Final ---
+    print("Fase 4: Ensamblando respuesta final.")
+    return {
+        "puntaje_salud": puntaje_salud,
+        "kpis_dolor": kpis_dolor,
+        "plan_de_accion": tasks
+    }
 
 
 

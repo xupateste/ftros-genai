@@ -33,11 +33,11 @@ from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos_nuevo
 from track_expenses import auditar_margenes_de_productos, diagnosticar_catalogo, auditar_calidad_datos
+from track_expenses import generar_auditoria_inventario
 from report_config import REPORTS_CONFIG
 from plan_config import PLANS_CONFIG
 from strategy_config import DEFAULT_STRATEGY
 from tooltips_config import TOOLTIPS_GLOSSARY, KPI_TOOLTIPS_GLOSSARY
-from audit_knowledge_base import AUDIT_KNOWLEDGE_BASE
 
 INITIAL_CREDITS = 25
 
@@ -260,84 +260,84 @@ def get_metadata_from_context(base_ref):
 # ===================================================================================
 # Esta sería tu función principal que genera la lista de tareas.
 # La modificamos para que adjunte el conocimiento.
-def generar_auditoria_inventario(
-    df_ventas: pd.DataFrame,
-    df_inventario: pd.DataFrame,
-    **kwargs
-) -> Dict[str, Any]:
-    """
-    Función principal que ejecuta una auditoría completa del inventario,
-    manejando correctamente la estructura de retorno de las sub-funciones.
-    """
-    tasks = []
+# def generar_auditoria_inventario(
+#     df_ventas: pd.DataFrame,
+#     df_inventario: pd.DataFrame,
+#     **kwargs
+# ) -> Dict[str, Any]:
+#     """
+#     Función principal que ejecuta una auditoría completa del inventario,
+#     manejando correctamente la estructura de retorno de las sub-funciones.
+#     """
+#     tasks = []
     
-    # --- Lógica para detectar problemas ---
+#     # --- Lógica para detectar problemas ---
 
-    # 1. Análisis de Salud del Stock
-    # La función `procesar_stock_muerto` devuelve un diccionario.
-    resultado_salud = procesar_stock_muerto(df_ventas.copy(), df_inventario.copy())
-    # --- CAMBIO CLAVE: Extraemos el DataFrame de la clave "data" ---
-    df_salud = resultado_salud.get("data") if isinstance(resultado_salud, dict) else resultado_salud
+#     # 1. Análisis de Salud del Stock
+#     # La función `procesar_stock_muerto` devuelve un diccionario.
+#     resultado_salud = procesar_stock_muerto(df_ventas.copy(), df_inventario.copy())
+#     # --- CAMBIO CLAVE: Extraemos el DataFrame de la clave "data" ---
+#     df_salud = resultado_salud.get("data") if isinstance(resultado_salud, dict) else resultado_salud
 
-    # 2. Análisis de Importancia (ABC)
-    resultado_abc = process_csv_abc(df_ventas.copy(), df_inventario.copy(), criterio_abc='margen', periodo_abc=6)
-    df_abc = resultado_abc.get("data") if isinstance(resultado_abc, dict) else resultado_abc
-    # print(f"df_abc {df_abc}")
+#     # 2. Análisis de Importancia (ABC)
+#     resultado_abc = process_csv_abc(df_ventas.copy(), df_inventario.copy(), criterio_abc='margen', periodo_abc=6)
+#     df_abc = resultado_abc.get("data") if isinstance(resultado_abc, dict) else resultado_abc
+#     # print(f"df_abc {df_abc}")
 
-    # --- Tarea 1: Encontrar productos Clase A sin stock ---
-    if df_abc is not None and not df_abc.empty:
-        # df_inventario['SKU / Código de producto'] = df_inventario['SKU / Código de producto'].astype(str).str.strip()
-        # df_abc['SKU / Código de producto'] = df_abc['SKU / Código de producto'].astype(str).str.strip()
-        productos_clase_a = df_abc[df_abc['Clasificación ABC'] == 'A']['SKU / Código de producto']
-        df_inventario_a = df_abc[df_abc['SKU / Código de producto'].isin(productos_clase_a)].copy()
-        df_inventario_a['Cantidad en stock actual'] = pd.to_numeric(df_inventario_a['Cantidad en stock actual'], errors='coerce').fillna(0)
-        clase_a_sin_stock = df_inventario_a[df_inventario_a['Cantidad en stock actual'] <= 0]
-        if not clase_a_sin_stock.empty:
-            preview_df = clase_a_sin_stock.head(3)
-            preview_df_clean = preview_df.replace([np.inf, -np.inf], np.nan)
-            preview_data_safe = preview_df_clean.where(pd.notna(preview_df_clean), None).to_dict(orient='records')
-            venta_perdida_estimada = 5800 # Placeholder
-            tasks.append({
-                "id": "task_quiebre_stock_a", "type": "error",
-                "title": f"Tienes {len(clase_a_sin_stock)} productos 'Clase A' con stock en cero.",
-                "impact": f"Riesgo de venta perdida: S/ {venta_perdida_estimada:,.2f} este mes.",
-                "solution_button_text": "Ver Productos y Generar Plan de Compra",
-                "target_report": "ReporteListaBasicaReposicionHistorica",
-                "knowledge": AUDIT_KNOWLEDGE_BASE.get("quiebre_stock_clase_a"),
-                "preview_data": preview_data_safe # Usamos los datos ya limpios
-            })
+#     # --- Tarea 1: Encontrar productos Clase A sin stock ---
+#     if df_abc is not None and not df_abc.empty:
+#         # df_inventario['SKU / Código de producto'] = df_inventario['SKU / Código de producto'].astype(str).str.strip()
+#         # df_abc['SKU / Código de producto'] = df_abc['SKU / Código de producto'].astype(str).str.strip()
+#         productos_clase_a = df_abc[df_abc['Clasificación ABC'] == 'A']['SKU / Código de producto']
+#         df_inventario_a = df_abc[df_abc['SKU / Código de producto'].isin(productos_clase_a)].copy()
+#         df_inventario_a['Cantidad en stock actual'] = pd.to_numeric(df_inventario_a['Cantidad en stock actual'], errors='coerce').fillna(0)
+#         clase_a_sin_stock = df_inventario_a[df_inventario_a['Cantidad en stock actual'] <= 0]
+#         if not clase_a_sin_stock.empty:
+#             preview_df = clase_a_sin_stock.head(3)
+#             preview_df_clean = preview_df.replace([np.inf, -np.inf], np.nan)
+#             preview_data_safe = preview_df_clean.where(pd.notna(preview_df_clean), None).to_dict(orient='records')
+#             venta_perdida_estimada = 5800 # Placeholder
+#             tasks.append({
+#                 "id": "task_quiebre_stock_a", "type": "error",
+#                 "title": f"Tienes {len(clase_a_sin_stock)} productos 'Clase A' con stock en cero.",
+#                 "impact": f"Riesgo de venta perdida: S/ {venta_perdida_estimada:,.2f} este mes.",
+#                 "solution_button_text": "Ver Productos y Generar Plan de Compra",
+#                 "target_report": "ReporteListaBasicaReposicionHistorica",
+#                 "knowledge": AUDIT_KNOWLEDGE_BASE.get("quiebre_stock_clase_a"),
+#                 "preview_data": preview_data_safe # Usamos los datos ya limpios
+#             })
 
-    # --- Tarea 2: Encontrar stock muerto de alto valor ---
-    if df_salud is not None and not df_salud.empty:
-        # Usamos el nombre de columna interno 'clasificacion' que devuelve la función
-        # df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
-        df_stock_muerto = df_salud[df_salud['Clasificación Diagnóstica'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
-        if not df_stock_muerto.empty:
-            capital_inmovilizado = df_stock_muerto['Valor stock (S/.)'].sum()
-            task = {
-                "id": "task_stock_muerto_valor", "type": "warning",
-                "title": f"Tienes {len(df_stock_muerto)} productos con más de 180 días sin ventas.",
-                "impact": f"Capital inmovilizado: S/ {capital_inmovilizado:,.2f}.",
-                "solution_button_text": "Ver Productos y Crear Plan de Liquidación",
-                "target_report": "ReporteDiagnosticoStockMuerto",
-                "knowledge": AUDIT_KNOWLEDGE_BASE.get("stock_muerto_alto_valor"),
-                "preview_data": df_stock_muerto.head(3).to_dict(orient='records')
-            }
-            tasks.append(task)
+#     # --- Tarea 2: Encontrar stock muerto de alto valor ---
+#     if df_salud is not None and not df_salud.empty:
+#         # Usamos el nombre de columna interno 'clasificacion' que devuelve la función
+#         # df_muerto = df_resultado[df_resultado['clasificacion'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
+#         df_stock_muerto = df_salud[df_salud['Clasificación Diagnóstica'].isin(["Stock Muerto", "Nunca Vendido con Stock"])].copy()
+#         if not df_stock_muerto.empty:
+#             capital_inmovilizado = df_stock_muerto['Valor stock (S/.)'].sum()
+#             task = {
+#                 "id": "task_stock_muerto_valor", "type": "warning",
+#                 "title": f"Tienes {len(df_stock_muerto)} productos con más de 180 días sin ventas.",
+#                 "impact": f"Capital inmovilizado: S/ {capital_inmovilizado:,.2f}.",
+#                 "solution_button_text": "Ver Productos y Crear Plan de Liquidación",
+#                 "target_report": "ReporteDiagnosticoStockMuerto",
+#                 "knowledge": AUDIT_KNOWLEDGE_BASE.get("stock_muerto_alto_valor"),
+#                 "preview_data": df_stock_muerto.head(3).to_dict(orient='records')
+#             }
+#             tasks.append(task)
 
-    # --- CÁLCULO DE KPIs Y PUNTAJE ---
-    puntaje_salud = 62 # Placeholder
-    kpis_dolor = {
-        "Capital Inmovilizado": f"S/ {capital_inmovilizado:,.2f}" if 'capital_inmovilizado' in locals() else "S/ 0.00",
-        "Venta Perdida Potencial": f"S/ {venta_perdida_estimada:,.2f}" if 'venta_perdida_estimada' in locals() else "S/ 0.00",
-        "Margen Bruto Congelado": "S/ 9,200" # Placeholder
-    }
+#     # --- CÁLCULO DE KPIs Y PUNTAJE ---
+#     puntaje_salud = 62 # Placeholder
+#     kpis_dolor = {
+#         "Capital Inmovilizado": f"S/ {capital_inmovilizado:,.2f}" if 'capital_inmovilizado' in locals() else "S/ 0.00",
+#         "Venta Perdida Potencial": f"S/ {venta_perdida_estimada:,.2f}" if 'venta_perdida_estimada' in locals() else "S/ 0.00",
+#         "Margen Bruto Congelado": "S/ 9,200" # Placeholder
+#     }
 
-    return {
-        "puntaje_salud": puntaje_salud,
-        "kpis_dolor": kpis_dolor,
-        "plan_de_accion": tasks
-    }
+#     return {
+#         "puntaje_salud": puntaje_salud,
+#         "kpis_dolor": kpis_dolor,
+#         "plan_de_accion": tasks
+#     }
 
 # @app.post("/auditoria-inventario", summary="Ejecuta la auditoría de eficiencia de inventario", tags=["Auditoría"])
 # async def ejecutar_auditoria_inventario(
@@ -358,6 +358,129 @@ def generar_auditoria_inventario(
 #     print(f"auditoria_result {auditoria_result}")
     
 #     return JSONResponse(content=auditoria_result)
+
+def clean_for_json(obj: Any) -> Any:
+    """
+    Recorre recursivamente un objeto (diccionarios, listas) y reemplaza
+    los valores no compatibles con JSON (NaN, inf) por None.
+    """
+    if isinstance(obj, dict):
+        return {k: clean_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_for_json(elem) for elem in obj]
+    # Usamos pd.isna() porque es más robusto y maneja NaN de numpy, float y pandas
+    elif pd.isna(obj):
+        return None
+    elif isinstance(obj, float) and np.isinf(obj):
+        return None
+    return obj
+
+def _parse_kpi_value(kpi_string: str) -> float:
+    """Extrae el valor numérico de un string de KPI (ej. 'S/ 1,234.56' -> 1234.56)."""
+    try:
+        # Elimina el prefijo 'S/ ', las comas y convierte a float.
+        return float(kpi_string.replace("S/ ", "").replace(",", ""))
+    except (ValueError, AttributeError):
+        # Si no es un string de moneda o ya es un número, lo devuelve tal cual.
+        return float(kpi_string) if isinstance(kpi_string, (int, float, str)) and str(kpi_string).replace('.','',1).isdigit() else 0.0
+
+
+def comparar_auditorias(actual: Dict[str, Any], previa: Optional[Dict[str, Any]]) -> Dict[str, Any]:
+    """
+    Compara dos resultados de auditoría y genera el 'Informe de Evolución'.
+    """
+    if not previa:
+        # Si no hay auditoría previa, devolvemos un informe base sin comparación.
+        return {
+            "tipo": "inicial",
+            "puntaje_actual": actual.get("puntaje_salud"),
+            "kpis_con_delta": {k: {"actual": v, "delta": None} for k, v in actual.get("kpis_dolor", {}).items()},
+            # "log_eventos": {
+            #     "nuevos_problemas": actual.get("plan_de_accion", []),
+            #     "problemas_resueltos": []
+            # },
+            "plan_de_accion": actual.get("plan_de_accion", [])
+        }
+
+    # --- Componente 1: El "Antes y Después" Cuantificado ---
+    kpis_con_delta = {}
+    kpis_actuales = actual.get("kpis_dolor", {})
+    kpis_previos = previa.get("kpis_dolor", {})
+
+    for key, current_value_str in kpis_actuales.items():
+        previous_value_str = kpis_previos.get(key, "0")
+        
+        current_value = _parse_kpi_value(current_value_str)
+        previous_value = _parse_kpi_value(previous_value_str)
+        
+        delta = current_value - previous_value
+        
+        kpis_con_delta[key] = {
+            "actual": current_value_str,
+            "delta": f"{delta:,.2f}"
+        }
+
+    puntaje_delta = actual.get("puntaje_salud", 0) - previa.get("puntaje_salud", 0)
+
+    # --- Componente 2: El "Log de Eventos de Negocio" ---
+    tareas_actuales_ids = {task['id'] for task in actual.get("plan_de_accion", [])}
+    tareas_previas_ids = {task['id'] for task in previa.get("plan_de_accion", [])}
+
+    nuevos_problemas_ids = tareas_actuales_ids - tareas_previas_ids
+    problemas_resueltos_ids = tareas_previas_ids - tareas_actuales_ids
+
+    nuevos_problemas = [task for task in actual.get("plan_de_accion", []) if task['id'] in nuevos_problemas_ids]
+    problemas_resueltos = [task for task in previa.get("plan_de_accion", []) if task['id'] in problemas_resueltos_ids]
+
+    return {
+        "tipo": "evolucion",
+        "puntaje_actual": actual.get("puntaje_salud"),
+        "puntaje_delta": f"{puntaje_delta:+}", # Añade el signo + o -
+        "kpis_con_delta": kpis_con_delta,
+        "log_eventos": {
+            "nuevos_problemas": nuevos_problemas,
+            "problemas_resueltos": problemas_resueltos
+        },
+        "plan_de_accion": actual.get("plan_de_accion", [])
+    }
+
+# Funcionando antes del push
+# @app.post("/auditoria-inicial", summary="Ejecuta la auditoría de eficiencia inicial", tags=["Auditoría"])
+# async def ejecutar_auditoria_inicial(
+#     request: Request,
+#     current_user: Optional[dict] = Depends(get_current_user_optional),
+#     X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID"),
+#     workspace_id: Optional[str] = Form(None),
+#     ventas_file_id: str = Form(...),
+#     inventario_file_id: str = Form(...)
+# ):
+#     """
+#     Este endpoint se dedica a ejecutar la auditoría inicial.
+#     Llama a la función de lógica directamente porque su formato de respuesta es diferente.
+#     """
+#     # 1. Determinamos el contexto
+#     user_id = current_user['email'] if current_user else None
+#     if user_id and not workspace_id:
+#         raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+    
+#     try:
+#         # 2. Cargamos los DataFrames
+#         ventas_contents = await descargar_contenido_de_storage(user_id, workspace_id, X_Session_ID, ventas_file_id)
+#         inventario_contents = await descargar_contenido_de_storage(user_id, workspace_id, X_Session_ID, inventario_file_id)
+#         df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+#         df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+
+#         # 3. Llamamos a la función de lógica que devuelve el resumen
+#         auditoria_result_raw = generar_auditoria_inventario(df_ventas, df_inventario)
+        
+#         auditoria_result_clean = clean_for_json(auditoria_result_raw)
+
+#         return JSONResponse(content=auditoria_result_clean)
+
+#     except Exception as e:
+#         traceback.print_exc()
+#         raise HTTPException(status_code=500, detail=f"Ocurrió un error crítico durante la auditoría: {e}")
+#
 
 @app.post("/auditoria-inicial", summary="Ejecuta la auditoría de eficiencia inicial", tags=["Auditoría"])
 async def ejecutar_auditoria_inicial(
@@ -385,13 +508,41 @@ async def ejecutar_auditoria_inicial(
         df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
 
         # 3. Llamamos a la función de lógica que devuelve el resumen
-        auditoria_result = generar_auditoria_inventario(df_ventas, df_inventario)
+        auditoria_actual = generar_auditoria_inventario(df_ventas, df_inventario)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        auditoria_actual["fecha"] = now_iso
+
+        # --- FASE 2: Búsqueda de la Auditoría Previa ---
+        if user_id and workspace_id:
+            base_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+        elif X_Session_ID:
+            base_ref = db.collection('sesiones_anonimas').document(X_Session_ID)
         
-        return JSONResponse(content=auditoria_result)
+        auditorias_ref = base_ref.collection('auditorias_historicas')
+        query = auditorias_ref.order_by("fecha", direction=firestore.Query.DESCENDING).limit(1)
+        
+        auditoria_previa_doc = next(query.stream(), None)
+        auditoria_previa = auditoria_previa_doc.to_dict() if auditoria_previa_doc else None
+
+        # 3. Comparamos y generamos el informe de evolución
+        informe_evolucion_raw = comparar_auditorias(auditoria_actual, auditoria_previa)
+
+        # --- CAMBIO CLAVE: Aplicamos el "Control de Calidad" Final ---
+        print("Ejecutando limpieza profunda en el Informe de Evolución...")
+        informe_evolucion_clean = clean_for_json(informe_evolucion_raw)
+        print("✅ Limpieza completada.")
+        
+        # 4. Guardamos la auditoría actual (la versión "cruda", antes de la limpieza)
+        auditorias_ref.document(now_iso.replace(":", "-")).set(auditoria_actual)
+        
+        # 5. Devolvemos el resultado ya limpio
+        return JSONResponse(content=informe_evolucion_clean)
 
     except Exception as e:
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Ocurrió un error crítico durante la auditoría: {e}")
+
+
 
 
 # ===================================================================================

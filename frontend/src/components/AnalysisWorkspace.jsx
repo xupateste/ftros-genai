@@ -200,6 +200,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [view, setView] = useState('audit'); // 'audit' o 'reports'
   const [auditResult, setAuditResult] = useState(null);
   const [isLoadingAudit, setIsLoadingAudit] = useState(true);
+  const [auditState, setAuditState] = useState({ status: 'loading', data: null });
+  const [isExecutingAudit, setIsExecutingAudit] = useState(false);
 
   // --- ESTADOS SIMPLIFICADOS ---
   // El estado del modal de reporte ahora es mucho más simple
@@ -298,33 +300,110 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   useEffect(() => {
     setFilesReady(!!uploadedFileIds.ventas && !!uploadedFileIds.inventario);
 
-    if (filesReady) {
-      const runInitialAudit = async () => {
-        setIsLoadingAudit(true);
-        const formData = new FormData();
-        formData.append("ventas_file_id", uploadedFileIds.ventas);
-        formData.append("inventario_file_id", uploadedFileIds.inventario);
+    // if (filesReady) {
+    //   const runInitialAudit = async () => {
+    //     setIsLoadingAudit(true);
+    //     const formData = new FormData();
+    //     formData.append("ventas_file_id", uploadedFileIds.ventas);
+    //     formData.append("inventario_file_id", uploadedFileIds.inventario);
         
-        if (context.type === 'user') {
-          formData.append("workspace_id", context.workspace.id);
-        }
+    //     if (context.type === 'user') {
+    //       formData.append("workspace_id", context.workspace.id);
+    //     }
 
-        try {
-          const response = await api.post('/auditoria-inicial', formData, {
-            headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
-          });
-          setAuditResult(response.data);
-        } catch (error) {
-          console.error("Error al ejecutar la auditoría inicial:", error);
-          alert("No se pudo completar la auditoría inicial.");
-        } finally {
-          setIsLoadingAudit(false);
-        }
-      };
-      runInitialAudit();
-    }
+    //     try {
+    //       const response = await api.post('/auditoria-inicial', formData, {
+    //         headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
+    //       });
+    //       setAuditResult(response.data);
+    //     } catch (error) {
+    //       console.error("Error al ejecutar la auditoría inicial:", error);
+    //       alert("No se pudo completar la auditoría inicial.");
+    //     } finally {
+    //       setIsLoadingAudit(false);
+    //     }
+    //   };
+    //   runInitialAudit();
+    // }
 
   }, [uploadedFileIds]);
+
+
+  // --- EFECTO PARA VERIFICAR EL ESTADO DE LA AUDITORÍA ---
+  useEffect(() => {
+    if (filesReady) {
+      const checkAuditStatus = async () => {
+        setAuditState({ status: 'loading', data: null });
+        try {
+          const endpoint = '/auditoria/status';
+          const params = context.type === 'user' ? { workspace_id: context.workspace.id } : {};
+          const headers = context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {};
+          
+          const response = await api.get(endpoint, { params, headers });
+          setAuditState(response.data);
+        } catch (error) {
+          console.error("Error al verificar el estado de la auditoría:", error);
+          setAuditState({ status: 'error', data: null });
+        }
+      };
+      checkAuditStatus();
+    }
+  }, [filesReady, context]);
+
+  // --- FUNCIÓN PARA EJECUTAR LA NUEVA AUDITORÍA ---
+  const handleRunNewAudit = async () => {
+    setIsExecutingAudit(true);
+    const formData = new FormData();
+    formData.append("ventas_file_id", uploadedFileIds.ventas);
+    formData.append("inventario_file_id", uploadedFileIds.inventario);
+    if (context.type === 'user') {
+      formData.append("workspace_id", context.workspace.id);
+    }
+
+    try {
+      const response = await api.post('/auditoria/run', formData, {
+        headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
+      });
+      // La respuesta ya es el informe de evolución, lo guardamos directamente
+      setAuditState({ status: 'up_to_date', data: response.data });
+    } catch (error) {
+      console.error("Error al ejecutar la nueva auditoría:", error);
+      alert("No se pudo completar la nueva auditoría.");
+      setAuditState(prev => ({ ...prev, status: 'outdated' }));
+    } finally {
+      setIsExecutingAudit(false);
+    }
+  };
+
+  // --- RENDERIZADO CONDICIONAL ---
+  const renderAuditContent = () => {
+    if (auditState.status === 'loading' || isExecutingAudit) {
+      return <LoadingScreen message={isExecutingAudit ? "Generando nueva auditoría..." : "Verificando estado..."} />;
+    }
+
+    if (auditState.status === 'outdated') {
+      return (
+        <div className="text-center p-8 bg-gray-800 rounded-lg">
+          <h3 className="text-xl font-bold text-white">Tus archivos de datos han sido actualizados.</h3>
+          <p className="text-gray-400 mt-2 mb-6">Genera un nuevo informe para analizar la información más reciente.</p>
+          <button onClick={handleRunNewAudit} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
+            <FiRefreshCw /> Generar Nueva Auditoría de Eficiencia
+          </button>
+          {auditState.data && (
+            <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto">
+              Ver última auditoría del {new Date(auditState.data.fecha).toLocaleDateString()}
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    if (auditState.status === 'up_to_date' && auditState.data) {
+      return <AuditDashboard auditResult={auditState.data} onSolveClick={handleSolveClick} />;
+    }
+
+    return <p className="text-center text-gray-500">Error al cargar la auditoría.</p>;
+  };
 
   const handleSolveClick = (reportKey) => {
     // Esta función se llama desde una AuditTaskCard
@@ -577,15 +656,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             )}*/}
 
             <div className="mt-8">
-              {/* --- NAVEGACIÓN SIN PESTAÑAS (AUDITORÍA PRIMERO) --- */}
+              {renderAuditContent()}
               
-              {isLoadingAudit ? (
-                <LoadingScreen message="Realizando auditoría de tu negocio..." /> 
-              ) : (
-                <AuditDashboard auditResult={auditResult} onSolveClick={handleSolveClick} />
-              )}
-
-              {/* Invitación a explorar más */}
               <div className="text-center mt-12">
                   <h3 className="text-xl font-semibold text-gray-300">¿Necesitas análisis más profundos o personalizados?</h3>
                   <button 
