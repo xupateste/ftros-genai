@@ -534,6 +534,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       </div>
 
       <main className="flex-1 overflow-y-auto pb-4 w-full">
+        <div className="flex flex-row w-full justify-center items-center gap-2">
+          <button onClick={() => setActiveModal('connections')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiKey /> Conectar Sistema</button>
+          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
+        </div>
         <div className='w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
           <CsvImporterComponent 
             fileType="ventas"
@@ -552,10 +556,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             metadata={fileMetadata.inventario}
           />
         </div>
-        <div className="flex flex-row w-full justify-center items-center gap-2">
-          <button onClick={() => setActiveModal('connections')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiKey /> Conectar Sistema</button>
-          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
-        </div>
 
         {/* El resto de tu JSX para la lista de reportes */}
         {isConfigLoading ? (
@@ -563,7 +563,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         ) : filesReady ? (
           <>
             {/* --- RENDERIZADO DEL NUEVO FILTRO INTERACTIVO --- */}
-            {uploadStatus.ventas === 'success' && dateRangeBounds && (
+            {/*{uploadStatus.ventas === 'success' && dateRangeBounds && (
               <div className="my-2 flex justify-center items-center gap-2">
                 <button 
                   onClick={() => setIsDateModalOpen(true)}
@@ -573,15 +573,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                   <span>{getFilterButtonText()}</span>
                   <FiAward className="text-yellow-400" />
                 </button>
-                {/* Mostramos el botón de limpiar solo si hay un filtro activo */}
-                {activeDateFilter && (
-                  <button onClick={handleClearDateFilter} className="p-2 bg-red-500 text-white rounded-full hover:bg-red-400">
-                    <FiX size={16} />
-                  </button>
-                )}
               </div>
-            )}
-
+            )}*/}
 
             <div className="mt-8">
               {/* --- NAVEGACIÓN SIN PESTAÑAS (AUDITORÍA PRIMERO) --- */}
@@ -597,7 +590,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                   <h3 className="text-xl font-semibold text-gray-300">¿Necesitas análisis más profundos o personalizados?</h3>
                   <button 
                       // onClick={() => document.getElementById('tools-section')?.scrollIntoView({ behavior: 'smooth', block: 'start'})}
-                      className="mt-4 text-purple-400 font-bold"
+                      className="mt-4 text-purple-400 font-bold transition-all duration-300 hover:translate-y-2"
                   >
                       ↓ Explorar todas las Herramientas de Análisis
                   </button>

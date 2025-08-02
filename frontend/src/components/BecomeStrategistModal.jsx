@@ -68,7 +68,7 @@ export function BecomeStrategistModal({ onClose }) {
                 <BenefitItem 
                     icon={<FiGlobe size={20}/>}
                     title="Radar de Mercado Local"
-                    description="Descubre qué productos 'Clase A' no tienes en tu catálogo pero que son top sellers para otros ferreteros en tu misma zona geográfica."
+                    description="Descubre qué productos 'Clase A' no tienes en tu catálogo pero que son top sellers para otros ferreteros estrategas en tu misma zona geográfica."
                 />
                 <BenefitItem 
                     icon={<FiBarChart2 size={20}/>}

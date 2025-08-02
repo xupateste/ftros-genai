@@ -893,7 +893,8 @@ REPORTS_CONFIG = {
   
 
   # "📊 Simulación y ROI de Compra"
-  "ReporteSimulacionAhorroCompraGrupal": { "label": 'Simulación de ahorro en compra grupal', "endpoint": '/sobrestock', "categoria": "📊 Simulación y ROI de Compra", "isPro": True, "costo":10, "basic_parameters": [] },
+  "ReporteSimulacionAhorroCompraGrupal": { "label": 'Simulación de ahorro en compra por volumen grupal', "endpoint": '/sobrestock', "categoria": "📊 Simulación y ROI de Compra", "isPro": True, "costo":10, "basic_parameters": [] },
+  "ReporteSimulacionAhorroImportacionGrupal": { "label": 'Simulación de ahorro en importación grupal', "endpoint": '/sobrestock', "categoria": "📊 Simulación y ROI de Compra", "isPro": True, "costo":10, "basic_parameters": [] },
   "ReporteAnalisisDePreciosMercado": { "label": 'Analisis de precios en base al Mercado', "endpoint": '/sobrestock', "categoria": "📊 Simulación y ROI de Compra", "isPro": True, "costo":10, "basic_parameters": [] },
   "ReporteEstimacionMargenBrutoPorSugerencia": { "label": 'Estimación de margen bruto por sugerencia', "endpoint": '/sobrestock', "categoria": "📊 Simulación y ROI de Compra", "isPro": True, "costo":10, "basic_parameters": [] },
   "ReporteRentabilidadMensualPorMarca": { "label": 'Rentabilidad mensual por línea o proveedor', "endpoint": '/sobrestock', "categoria": "📊 Simulación y ROI de Compra", "isPro": True, "costo":10, "basic_parameters": [] },

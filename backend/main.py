@@ -359,6 +359,19 @@ def get_metadata_from_context(base_ref):
     
 #     return JSONResponse(content=auditoria_result)
 
+def clean_for_json(obj: Any) -> Any:
+    """
+    Recorre recursivamente un objeto (diccionarios, listas) y reemplaza
+    los valores no compatibles con JSON (NaN, inf) por None.
+    """
+    if isinstance(obj, dict):
+        return {k: clean_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [clean_for_json(elem) for elem in obj]
+    elif isinstance(obj, (np.floating, float)) and (np.isnan(obj) or np.isinf(obj)):
+        return None
+    return obj
+
 @app.post("/auditoria-inicial", summary="Ejecuta la auditoría de eficiencia inicial", tags=["Auditoría"])
 async def ejecutar_auditoria_inicial(
     request: Request,
@@ -385,9 +398,11 @@ async def ejecutar_auditoria_inicial(
         df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
 
         # 3. Llamamos a la función de lógica que devuelve el resumen
-        auditoria_result = generar_auditoria_inventario(df_ventas, df_inventario)
+        auditoria_result_raw = generar_auditoria_inventario(df_ventas, df_inventario)
         
-        return JSONResponse(content=auditoria_result)
+        auditoria_result_clean = clean_for_json(auditoria_result_raw)
+
+        return JSONResponse(content=auditoria_result_clean)
 
     except Exception as e:
         traceback.print_exc()

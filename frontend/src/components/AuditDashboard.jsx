@@ -40,7 +40,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
 
       <section className="grid md:grid-cols-3 gap-4">
         {Object.entries(kpis_dolor).map(([key, value]) => (
-          <KpiCard key={key} label={key} value={value} icon={kpiIcons[key] || <FiDollarSign />} />
+          <KpiCard key={key} label={key} value={value} icon={kpiIcons[key] || <FiDollarSign className="text-green-500"/>} />
         ))}
       </section>
 
