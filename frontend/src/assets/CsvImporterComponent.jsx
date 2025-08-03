@@ -18,7 +18,8 @@ function CsvImporterComponent({
   template,         // El objeto de template específico
   onFileProcessed,  // La función a llamar cuando el archivo está listo
   uploadStatus,      // 'idle', 'uploading', 'success', 'error'
-  metadata // <-- Nueva prop
+  metadata,
+  isFadingOut // <-- Nueva prop
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -104,7 +105,8 @@ function CsvImporterComponent({
   };
 
   return (
-    <div className="w-full h-full pt-4 px-4 flex items-center justify-center">
+    <div className={`w-full h-full p-4 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${isFadingOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+    {/*<div className="w-full h-full px-4 flex items-center justify-center">*/}
       <div
         onClick={() => uploadStatus !== 'uploading' && setIsOpen(true)}
         className={`cursor-pointer flex flex-col items-center text-center justify-center p-6 w-full max-w-md mx-auto rounded-lg transition-all duration-300 border-2 bg-gray-800 bg-opacity-50 text-white ${

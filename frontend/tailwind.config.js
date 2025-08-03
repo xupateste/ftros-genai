@@ -6,6 +6,12 @@ export default {
   ],
   theme: {
     extend: {
+      keyframes: {
+        fadeIn: {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
+        },
+      },
       colors: {
         'primary1': '#560bad',
         'primary2': '#7209b7',
@@ -17,7 +23,8 @@ export default {
         default: ['Poppins', 'sans-serif'],
       },
       animation: {
-        "loop-scroll": "120s linear 0s infinite normal none running loop-scroll"
+        "loop-scroll": "120s linear 0s infinite normal none running loop-scroll",
+        'fade-in-fast': 'fadeIn 0.5s ease-out forwards', // Adjust duration (0.5s) as needed for "fast"
       }
     },
   },

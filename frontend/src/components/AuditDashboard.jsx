@@ -54,7 +54,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
   if (auditResult.tipo === 'evolucion') {
     const { puntaje_actual, puntaje_delta, kpis_con_delta, log_eventos, plan_de_accion } = auditResult;
     return (
-      <div className="w-full animate-fade-in-fast space-y-10 p-4">
+      <div className="w-full animate-fade-in-up space-y-10 p-4">
         <section className="text-center">
           <h2 className="text-2xl font-bold text-white mb-2">Informe de Evolución</h2>
           <div className="flex justify-center items-center gap-4">
@@ -92,7 +92,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
   // --- Renderizado para la AUDITORÍA INICIAL (Fallback) ---
   const { puntaje_salud, kpis_dolor, plan_de_accion } = auditResult;
   return (
-    <div className="w-full animate-fade-in-fast space-y-10 p-4">
+    <div className="w-full animate-fade-in-up space-y-10 p-4">
       {/* --- Pilar 1: El Diagnóstico Impactante --- */}
       <section className="text-center">
         <h2 className="text-2xl font-bold text-white mb-2">Diagnóstico de Eficiencia de Inventario</h2>

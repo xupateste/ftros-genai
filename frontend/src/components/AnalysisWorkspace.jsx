@@ -22,7 +22,7 @@ import { StrategyPanelModal } from './StrategyPanelModal';
 import { RegisterPage } from './RegisterPage';
 import { WorkspaceSelector } from './WorkspaceSelector';
 import { LoadingScreen } from './LoadingScreen';
-import { FiDownload, FiCalendar, FiAward, FiLogIn, FiRefreshCw, FiLogOut, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
+import { FiDownload, FiCalendar, FiAward, FiLogIn, FiEdit, FiRefreshCw, FiLogOut, FiLoader, FiSettings,  FiUser, FiMail, FiKey, FiUserPlus } from 'react-icons/fi';
 import { CreateWorkspaceModal } from './CreateWorkspaceModal'; // Importa el modal
 import { Tooltip } from './Tooltip';
 import { FerreterosLogo } from './FerreterosLogo'
@@ -174,6 +174,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [dateRangeBounds, setDateRangeBounds] = useState(null); // Nuevo estado para los límites de fecha
   const [isDateModalOpen, setIsDateModalOpen] = useState(false); // Nuevo estado para controlar el modal
   const [activeDateFilter, setActiveDateFilter] = useState(null);
+  // const [uploadersCollapsed, setUploadersCollapsed] = useState(false);
+  const [uploaderState, setUploaderState] = useState('visible'); // 'visible', 'fadingOut', 'collapsed'
+  const [auditState, setAuditState] = useState({ status: 'idle', data: null }); // idle, loading, outdated, up_to_date, error
+  const [isExecutingAudit, setIsExecutingAudit] = useState(false);
 
 
   // --- ESTADOS Y CONTEXTO ---
@@ -200,8 +204,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [view, setView] = useState('audit'); // 'audit' o 'reports'
   const [auditResult, setAuditResult] = useState(null);
   const [isLoadingAudit, setIsLoadingAudit] = useState(true);
-  const [auditState, setAuditState] = useState({ status: 'loading', data: null });
-  const [isExecutingAudit, setIsExecutingAudit] = useState(false);
 
   // --- ESTADOS SIMPLIFICADOS ---
   // El estado del modal de reporte ahora es mucho más simple
@@ -330,8 +332,31 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
 
   // --- EFECTO PARA VERIFICAR EL ESTADO DE LA AUDITORÍA ---
+  // useEffect(() => {
+  //   if (filesReady) {
+  //     const checkAuditStatus = async () => {
+  //       setAuditState({ status: 'loading', data: null });
+  //       try {
+  //         const endpoint = '/auditoria/status';
+  //         const params = context.type === 'user' ? { workspace_id: context.workspace.id } : {};
+  //         const headers = context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {};
+          
+  //         const response = await api.get(endpoint, { params, headers });
+  //         setAuditState(response.data);
+  //       } catch (error) {
+  //         console.error("Error al verificar el estado de la auditoría:", error);
+  //         setAuditState({ status: 'error', data: null });
+  //       }
+  //     };
+  //     checkAuditStatus();
+  //   }
+  // }, [filesReady, context]);
+  // Verifica el estado de la auditoría cuando los archivos están listos
   useEffect(() => {
-    if (filesReady) {
+    const areFilesReady = uploadStatus.ventas === 'success' && uploadStatus.inventario === 'success';
+    setFilesReady(areFilesReady);
+
+    if (areFilesReady) {
       const checkAuditStatus = async () => {
         setAuditState({ status: 'loading', data: null });
         try {
@@ -341,6 +366,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           
           const response = await api.get(endpoint, { params, headers });
           setAuditState(response.data);
+          // Colapsamos los uploaders una vez que tenemos una respuesta
+          // setUploadersCollapsed(true);
+          // --- INICIAMOS LA SECUENCIA DE ANIMACIÓN ---
+          setUploaderState('fadingOut'); // Acto 1: Desvanecer
+          setTimeout(() => {
+            setUploaderState('collapsed'); // Acto 2: Colapsar
+          }, 300); // Duración del fade-out
         } catch (error) {
           console.error("Error al verificar el estado de la auditoría:", error);
           setAuditState({ status: 'error', data: null });
@@ -376,21 +408,58 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   };
 
   // --- RENDERIZADO CONDICIONAL ---
-  const renderAuditContent = () => {
+  // const renderAuditContent = () => {
+  //   if (auditState.status === 'loading' || isExecutingAudit) {
+  //     return <LoadingScreen message={isExecutingAudit ? "Generando nueva auditoría..." : "Verificando estado..."} />;
+  //   }
+
+  //   if (auditState.status === 'outdated') {
+  //     return (
+  //       <div className="text-center p-8 bg-gray-800 rounded-lg">
+  //         <h3 className="text-xl font-bold text-white">Tus archivos de datos han sido actualizados.</h3>
+  //         <p className="text-gray-400 mt-2 mb-6">Genera un nuevo informe para analizar la información más reciente.</p>
+  //         <button onClick={handleRunNewAudit} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
+  //           <FiRefreshCw /> Generar Nueva Auditoría de Eficiencia
+  //         </button>
+  //         {auditState.data && (
+  //           <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto">
+  //             Ver última auditoría del {new Date(auditState.data.fecha).toLocaleDateString()}
+  //           </button>
+  //         )}
+  //       </div>
+  //     );
+  //   }
+
+  //   if (auditState.status === 'up_to_date' && auditState.data) {
+  //     return <AuditDashboard auditResult={auditState.data} onSolveClick={handleSolveClick} />;
+  //   }
+
+  //   return <p className="text-center text-gray-500">Error al cargar la auditoría.</p>;
+  // };
+  // --- RENDERIZADO CONDICIONAL DEL CONTENIDO PRINCIPAL ---
+  const renderMainContent = () => {
+    if (!filesReady) {
+      return (
+        <p className="mt-10 text-center text-white p-4 bg-gray-800 rounded-md shadow">
+          📂 Sube ambos archivos para activar la Auditoría de Eficiencia.
+        </p>
+      );
+    }
+
     if (auditState.status === 'loading' || isExecutingAudit) {
-      return <LoadingScreen message={isExecutingAudit ? "Generando nueva auditoría..." : "Verificando estado..."} />;
+      return <LoadingScreen message={isExecutingAudit ? "Generando nueva auditoría..." : "Verificando estado de tus datos..."} />;
     }
 
     if (auditState.status === 'outdated') {
       return (
-        <div className="text-center p-8 bg-gray-800 rounded-lg">
+        <div className="text-center p-8 bg-gray-800 rounded-lg animate-fade-in">
           <h3 className="text-xl font-bold text-white">Tus archivos de datos han sido actualizados.</h3>
           <p className="text-gray-400 mt-2 mb-6">Genera un nuevo informe para analizar la información más reciente.</p>
           <button onClick={handleRunNewAudit} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
-            <FiRefreshCw /> Generar Nueva Auditoría de Eficiencia
+            <FiRefreshCw /> Generar Nueva Auditoría
           </button>
           {auditState.data && (
-            <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto">
+            <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto underline hover:text-white">
               Ver última auditoría del {new Date(auditState.data.fecha).toLocaleDateString()}
             </button>
           )}
@@ -423,6 +492,9 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   // --- FUNCIÓN DE CARGA DE ARCHIVOS CONSCIENTE DEL CONTEXTO ---
   const handleFileProcessed = async (file, fileType) => {
+    setUploaderState('visible');
+    setAuditState({ status: 'idle', data: null });
+
     const isUserContext = context.type === 'user' && context.workspace;
     if (!isUserContext && !context.id) {
         alert("Error: No se ha iniciado una sesión de análisis.");
@@ -613,11 +685,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       </div>
 
       <main className="flex-1 overflow-y-auto pb-4 w-full">
-        <div className="flex flex-row w-full justify-center items-center gap-2">
-          <button onClick={() => setActiveModal('connections')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiKey /> Conectar Sistema</button>
-          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
-        </div>
-        <div className='w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
+        {/*<div className='w-full max-w-5xl grid text-white md:grid-cols-2 px-2 mx-auto'>
           <CsvImporterComponent 
             fileType="ventas"
             title="Historial de Ventas"
@@ -634,70 +702,88 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             uploadStatus={uploadStatus.inventario}
             metadata={fileMetadata.inventario}
           />
+        </div>*/}
+        <div className="flex flex-row w-full justify-center items-center gap-2">
+          <button onClick={() => setActiveModal('connections')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiKey /> Conectar Sistema</button>
+          <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 mt-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
+        </div>
+        <div className={`bg-gray-800 my-4 bg-opacity-50 rounded-lg border border-gray-700 transition-all duration-500 ease-in-out ${uploaderState === 'collapsed' ? 'mb-8' : ''}`}>
+          <div className={`grid md:grid-cols-2 transition-all duration-500 ease-in-out ${uploaderState === 'collapsed' ? 'max-h-0 opacity-0 p-0 overflow-hidden' : 'max-h-[40rem] opacity-100 p-2'}`}>
+            <CsvImporterComponent 
+              fileType="ventas"
+              title="Historial de Ventas"
+              template={templateVentas}
+              onFileProcessed={handleFileProcessed}
+              uploadStatus={uploadStatus.ventas}
+              metadata={fileMetadata.ventas}
+              isFadingOut={uploaderState === 'fadingOut'}
+            />
+            <CsvImporterComponent 
+              fileType="inventario"
+              title="Stock Actual"
+              template={templateStock}
+              onFileProcessed={handleFileProcessed}
+              uploadStatus={uploadStatus.inventario}
+              metadata={fileMetadata.inventario}
+              isFadingOut={uploaderState === 'fadingOut'}
+            />
+          </div>
+          {uploaderState === 'collapsed' && (
+            <div className="p-3 flex justify-between items-center animate-fade-in">
+              <span className="text-green-400 font-bold text-sm">✓ Archivos Cargados</span>
+              <button onClick={() => setUploaderState('visible')} className="flex items-center gap-2 text-sm text-purple-400 hover:text-white">
+                <FiEdit /> Cambiar Archivos
+              </button>
+            </div>
+          )}
+        </div>
+        {/* --- RENDERIZADO DEL NUEVO FILTRO INTERACTIVO --- */}
+        {/*{uploadStatus.ventas === 'success' && dateRangeBounds && (
+          <div className="my-2 flex justify-center items-center gap-2">
+            <button 
+              onClick={() => setIsDateModalOpen(true)}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 text-white rounded-lg shadow-md hover:bg-purple-700 transition-colors"
+            >
+              <FiCalendar />
+              <span>{getFilterButtonText()}</span>
+              <FiAward className="text-yellow-400" />
+            </button>
+          </div>
+        )}*/}
+        {renderMainContent()}
+        
+        <div className="text-center mt-12">
+            <h3 className="text-xl font-semibold text-gray-300">¿Necesitas análisis más profundos o personalizados?</h3>
+            <button 
+                // onClick={() => document.getElementById('tools-section')?.scrollIntoView({ behavior: 'smooth', block: 'start'})}
+                className="mt-4 text-purple-400 font-bold transition-all duration-300 hover:translate-y-2"
+            >
+                ↓ Explorar todas las Herramientas de Análisis
+            </button>
         </div>
 
-        {/* El resto de tu JSX para la lista de reportes */}
-        {isConfigLoading ? (
-          <p>Cargando reportes...</p>
-        ) : filesReady ? (
-          <>
-            {/* --- RENDERIZADO DEL NUEVO FILTRO INTERACTIVO --- */}
-            {/*{uploadStatus.ventas === 'success' && dateRangeBounds && (
-              <div className="my-2 flex justify-center items-center gap-2">
-                <button 
-                  onClick={() => setIsDateModalOpen(true)}
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 text-white rounded-lg shadow-md hover:bg-purple-700 transition-colors"
-                >
-                  <FiCalendar />
-                  <span>{getFilterButtonText()}</span>
-                  <FiAward className="text-yellow-400" />
-                </button>
-              </div>
-            )}*/}
-
-            <div className="mt-8">
-              {renderAuditContent()}
-              
-              <div className="text-center mt-12">
-                  <h3 className="text-xl font-semibold text-gray-300">¿Necesitas análisis más profundos o personalizados?</h3>
-                  <button 
-                      // onClick={() => document.getElementById('tools-section')?.scrollIntoView({ behavior: 'smooth', block: 'start'})}
-                      className="mt-4 text-purple-400 font-bold transition-all duration-300 hover:translate-y-2"
-                  >
-                      ↓ Explorar todas las Herramientas de Análisis
-                  </button>
-              </div>
-
-              <div id="tools-section" className="w-full space-y-8 pt-12 px-4">
-                {Object.entries(reportData).map(([categoria, reportes]) => (
-                    <div key={categoria} className="mb-6">
-                      <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
-                        {categoria}
-                      </h3>
-                      <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {reportes.map((reportItem) => (
-                          <ReportButton
-                            key={reportItem.key}
-                            reportItem={reportItem}
-                            context={context} // <-- Pasa el contexto del usuario
-                            onExecute={handleReportView}
-                            onInfoClick={handleInfoClick}
-                            // onInfoClick={setInfoModalReport}
-                            onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
-                          />
-                        ))}
-                      </div>
-                    </div>
+        <div id="tools-section" className="w-full space-y-8 pt-12 px-4">
+          {Object.entries(reportData).map(([categoria, reportes]) => (
+              <div key={categoria} className="mb-6">
+                <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
+                  {categoria}
+                </h3>
+                <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+                  {reportes.map((reportItem) => (
+                    <ReportButton
+                      key={reportItem.key}
+                      reportItem={reportItem}
+                      context={context} // <-- Pasa el contexto del usuario
+                      onExecute={handleReportView}
+                      onInfoClick={handleInfoClick}
+                      // onInfoClick={setInfoModalReport}
+                      onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
+                    />
                   ))}
+                </div>
               </div>
-
-            </div>
-          </>
-        ) : (
-          <p className="mt-10 text-center text-white p-4 bg-gray-800 rounded-md shadow">
-            📂 Carga tus archivos y activa la inteligencia comercial de tu ferretería.
-          </p>
-        )}
+            ))}
+        </div>
         <FerreterosLogo/>
       </main>
 
