@@ -14,10 +14,24 @@ animation: var(--animate-spin); /* spin 1s linear infinite */
   }
 }
 
+/* ... tus otros estilos ... */
+
 @keyframes fadeInUp {
-  from { opacity: 0; transform: translateY(20px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
+
 .animate-fade-in-up {
-  animation: fadeInUp 0.5s ease-out forwards;
+  /* Hacemos que la animación no se ejecute hasta que la clase sea aplicada */
+  animation-fill-mode: forwards;
+  opacity: 0; /* Estado inicial invisible */
+  animation-name: fadeInUp;
+  animation-duration: 0.5s; /* Puedes ajustar la velocidad aquí */
+  animation-timing-function: ease-out;
 }

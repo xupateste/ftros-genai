@@ -18,8 +18,7 @@ function CsvImporterComponent({
   template,         // El objeto de template específico
   onFileProcessed,  // La función a llamar cuando el archivo está listo
   uploadStatus,      // 'idle', 'uploading', 'success', 'error'
-  metadata,
-  isFadingOut // <-- Nueva prop
+  metadata
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -74,7 +73,7 @@ function CsvImporterComponent({
             <div className="w-full text-left animate-fade-in">
               <div className="flex items-center gap-3 mb-3">
                 <FiCheckCircle className="text-3xl text-green-400 flex-shrink-0" />
-                <h3 className="text-lg font-bold">{title} Cargado</h3>
+                <h3 className="text-lg font-bold truncate">{title} Cargado</h3>
               </div>
               <div className="space-y-1">
                 {fileType === 'inventario' && (
@@ -105,7 +104,7 @@ function CsvImporterComponent({
   };
 
   return (
-    <div className={`w-full h-full p-4 flex flex-col items-center justify-center transition-all duration-300 ease-in-out ${isFadingOut ? 'opacity-0 scale-95' : 'opacity-100 scale-100'}`}>
+    <div className={`w-full h-full flex flex-col items-center justify-center`}>
     {/*<div className="w-full h-full px-4 flex items-center justify-center">*/}
       <div
         onClick={() => uploadStatus !== 'uploading' && setIsOpen(true)}

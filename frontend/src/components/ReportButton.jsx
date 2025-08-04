@@ -9,7 +9,7 @@ export function ReportButton({ reportItem, onExecute, onInfoClick }) {
   const isPro = reportItem.isPro;
 
   // Clases de estilo base
-  const containerClasses = `flex w-full rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group`;
+  const containerClasses = `flex w-full h-full rounded-lg shadow-md transition-all duration-200 ease-in-out transform hover:scale-105 group`;
   const proClasses = 'bg-gray-700 text-gray-300 hover:bg-gray-600 border border-purple-800';
   const standardClasses = 'bg-white bg-opacity-90 text-black hover:bg-purple-100';
 
@@ -34,7 +34,7 @@ export function ReportButton({ reportItem, onExecute, onInfoClick }) {
       {/* Botón de Acción Principal */}
       <button
         onClick={() => onExecute(reportItem)}
-        className="flex flex-grow items-center text-left p-4 rounded-l-lg"
+        className="flex flex-grow items-center text-left pl-4 py-4 rounded-l-lg"
       >
         <span className="font-semibold text-left text-sm">{reportItem.label}</span>
       </button>

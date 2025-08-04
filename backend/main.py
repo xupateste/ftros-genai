@@ -583,15 +583,14 @@ async def get_audit_status(
         last_audit_doc = audit_ref.get()
 
         if not last_audit_doc.exists:
-            return JSONResponse(content={"status": "outdated", "data": None})
+            # Si nunca se ha ejecutado una auditoría, devolvemos el nuevo estado.
+            print("No se encontró auditoría previa para este contexto.")
+            return JSONResponse(content={"status": "no_audit_found", "data": None})
 
         last_audit_data_raw = last_audit_doc.to_dict()
         
-        # --- CAMBIO CLAVE: Aplicamos el "Control de Calidad" a los datos del caché ---
-        print("Limpiando datos de la auditoría cacheada...")
+        # Limpiamos los datos del caché para un envío seguro
         last_audit_data_clean = clean_for_json(last_audit_data_raw)
-        print("✅ Limpieza completada.")
-
         source_files = last_audit_data_clean.get("source_files", {})
 
         # 4. La Comparación Inteligente
