@@ -6,7 +6,7 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
-from fastapi import Depends, FastAPI, UploadFile, File, Form, status, Header, Request, Body
+from fastapi import Depends, FastAPI, UploadFile, File, Form, status, Header, Request, Body, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
 from fastapi import HTTPException
@@ -543,6 +543,121 @@ async def ejecutar_auditoria_inicial(
         raise HTTPException(status_code=500, detail=f"Ocurrió un error crítico durante la auditoría: {e}")
 
 
+
+
+# --- ENDPOINT 1: El "Comparador de Versiones" (Rápido) ---
+@app.get("/auditoria/status", summary="Verifica si la última auditoría está actualizada", tags=["Auditoría"])
+async def get_audit_status(
+    # La firma de la función recibe el contexto del usuario
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID"),
+    workspace_id: Optional[str] = Query(None)
+):
+    """
+    Compara los archivos actuales con los usados en la última auditoría guardada
+    y devuelve el estado: 'up_to_date' (con datos) o 'outdated'.
+    """
+    try:
+        # 1. Identificar el contexto y la referencia base
+        user_id = current_user['email'] if current_user else None
+        if user_id and not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        
+        if user_id:
+            base_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+        elif X_Session_ID:
+            base_ref = db.collection('sesiones_anonimas').document(X_Session_ID)
+        else:
+            raise HTTPException(status_code=401, detail="No se proporcionó contexto de autenticación.")
+
+        # 2. Buscar los IDs de los últimos archivos subidos
+        files_ref = base_ref.collection('archivos_cargados')
+        last_venta_doc = next(files_ref.where("tipoArchivo", "==", "ventas").order_by("fechaCarga", direction="DESCENDING").limit(1).stream(), None)
+        last_inventario_doc = next(files_ref.where("tipoArchivo", "==", "inventario").order_by("fechaCarga", direction="DESCENDING").limit(1).stream(), None)
+        
+        current_venta_id = last_venta_doc.id if last_venta_doc else None
+        current_inventario_id = last_inventario_doc.id if last_inventario_doc else None
+
+        # 3. Buscar la última auditoría guardada
+        audit_ref = base_ref.collection('auditorias').document('latest')
+        last_audit_doc = audit_ref.get()
+
+        if not last_audit_doc.exists:
+            # Si nunca se ha ejecutado una auditoría, devolvemos el nuevo estado.
+            print("No se encontró auditoría previa para este contexto.")
+            return JSONResponse(content={"status": "no_audit_found", "data": None})
+
+        last_audit_data_raw = last_audit_doc.to_dict()
+        
+        # Limpiamos los datos del caché para un envío seguro
+        last_audit_data_clean = clean_for_json(last_audit_data_raw)
+        source_files = last_audit_data_clean.get("source_files", {})
+
+        # 4. La Comparación Inteligente
+        if source_files.get("ventas_id") == current_venta_id and source_files.get("inventario_id") == current_inventario_id:
+            return JSONResponse(content={"status": "up_to_date", "data": last_audit_data_clean})
+        else:
+            return JSONResponse(content={"status": "outdated", "data": last_audit_data_clean})
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Error al verificar estado de auditoría: {e}")
+
+
+
+# --- ENDPOINT 2: La Ejecución "Bajo Demanda" (Pesado) ---
+@app.post("/auditoria/run", summary="Ejecuta una nueva auditoría, la compara y la guarda", tags=["Auditoría"])
+async def run_new_audit(
+    request: Request,
+    current_user: Optional[dict] = Depends(get_current_user_optional),
+    X_Session_ID: Optional[str] = Header(None, alias="X-Session-ID"),
+    workspace_id: Optional[str] = Form(None),
+    ventas_file_id: str = Form(...),
+    inventario_file_id: str = Form(...)
+):
+    """
+    Ejecuta la función pesada `generar_auditoria_inventario`, la compara con la
+    versión anterior, guarda el nuevo resultado y lo devuelve al frontend.
+    """
+    user_id = current_user['email'] if current_user else None
+    if user_id and not workspace_id:
+        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+    
+    try:
+        # 1. Cargar los DataFrames
+        # ... (tu lógica para `descargar_contenido_de_storage` y crear `df_ventas` y `df_inventario`)
+        ventas_contents = await descargar_contenido_de_storage(user_id, workspace_id, X_Session_ID, ventas_file_id)
+        inventario_contents = await descargar_contenido_de_storage(user_id, workspace_id, X_Session_ID, inventario_file_id)
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+        
+        # 2. Ejecutar la auditoría actual
+        auditoria_actual = generar_auditoria_inventario(df_ventas, df_inventario)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        auditoria_actual["fecha"] = now_iso
+        auditoria_actual["source_files"] = { "ventas_id": ventas_file_id, "inventario_id": inventario_file_id }
+
+        # 3. Buscar la auditoría previa para la comparación
+        if user_id and workspace_id:
+            base_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+        elif X_Session_ID:
+            base_ref = db.collection('sesiones_anonimas').document(X_Session_ID)
+        
+        audit_ref = base_ref.collection('auditorias').document('latest')
+        auditoria_previa = audit_ref.get().to_dict() if audit_ref.get().exists else None
+
+        # 4. Generar el Informe de Evolución
+        informe_evolucion_raw = comparar_auditorias(auditoria_actual, auditoria_previa)
+        informe_evolucion_clean = clean_for_json(informe_evolucion_raw)
+
+        # 5. Guardar el nuevo resultado, sobrescribiendo el anterior
+        audit_ref.set(auditoria_actual)
+
+        return JSONResponse(content=informe_evolucion_clean)
+
+    except Exception as e:
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error crítico durante la auditoría: {e}")
 
 
 # ===================================================================================

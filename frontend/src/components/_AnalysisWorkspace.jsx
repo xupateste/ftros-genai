@@ -33,6 +33,7 @@ import { BecomeStrategistModal } from './BecomeStrategistModal';
 import { ReportButton } from './ReportButton'; // <-- Importamos el nuevo botón
 import { ReportInfoModal } from './ReportInfoModal'; // <-- Importamos el nuevo modal
 import { AuditDashboard } from './AuditDashboard'; // <-- Importamos el nuevo componente
+import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
@@ -211,44 +212,95 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   const [count, setCount] = useState(0)
 
+  const handleRunNewAudit = useCallback(async (fileIdsToAudit) => {
+    if (!fileIdsToAudit.ventas || !fileIdsToAudit.inventario) {
+        console.error("Intento de ejecutar auditoría sin los fileIds necesarios.");
+        setAuditState({ status: 'error', data: null });
+        return;
+    }
+    setIsExecutingAudit(true);
+    const formData = new FormData();
+    formData.append("ventas_file_id", fileIdsToAudit.ventas);
+    formData.append("inventario_file_id", fileIdsToAudit.inventario);
+    if (context.type === 'user') {
+      formData.append("workspace_id", context.workspace.id);
+    }
+
+    try {
+      const response = await api.post('/auditoria/run', formData, {
+        headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
+      });
+      setAuditState({ status: 'up_to_date', data: response.data });
+    } catch (error) {
+      console.error("Error al ejecutar la nueva auditoría:", error);
+      setAuditState(prev => ({ ...prev, status: 'error' }));
+    } finally {
+      setIsExecutingAudit(false);
+    }
+  }, [
+    context.type, 
+    context.workspace?.id, 
+    context.id
+  ]); // <-- Dependencias ahora son estables
+
+
   // --- LÓGICA DE CARGA Y ACTUALIZACIÓN ---
+  // --- EFECTO PRINCIPAL DE CARGA Y ORQUESTACIÓN (REFACTORIZADO) ---
   useEffect(() => {
-    const loadInitialData = async () => {
+    const loadAndCheckContext = async () => {
       const isUserContext = context.type === 'user' && context.workspace;
       const identifier = isUserContext ? context.workspace.id : context.id;
-
       if (!identifier) {
         setIsLoading(false);
         return;
       }
 
       setIsLoading(true);
-      resetWorkspaceState();
+      resetWorkspaceState(); // Limpiamos el estado anterior
 
       try {
         const contextToLoad = isUserContext ? { type: 'workspace', id: context.workspace.id } : { type: 'anonymous', id: context.id}
-        // Hacemos las llamadas en paralelo
+        // --- PASO 1 y 2: Cargar el estado y "Guardar las Herramientas" ---
+        const stateEndpoint = isUserContext ? `/workspaces/${identifier}/state` : `/session-state`;
+        const stateHeaders = isUserContext ? {} : { 'X-Session-ID': identifier };
+        // const stateResponse = await api.get(stateEndpoint, { headers: stateHeaders });
         const [stateResponse] = await Promise.all([
-          api.get(isUserContext ? `/workspaces/${identifier}/state` : `/session-state`, {
-            headers: isUserContext ? {} : { 'X-Session-ID': identifier }
-          }),
+          api.get(stateEndpoint, { headers: stateHeaders }),
           loadStrategy(contextToLoad)
         ]);
-        const { credits, history, files, available_filters, date_range_bounds, files_metadata } = stateResponse.data || {};
+
+        const { files: newFileIds, credits, history, available_filters, date_range_bounds, files_metadata } = stateResponse.data || {};
+        
+        // Actualizamos el estado. `newFileIds` es una variable local, no un estado aún.
+        setUploadedFileIds(newFileIds || { ventas: null, inventario: null });
         setCredits(credits || { used: 0, remaining: 20 });
         setCreditHistory(history || []);
-        setUploadedFileIds(files || { ventas: null, inventario: null });
+        // ... (actualiza aquí otros estados como available_filters, etc.)
         setFileMetadata(files_metadata || { ventas: null, inventario: null }); // <-- Carga la metadata persistente
         setAvailableFilters( available_filters
                 ? { categorias: available_filters.categorias, marcas: available_filters.marcas }
                 : { categorias: [], marcas: []});          
         
-        if (!files?.ventas || !files?.inventario) {
-            setAuditState({ status: 'idle', data: null }); // No hay nada que auditar
+        if (!newFileIds?.ventas || !newFileIds?.inventario) {
+            setAuditState({ status: 'idle', data: null });
+            setIsLoading(false);
             return;
         }
 
-        const loadedFiles = files || { ventas: null, inventario: null };
+        // --- PASO 3: La "Encrucijada" (Verificación de Auditoría) ---
+        const statusEndpoint = '/auditoria/status';
+        const statusParams = isUserContext ? { workspace_id: identifier } : {};
+        const statusResponse = await api.get(statusEndpoint, { params: statusParams, headers: stateHeaders });
+        
+        // --- PASO 4: La Decisión Final ---
+        if (statusResponse.data.status === 'no_audit_found') {
+          // Pasamos los fileIds recién cargados directamente a la función.
+          await handleRunNewAudit(newFileIds);
+        } else {
+          setAuditState(statusResponse.data);
+        }
+
+        const loadedFiles = newFileIds || { ventas: null, inventario: null };
         setUploadedFileIds(loadedFiles);
         setDateRangeBounds(date_range_bounds || null );
         setUploadStatus({
@@ -256,17 +308,20 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           inventario: loadedFiles.inventario ? 'success' : 'idle'
         });
 
+        setTimeout(() => {
+          setUploaderState('collapsed');
+        }, 300); // Duración del fade-out
+        
       } catch (error) {
-        console.error("Error al cargar el contexto:", error);
+        console.error("Error al cargar y verificar el contexto:", error);
+        setAuditState({ status: 'error', data: null });
       } finally {
         setIsLoading(false);
       }
     };
 
-    loadInitialData();
-
-  // Ahora depende de los IDs, que son strings estables, no de objetos que se recrean.
-  }, [context.type, context.id, context.workspace?.id, loadStrategy]);
+    loadAndCheckContext();
+  }, [context.id, context.workspace?.id, handleRunNewAudit, loadStrategy]);
 
   // --- NUEVA FUNCIÓN: Actualiza solo créditos e historial ---
   const refreshCreditsAndHistory = useCallback(async (context) => {
@@ -333,68 +388,41 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   //     }
   //   }
   // }, [uploadedFileIds, context]);
-  const handleRunNewAudit = useCallback(async (currentFileIds) => {
-    if (!currentFileIds.ventas || !currentFileIds.inventario) {
-        console.error("Intento de ejecutar auditoría sin los fileIds necesarios.");
-        setAuditState({ status: 'error', data: null });
-        return;
-    }
-    setIsExecutingAudit(true);
-    const formData = new FormData();
-    formData.append("ventas_file_id", currentFileIds.ventas);
-    formData.append("inventario_file_id", currentFileIds.inventario);
-    if (context.type === 'user') {
-      formData.append("workspace_id", context.workspace.id);
-    }
 
-    try {
-      const response = await api.post('/auditoria/run', formData, {
-        headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
-      });
-      setAuditState({ status: 'up_to_date', data: response.data });
-    } catch (error) {
-      console.error("Error al ejecutar la nueva auditoría:", error);
-      setAuditState(prev => ({ ...prev, status: 'error' }));
-    } finally {
-      setIsExecutingAudit(false);
-    }
-  }, [context]);
-
-
-  useEffect(() => {
-    if (filesReady) {
-      const checkAuditStatus = async () => {
-        setAuditState({ status: 'loading', data: null });
-        try {
-          const endpoint = '/auditoria/status';
-          const params = context.type === 'user' ? { workspace_id: context.workspace.id } : {};
-          const headers = context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {};
+  // useEffect(() => {
+  //   if (filesReady) {
+  //     const checkAuditStatus = async () => {
+  //       setAuditState({ status: 'loading', data: null });
+  //       try {
+  //         const endpoint = '/auditoria/status';
+  //         const params = context.type === 'user' ? { workspace_id: context.workspace.id } : {};
+  //         const headers = context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {};
           
-          const response = await api.get(endpoint, { params, headers });
+  //         const response = await api.get(endpoint, { params, headers });
           
-          // --- LÓGICA DEL "ANFITRIÓN INTELIGENTE" ---
-          if (response.data.status === 'no_audit_found') {
-            // Si es la primera vez, ejecutamos la auditoría automáticamente
-            console.log(context)
-            console.log("Primera ejecución: disparando auditoría automática. desde: ");
-            handleRunNewAudit();
-          } else {
-            // Para visitas posteriores, simplemente guardamos el estado
-            setAuditState(response.data);
-          }
+  //         // --- LÓGICA DEL "ANFITRIÓN INTELIGENTE" ---
+  //         if (response.data.status === 'no_audit_found') {
+  //           // Si es la primera vez, ejecutamos la auditoría automáticamente
+  //           console.log(context)
+  //           console.log("Primera ejecución: disparando auditoría automática. desde: ");
+  //           handleRunNewAudit();
+  //         } else {
+  //           // Para visitas posteriores, simplemente guardamos el estado
+  //           setAuditState(response.data);
+  //         }
           
-          setUploaderState('fadingOut'); // Acto 1: Desvanecer
-          setTimeout(() => {
-            setUploaderState('collapsed'); // Acto 2: Colapsar
-          }, 300); // Duración del fade-out
-        } catch (error) {
-          console.error("Error al verificar el estado de la auditoría:", error);
-          setAuditState({ status: 'error', data: null });
-        }
-      };
-      checkAuditStatus();
-    }
-  }, [filesReady, context, handleRunNewAudit]);
+  //         setUploaderState('fadingOut'); // Acto 1: Desvanecer
+  //         setTimeout(() => {
+  //           setUploaderState('collapsed'); // Acto 2: Colapsar
+  //         }, 300); // Duración del fade-out
+  //       } catch (error) {
+  //         console.error("Error al verificar el estado de la auditoría:", error);
+  //         setAuditState({ status: 'error', data: null });
+  //       }
+  //     };
+  //     checkAuditStatus();
+  //   }
+  // }, [filesReady, context, handleRunNewAudit]);
 
   // useEffect(() => {
   //   const areFilesReady = uploadStatus.ventas === 'success' && uploadStatus.inventario === 'success';
@@ -711,7 +739,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 my-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
         </div>
 
-        <div className="bg-gray-800 bg-opacity-50 rounded-lg border border-gray-700 mb-8 transition-all duration-300 ease-in-out">
+        <div className="mx-4 bg-gray-800 bg-opacity-50 rounded-lg border border-gray-700 mb-8 transition-all duration-300 ease-in-out">
           <div 
             className="p-3 py-4 flex justify-between items-center cursor-pointer"
             onClick={() => { uploaderState === 'collapsed' ? setUploaderState('visible') : setUploaderState('collapsed') }}
@@ -792,16 +820,18 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                   {categoria}
                 </h3>
                 <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-                  {reportes.map((reportItem) => (
-                    <ReportButton
-                      key={reportItem.key}
-                      reportItem={reportItem}
-                      context={context} // <-- Pasa el contexto del usuario
-                      onExecute={handleReportView}
-                      onInfoClick={handleInfoClick}
-                      // onInfoClick={setInfoModalReport}
-                      onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
-                    />
+                  {reportes.map((reportItem, index) => (
+                    <AnimateOnScroll key={reportItem.key} delay={index * 100}>
+                      <ReportButton
+                        // key={reportItem.key}
+                        reportItem={reportItem}
+                        context={context} // <-- Pasa el contexto del usuario
+                        onExecute={handleReportView}
+                        onInfoClick={handleInfoClick}
+                        // onInfoClick={setInfoModalReport}
+                        onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
+                      />
+                    </AnimateOnScroll>
                   ))}
                 </div>
               </div>

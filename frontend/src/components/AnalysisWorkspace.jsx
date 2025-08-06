@@ -212,16 +212,47 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   const [count, setCount] = useState(0)
 
-  const handleRunNewAudit = useCallback(async (fileIdsToAudit) => {
-    if (!fileIdsToAudit.ventas || !fileIdsToAudit.inventario) {
-        console.error("Intento de ejecutar auditoría sin los fileIds necesarios.");
+  // const handleRunNewAudit = useCallback(async (fileIdsToAudit) => {
+  //   if (!fileIdsToAudit.ventas || !fileIdsToAudit.inventario) {
+  //       console.error("Intento de ejecutar auditoría sin los fileIds necesarios.");
+  //       setAuditState({ status: 'error', data: null });
+  //       return;
+  //   }
+  //   setIsExecutingAudit(true);
+  //   const formData = new FormData();
+  //   formData.append("ventas_file_id", fileIdsToAudit.ventas);
+  //   formData.append("inventario_file_id", fileIdsToAudit.inventario);
+  //   if (context.type === 'user') {
+  //     formData.append("workspace_id", context.workspace.id);
+  //   }
+
+  //   try {
+  //     const response = await api.post('/auditoria/run', formData, {
+  //       headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
+  //     });
+  //     setAuditState({ status: 'up_to_date', data: response.data });
+  //   } catch (error) {
+  //     console.error("Error al ejecutar la nueva auditoría:", error);
+  //     setAuditState(prev => ({ ...prev, status: 'error' }));
+  //   } finally {
+  //     setIsExecutingAudit(false);
+  //   }
+  // }, [
+  //   context.type, 
+  //   context.workspace?.id, 
+  //   context.id
+  // ]); // <-- Dependencias ahora son estables
+  const handleRunNewAudit = useCallback(async () => {
+    // La función ahora toma los fileIds directamente del estado del componente.
+    if (!uploadedFileIds.ventas || !uploadedFileIds.inventario) {
+        console.error("Intento de ejecutar auditoría sin los fileIds necesarios en el estado.");
         setAuditState({ status: 'error', data: null });
         return;
     }
     setIsExecutingAudit(true);
     const formData = new FormData();
-    formData.append("ventas_file_id", fileIdsToAudit.ventas);
-    formData.append("inventario_file_id", fileIdsToAudit.inventario);
+    formData.append("ventas_file_id", uploadedFileIds.ventas);
+    formData.append("inventario_file_id", uploadedFileIds.inventario);
     if (context.type === 'user') {
       formData.append("workspace_id", context.workspace.id);
     }
@@ -237,11 +268,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     } finally {
       setIsExecutingAudit(false);
     }
-  }, [
-    context.type, 
-    context.workspace?.id, 
-    context.id
-  ]); // <-- Dependencias ahora son estables
+  }, [uploadedFileIds, context.type, context.workspace?.id, context.id]); // Ahora depende de uploadedFileIds
 
 
   // --- LÓGICA DE CARGA Y ACTUALIZACIÓN ---
@@ -280,25 +307,24 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         setAvailableFilters( available_filters
                 ? { categorias: available_filters.categorias, marcas: available_filters.marcas }
                 : { categorias: [], marcas: []});          
-        
-        if (!newFileIds?.ventas || !newFileIds?.inventario) {
-            setAuditState({ status: 'idle', data: null });
-            setIsLoading(false);
-            return;
+
+        if (newFileIds?.ventas && newFileIds?.inventario) {
+          const statusEndpoint = '/auditoria/status';
+          const statusParams = isUserContext ? { workspace_id: identifier } : {};
+          const statusResponse = await api.get(statusEndpoint, { params: statusParams, headers: stateHeaders });
+          setAuditState(statusResponse.data);
+        } else {
+          setAuditState({ status: 'idle', data: null });
         }
 
-        // --- PASO 3: La "Encrucijada" (Verificación de Auditoría) ---
-        const statusEndpoint = '/auditoria/status';
-        const statusParams = isUserContext ? { workspace_id: identifier } : {};
-        const statusResponse = await api.get(statusEndpoint, { params: statusParams, headers: stateHeaders });
-        
         // --- PASO 4: La Decisión Final ---
-        if (statusResponse.data.status === 'no_audit_found') {
-          // Pasamos los fileIds recién cargados directamente a la función.
-          await handleRunNewAudit(newFileIds);
-        } else {
-          setAuditState(statusResponse.data);
-        }
+        // if (statusResponse?.data.status === 'no_audit_found') {
+        //   // Pasamos los fileIds recién cargados directamente a la función.
+        //   await handleRunNewAudit(newFileIds);
+        // } else {
+        //   setAuditState({ status: 'error', data: null });
+        //   // setAuditState(statusResponse.data);
+        // }
 
         const loadedFiles = newFileIds || { ventas: null, inventario: null };
         setUploadedFileIds(loadedFiles);
@@ -308,9 +334,9 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           inventario: loadedFiles.inventario ? 'success' : 'idle'
         });
 
-        setTimeout(() => {
-          setUploaderState('collapsed');
-        }, 300); // Duración del fade-out
+        // setTimeout(() => {
+        setUploaderState('collapsed');
+        // }, 100); // Duración del fade-out
         
       } catch (error) {
         console.error("Error al cargar y verificar el contexto:", error);
@@ -321,7 +347,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     };
 
     loadAndCheckContext();
-  }, [context.id, context.workspace?.id, handleRunNewAudit, loadStrategy]);
+  }, [context.id, context.workspace?.id]);
+  // }, [context.id, context.workspace?.id, handleRunNewAudit, loadStrategy]);
 
   // --- NUEVA FUNCIÓN: Actualiza solo créditos e historial ---
   const refreshCreditsAndHistory = useCallback(async (context) => {
@@ -541,8 +568,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   // --- FUNCIÓN DE CARGA DE ARCHIVOS CONSCIENTE DEL CONTEXTO ---
   const handleFileProcessed = async (file, fileType) => {
+    setUploadStatus(prev => ({ ...prev, [fileType]: 'uploading' }));
+    
     setUploaderState('visible');
-    setAuditState({ status: 'idle', data: null });
+    // setAuditState({ status: 'idle', data: null });
 
     const isUserContext = context.type === 'user' && context.workspace;
     if (!isUserContext && !context.id) {
@@ -567,6 +596,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
     try {
       const response = await api.post('/upload-file', formData, { headers });
+      
+      // Actualizamos el estado del archivo que se acaba de subir
+      const newUploadStatus = { ...uploadStatus, [fileType]: 'success' };
+      const newFileIds = { ...uploadedFileIds, [fileType]: response.data.file_id };
+      setUploadStatus(newUploadStatus);
+      setUploadedFileIds(newFileIds);
+
       setUploadedFileIds(prev => ({ ...prev, [fileType]: response.data.file_id }));
       setUploadStatus(prev => ({ ...prev, [fileType]: 'success' }));
       setFileMetadata(prev => ({ ...prev, [fileType]: response.data.metadata || {} }));
@@ -581,6 +617,16 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
       if (fileType === 'ventas' && response.data.date_range_bounds) {
         setDateRangeBounds(response.data.date_range_bounds || null);
+      }
+
+      if (newUploadStatus.ventas === 'success' && newUploadStatus.inventario === 'success') {
+        console.log("Ambos archivos están listos. Marcando auditoría como desactualizada.");
+        // Forzamos el estado a 'outdated' directamente, sin llamar a la API.
+        // Mantenemos los datos de la auditoría anterior para el enlace de "ver última".
+        setAuditState(prev => ({
+          status: 'outdated',
+          data: prev.data 
+        }));
       }
 
     } catch (error) {

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { AuditTaskCard } from './AuditTaskCard';
 import { AnimateOnScroll } from './AnimateOnScroll';
-import { FiArchive, FiTrendingDown, FiDollarSign, FiInfo } from 'react-icons/fi';
+import { FiArchive, FiTrendingDown, FiDollarSign, FiInfo, FiArrowUp, FiArrowDown } from 'react-icons/fi';
 
 // --- Sub-componente 1: El "Anillo de Progreso" (con Animación Corregida) ---
 const ScoreRing = ({ score = 0 }) => {
@@ -104,7 +104,7 @@ const ScoreRing = ({ score = 0 }) => {
 
 
 // --- Sub-componente 2: La Tarjeta de KPI Contextual (sin cambios) ---
-const KpiCard = ({ label, value, icon, colorClass }) => (
+const KpiCard = ({ label, value, icon, colorClass, delta, deltaType }) => (
   <div className={`bg-white p-4 rounded-lg shadow border-l-4 ${colorClass} flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full`}>
     <div className={`p-3 rounded-full bg-opacity-10 ${colorClass.replace('border-', 'bg-')}`}>
       {React.cloneElement(icon, { className: `text-2xl ${colorClass.replace('border-', 'text-')}` })}
@@ -113,6 +113,12 @@ const KpiCard = ({ label, value, icon, colorClass }) => (
       <p className="text-sm text-gray-500">{label}</p>
       <p className="text-2xl font-bold text-gray-800">{value}</p>
     </div>
+    {delta && (
+      <div className={`flex items-center text-sm font-semibold mt-1 ${deltaType === 'positive' ? 'text-green-500' : 'text-red-500'}`}>
+        {deltaType === 'positive' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
+        <span className="ml-1">{delta} desde la última carga</span>
+      </div>
+    )}
   </div>
 );
 
@@ -121,7 +127,18 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
     return <div className="text-center p-8 text-white">Cargando auditoría...</div>;
   }
 
-  const { puntaje_salud, kpis_dolor, plan_de_accion } = auditResult;
+  const isEvolutionReport = auditResult.tipo === 'evolucion';
+
+  // 1. Unificamos el puntaje
+  const score = isEvolutionReport ? auditResult.puntaje_actual : auditResult.puntaje_salud;
+  
+  // 2. Unificamos los KPIs
+  const kpis = isEvolutionReport ? auditResult.kpis_con_delta : auditResult.kpis_dolor;
+  
+  // 3. Unificamos el plan de acción
+  const plan_de_accion = auditResult.plan_de_accion || [];
+
+  // const { puntaje_salud, kpis_dolor, plan_de_accion } = auditResult;
 
   const kpiConfig = {
     "Capital Inmovilizado": { icon: <FiArchive />, color: 'border-red-500' },
@@ -132,28 +149,43 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
   return (
     <div className="w-full space-y-12 p-4">
       
-      {/* --- Pilar 1: El Diagnóstico Impactante (Ahora Animado) --- */}
+      {/* --- Pilar 1: El Diagnóstico Impactante --- */}
       <AnimateOnScroll>
         <section className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-8">Diagnóstico de Eficiencia de Inventario</h2>
-          <ScoreRing score={puntaje_salud} />
-          <p className="text-sm text-gray-500 mt-4">Un puntaje por debajo de 70 indica oportunidades críticas de mejora.</p>
+          <h2 className="text-2xl font-bold text-white mb-8">
+            {isEvolutionReport ? "Informe de Evolución" : "Diagnóstico de Eficiencia de Inventario"}
+          </h2>
+          <ScoreRing score={score} />
+          {isEvolutionReport && auditResult.puntaje_delta && (
+             <p className={`mt-4 text-2xl font-bold ${parseFloat(auditResult.puntaje_delta) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                {auditResult.puntaje_delta} puntos desde tu última auditoría
+             </p>
+          )}
         </section>
       </AnimateOnScroll>
 
-      {/* --- El resto del dashboard no cambia --- */}
+      {/* --- KPIs Contextuales --- */}
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {kpis_dolor && Object.entries(kpis_dolor).map(([key, value], index) => (
+        {kpis && Object.entries(kpis).map(([key, data], index) => (
           <AnimateOnScroll key={key} delay={index * 150}>
             <KpiCard 
               label={key} 
-              value={value} 
+              value={isEvolutionReport ? data.actual : data} 
+              delta={isEvolutionReport ? data.delta : null}
+              deltaType={isEvolutionReport && parseFloat(data.delta) >= 0 ? 'positive' : 'negative'}
               icon={kpiConfig[key]?.icon || <FiInfo />}
               colorClass={kpiConfig[key]?.color || 'border-gray-300'}
             />
           </AnimateOnScroll>
         ))}
       </section>
+
+      {/* --- Log de Eventos (Solo para Informes de Evolución) --- */}
+      {isEvolutionReport && (
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 bg-gray-800 bg-opacity-50 rounded-lg">
+          {"/* ... Tu lógica para renderizar el log de eventos ... */"}
+        </section>
+      )}
       
       {/* --- Pilar 2: Las Guías Accionables (con Título Mejorado) --- */}
        <section>
