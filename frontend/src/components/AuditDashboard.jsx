@@ -104,23 +104,36 @@ const ScoreRing = ({ score = 0 }) => {
 
 
 // --- Sub-componente 2: La Tarjeta de KPI Contextual (sin cambios) ---
-const KpiCard = ({ label, value, icon, colorClass, delta, deltaType }) => (
-  <div className={`bg-white p-4 rounded-lg shadow border-l-4 ${colorClass} flex items-center gap-4 transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full`}>
-    <div className={`p-3 rounded-full bg-opacity-10 ${colorClass.replace('border-', 'bg-')}`}>
-      {React.cloneElement(icon, { className: `text-2xl ${colorClass.replace('border-', 'text-')}` })}
-    </div>
-    <div className="text-left">
-      <p className="text-sm text-gray-500">{label}</p>
-      <p className="text-2xl font-bold text-gray-800">{value}</p>
-    </div>
-    {delta && (
-      <div className={`flex items-center text-sm font-semibold mt-1 ${deltaType === 'positive' ? 'text-green-500' : 'text-red-500'}`}>
-        {deltaType === 'positive' ? <FiArrowUp size={14} /> : <FiArrowDown size={14} />}
-        <span className="ml-1">{delta} desde la última carga</span>
+const KpiCard = ({ label, value, icon, colorClass, delta, deltaType }) => {
+  const isPositive = deltaType === 'positive';
+  const isNegative = deltaType === 'negative';
+  
+  return (
+    <div className={`bg-white p-4 rounded-lg shadow border-l-4 ${colorClass} flex flex-col justify-between transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full`}>
+      {/* Componente 1: Icono y Título */}
+      <div className="flex items-center gap-2">
+        <div className={`p-2 rounded-full bg-opacity-10 ${colorClass.replace('border-', 'bg-')}`}>
+          {React.cloneElement(icon, { className: `text-xl ${colorClass.replace('border-', 'text-')}` })}
+        </div>
+        <p className="text-sm font-semibold text-gray-600">{label}</p>
       </div>
-    )}
-  </div>
-);
+      
+      <div className="text-center my-4">
+        {/* Componente 2: Valor Principal */}
+        <p className="text-4xl font-bold text-gray-800">{value}</p>
+        
+        {/* Componente 3: El Delta */}
+        {delta && (
+          <div className={`flex items-center justify-center text-sm font-semibold mt-1 ${isPositive ? 'text-green-500' : isNegative ? 'text-red-500' : 'text-gray-500'}`}>
+            {isPositive && <FiArrowUp size={14} />}
+            {isNegative && <FiArrowDown size={14} />}
+            <span className="ml-1">{delta} desde la última carga</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
 
 export function AuditDashboard({ auditResult, onSolveClick }) {
   if (!auditResult) {
@@ -165,7 +178,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
       </AnimateOnScroll>
 
       {/* --- KPIs Contextuales --- */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <section className="grid md:grid-cols-3 gap-6">
         {kpis && Object.entries(kpis).map(([key, data], index) => (
           <AnimateOnScroll key={key} delay={index * 150}>
             <KpiCard 
