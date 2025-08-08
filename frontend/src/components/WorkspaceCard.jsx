@@ -114,7 +114,7 @@ export function WorkspaceCard({ workspace, onEnter, onPinToggle }) {
           {isMenuOpen && !isEditing && (
             <div className="absolute right-0 mt-2 w-40 bg-gray-900 border border-gray-700 rounded-md shadow-lg z-10 animate-fade-in-fast">
               <a href="#" onClick={(e) => { e.preventDefault(); setIsEditing(true); setIsMenuOpen(false); }} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"><FiEdit size={14}/> Renombrar</a>
-              <a href="#" onClick={() => setStrategyModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"><FiSettings size={14}/> Editar Estrategia</a>
+              {/*<a href="#" onClick={() => setStrategyModalOpen(true)} className="flex items-center gap-2 px-4 py-2 text-sm text-gray-300 hover:bg-gray-700"><FiSettings size={14}/> Editar Estrategia</a>*/}
               <a href="#" onClick={(e) => { e.preventDefault(); setIsDeleting(true); setIsMenuOpen(false); }} className="flex items-center gap-2 px-4 py-2 text-sm text-red-400 hover:bg-red-800 hover:text-white"><FiTrash2 size={14}/> Eliminar</a>
             </div>
           )}

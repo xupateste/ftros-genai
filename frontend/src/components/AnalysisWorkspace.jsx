@@ -211,17 +211,19 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [selectedReport, setSelectedReport] = useState(null); 
 
   const [count, setCount] = useState(0)
-
-  // const handleRunNewAudit = useCallback(async (fileIdsToAudit) => {
-  //   if (!fileIdsToAudit.ventas || !fileIdsToAudit.inventario) {
-  //       console.error("Intento de ejecutar auditoría sin los fileIds necesarios.");
+  const [auditCount, setAuditCount] = useState(0);
+  
+  // const handleRunNewAudit = useCallback(async () => {
+  //   // La función ahora toma los fileIds directamente del estado del componente.
+  //   if (!uploadedFileIds.ventas || !uploadedFileIds.inventario) {
+  //       console.error("Intento de ejecutar auditoría sin los fileIds necesarios en el estado.");
   //       setAuditState({ status: 'error', data: null });
   //       return;
   //   }
   //   setIsExecutingAudit(true);
   //   const formData = new FormData();
-  //   formData.append("ventas_file_id", fileIdsToAudit.ventas);
-  //   formData.append("inventario_file_id", fileIdsToAudit.inventario);
+  //   formData.append("ventas_file_id", uploadedFileIds.ventas);
+  //   formData.append("inventario_file_id", uploadedFileIds.inventario);
   //   if (context.type === 'user') {
   //     formData.append("workspace_id", context.workspace.id);
   //   }
@@ -237,22 +239,18 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   //   } finally {
   //     setIsExecutingAudit(false);
   //   }
-  // }, [
-  //   context.type, 
-  //   context.workspace?.id, 
-  //   context.id
-  // ]); // <-- Dependencias ahora son estables
-  const handleRunNewAudit = useCallback(async () => {
-    // La función ahora toma los fileIds directamente del estado del componente.
-    if (!uploadedFileIds.ventas || !uploadedFileIds.inventario) {
-        console.error("Intento de ejecutar auditoría sin los fileIds necesarios en el estado.");
+  // }, [uploadedFileIds, context.type, context.workspace?.id, context.id]); // Ahora depende de uploadedFileIds
+
+  const handleRunNewAudit = useCallback(async (fileIdsToAudit) => {
+    if (!fileIdsToAudit || !fileIdsToAudit.ventas || !fileIdsToAudit.inventario) {
+        console.error("Intento de ejecutar auditoría sin los fileIds necesarios.");
         setAuditState({ status: 'error', data: null });
         return;
     }
     setIsExecutingAudit(true);
     const formData = new FormData();
-    formData.append("ventas_file_id", uploadedFileIds.ventas);
-    formData.append("inventario_file_id", uploadedFileIds.inventario);
+    formData.append("ventas_file_id", fileIdsToAudit.ventas);
+    formData.append("inventario_file_id", fileIdsToAudit.inventario);
     if (context.type === 'user') {
       formData.append("workspace_id", context.workspace.id);
     }
@@ -268,7 +266,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     } finally {
       setIsExecutingAudit(false);
     }
-  }, [uploadedFileIds, context.type, context.workspace?.id, context.id]); // Ahora depende de uploadedFileIds
+  }, [context.type, context.workspace?.id, context.id]); // Dependencias estables
 
 
   // --- LÓGICA DE CARGA Y ACTUALIZACIÓN ---
@@ -296,7 +294,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           loadStrategy(contextToLoad)
         ]);
 
-        const { files: newFileIds, credits, history, available_filters, date_range_bounds, files_metadata } = stateResponse.data || {};
+        const { files: newFileIds, auditorias_ejecutadas ,credits, history, available_filters, date_range_bounds, files_metadata } = stateResponse.data || {};
         
         // Actualizamos el estado. `newFileIds` es una variable local, no un estado aún.
         setUploadedFileIds(newFileIds || { ventas: null, inventario: null });
@@ -307,14 +305,17 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         setAvailableFilters( available_filters
                 ? { categorias: available_filters.categorias, marcas: available_filters.marcas }
                 : { categorias: [], marcas: []});          
+        setAuditCount(auditorias_ejecutadas || 0); // Guardamos el contador
 
         if (newFileIds?.ventas && newFileIds?.inventario) {
+          setUploaderState('collapsed');
           const statusEndpoint = '/auditoria/status';
           const statusParams = isUserContext ? { workspace_id: identifier } : {};
           const statusResponse = await api.get(statusEndpoint, { params: statusParams, headers: stateHeaders });
           setAuditState(statusResponse.data);
         } else {
           setAuditState({ status: 'idle', data: null });
+          setUploaderState('visible');
         }
 
         // --- PASO 4: La Decisión Final ---
@@ -335,7 +336,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         });
 
         // setTimeout(() => {
-        setUploaderState('collapsed');
         // }, 100); // Duración del fade-out
         
       } catch (error) {
@@ -531,14 +531,14 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         <div className="text-center p-8 bg-gray-800 rounded-lg animate-fade-in">
           <h3 className="text-xl font-bold text-white">Tus archivos de datos han sido actualizados.</h3>
           <p className="text-gray-400 mt-2 mb-6">Genera un nuevo informe para analizar la información más reciente.</p>
-          <button onClick={handleRunNewAudit} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
+          <button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
             <FiRefreshCw /> Generar Nueva Auditoría
           </button>
-          {auditState.data && (
+          {/*{auditState.data && (
             <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto underline hover:text-white">
               Ver última auditoría del {new Date(auditState.data.fecha).toLocaleDateString()}
             </button>
-          )}
+          )}*/}
         </div>
       );
     }
@@ -623,10 +623,18 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         console.log("Ambos archivos están listos. Marcando auditoría como desactualizada.");
         // Forzamos el estado a 'outdated' directamente, sin llamar a la API.
         // Mantenemos los datos de la auditoría anterior para el enlace de "ver última".
-        setAuditState(prev => ({
-          status: 'outdated',
-          data: prev.data 
-        }));
+        // console.log(auditCount)
+        if (auditCount === 0) {
+          // Si es la primera vez, ejecutamos la auditoría automáticamente.
+          console.log("Primera ejecución detectada: disparando auditoría automática.");
+          handleRunNewAudit(newFileIds);
+          setAuditCount(prev => prev + 1)
+        } else {
+          setAuditState(prev => ({
+            status: 'outdated',
+            data: prev.data 
+          }));
+        }
       }
 
     } catch (error) {

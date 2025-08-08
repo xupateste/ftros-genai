@@ -657,7 +657,9 @@ async def run_new_audit(
         now_iso = datetime.now(timezone.utc).isoformat()
         auditoria_actual["fecha"] = now_iso
         auditoria_actual["source_files"] = { "ventas_id": ventas_file_id, "inventario_id": inventario_file_id }
-
+        
+        print(f"Incrementando contador de auditorías para el workspace: {workspace_id}")
+        base_ref.update({"auditorias_ejecutadas": firestore.Increment(1)})
 
         # --- FASE 3: Comparación y Generación del Informe de Evolución ---
         informe_evolucion_raw = comparar_auditorias(auditoria_actual, auditoria_previa)
@@ -1137,12 +1139,15 @@ async def get_workspace_state(
         # print("\n--- DEBUG: Auditoría de Serialización JSON ---")
         metadata_payload = get_metadata_from_context(workspace_ref)
 
+        auditorias_ejecutadas = workspace_data.get("auditorias_ejecutadas", 0)
+
         final_content = {
             "credits": credits_data,
             "history": historial_list,
             "files": files_map,
             "available_filters": available_filters,
             "date_range_bounds": date_range_bounds,
+            "auditorias_ejecutadas": auditorias_ejecutadas,
             **metadata_payload
         }
         
@@ -1319,7 +1324,8 @@ async def create_workspace(
             "nombre": workspace.nombre,
             "fechaCreacion": datetime.now(timezone.utc),
             "fechaUltimoAcceso": datetime.now(timezone.utc), # Inicializamos el campo de ordenamiento
-            "isPinned": False # Inicializamos el campo de fijado
+            "isPinned": False,
+            "auditorias_ejecutadas": 0
         }
         
         update_time, new_workspace_ref = workspaces_ref.add(new_workspace_data)

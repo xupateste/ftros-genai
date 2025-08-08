@@ -194,11 +194,11 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
       </section>
 
       {/* --- Log de Eventos (Solo para Informes de Evolución) --- */}
-      {isEvolutionReport && (
+      {isEvolutionReport ? (
         <section className="grid grid-cols-1 md:grid-cols-2 gap-8 p-6 bg-gray-800 bg-opacity-50 rounded-lg">
-          {"/* ... Tu lógica para renderizar el log de eventos ... */"}
+          {/* ... Tu lógica para renderizar el log de eventos ... */}
         </section>
-      )}
+      ) : ''}
       
       {/* --- Pilar 2: Las Guías Accionables (con Título Mejorado) --- */}
        <section>
