@@ -1,4 +1,6 @@
 TOOLTIPS_GLOSSARY = {
+    "puntaje_eficiencia": "Este es el puntaje de salud general de tu inventario. Se calcula en una escala de 0 a 100, tomando en cuenta factores clave como el porcentaje de tu capital que está inmovilizado en stock muerto y el riesgo de ventas perdidas por quiebres de stock en tus productos más importantes.",
+    
     # --- Parámetros de Auditoría de Calidad de Datos ---
     "criterios_auditoria": "Selecciona uno o más problemas de calidad de datos que quieras encontrar en tu archivo de inventario. Esto te ayudará a limpiar tu catálogo y mejorar la precisión de todos los demás reportes.",
     "ordenar_auditoria_por": "Elige el criterio principal para ordenar la lista de problemas. 'Mayor Valor' te mostrará primero los errores en los productos que representan más capital, mientras que 'Mayor Stock' se enfocará en el impacto logístico.",
@@ -80,6 +82,25 @@ TOOLTIPS_GLOSSARY = {
 }
 
 KPI_TOOLTIPS_GLOSSARY = {
+    # KPIs de Auditoría de Eficiencia / Reporte Maestro
+    "Pérdida por Margen Negativo": "La pérdida de dinero real generada por vender tus productos importantes (Clase A o B) a un precio inferior a su costo. Este es el impacto financiero directo de tener precios incorrectos en tus productos populares.",
+    "Capital Inmovilizado": "La suma total del costo de tu inventario que está clasificado como 'Stock Muerto'. Es el capital que tienes inmovilizado y en riesgo.",
+    "Venta Perdida Potencial": "Una estimación del ingreso que podrías estar perdiendo este mes por no tener stock de tus productos 'Clase A' más vendidos.",
+    "Margen Bruto Congelado": "La ganancia potencial que está atrapada en tu stock muerto y que podrías reinvertir en productos que sí rotan.",
+    "Valor Total del Inventario": "La suma total del costo de todo tu inventario actual. Es tu capital total invertido en productos.",
+    "Valor en Riesgo (Muerto/Exceso)": "La suma del valor del stock clasificado como 'Stock Muerto' o 'Exceso de Stock'. Representa el capital que no está trabajando eficientemente.",
+    "% Inventario Saludable": "El porcentaje de tu inventario que no se considera ni muerto ni en exceso. Un número más alto es mejor.",
+    "% del Valor (Clase A)": "El porcentaje del valor total (según tu criterio ABC) que es generado por tus productos de Clase A. Idealmente, sigue la regla 80/20.",
+
+    # KPIs de Puntos de Alerta
+    "SKUs en Alerta Roja": "El número de productos cuyo stock actual está por debajo de su punto de alerta MÍNIMO (tu colchón de seguridad). Requieren acción inmediata.",
+    "Inversión Urgente Requerida": "La inversión estimada para comprar el pedido MÍNIMO sugerido solo para los productos en Alerta Roja y así evitar quiebres de stock.",
+    "Próximo Quiebre Crítico": "Identifica el producto de 'Clase A' (más importante) que está más cerca de agotarse. Es el riesgo más grande para tu negocio en este momento.",
+
+    # KPIs de Auditoría de Calidad de Datos
+    "# SKUs con Problemas": "El número total de productos únicos que coinciden con al menos uno de los criterios de auditoría seleccionados.",
+    "Valor de Stock Afectado": "La suma del valor de stock de los productos con datos incompletos. Un precio de compra faltante puede afectar gravemente tus análisis de rentabilidad.",
+
     # --- Parámetros de Auditoría de Calidad de Datos ---
     "# SKUs con Datos Faltantes": "El número total de productos únicos que coinciden con al menos uno de los criterios de auditoría seleccionados.",
     "Valor en Riesgo por Datos Faltantes": "La suma del valor de stock de los productos con datos incompletos. Un precio de compra faltante puede afectar gravemente tus análisis de rentabilidad.",

@@ -1011,6 +1011,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           reportItem={proReportClicked}
           onClose={() => setActiveModal(null)}
           onAction={handleUpgradeAction}
+          onBecomeStrategist={() => setActiveModal('becomeStrategist')}
         />
       )}
 

@@ -22,24 +22,24 @@ const PLANS = [
   },
 ];
 
-const openVerificationForm = (userEmail) => {
-  // --- ¡CONFIGURACIÓN IMPORTANTE! ---
-  // Reemplaza estos valores con los de tu propio Google Form.
-  const GOOGLE_FORM_ID = "1FAIpQLScRhAM5M5_rAnTU9X_giZYH1ZrDBrR0ME_vKp8dcJ9DrrkSww"; // Ej: 1FAIpQLSc...
-  const EMAIL_FIELD_ID = "entry.1889241237"; // Ej: entry.123456789
+// const openVerificationForm = (userEmail) => {
+//   // --- ¡CONFIGURACIÓN IMPORTANTE! ---
+//   // Reemplaza estos valores con los de tu propio Google Form.
+//   const GOOGLE_FORM_ID = "1FAIpQLScRhAM5M5_rAnTU9X_giZYH1ZrDBrR0ME_vKp8dcJ9DrrkSww"; // Ej: 1FAIpQLSc...
+//   const EMAIL_FIELD_ID = "entry.1889241237"; // Ej: entry.123456789
 
-  // Construimos la URL base
-  const formUrl = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/viewform`;
+//   // Construimos la URL base
+//   const formUrl = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/viewform`;
   
-  // Creamos un objeto URL para añadir los parámetros de forma segura
-  const urlWithParams = new URL(formUrl);
-  if (userEmail) {
-    urlWithParams.searchParams.append(EMAIL_FIELD_ID, userEmail);
-  }
+//   // Creamos un objeto URL para añadir los parámetros de forma segura
+//   const urlWithParams = new URL(formUrl);
+//   if (userEmail) {
+//     urlWithParams.searchParams.append(EMAIL_FIELD_ID, userEmail);
+//   }
 
-  // Abrimos la URL final en una nueva pestaña
-  window.open(urlWithParams.toString(), '_blank');
-};
+//   // Abrimos la URL final en una nueva pestaña
+//   window.open(urlWithParams.toString(), '_blank');
+// };
 
 
 export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) {
@@ -58,8 +58,9 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
 
   const handleSelectPlan = (plan) => {
     if (plan.isStrategist) {
-      openVerificationForm(user?.email);
+      // openVerificationForm(user?.email);
       onClose();
+      onBecomeStrategist();
     } else {
       setSelectedPlan(plan);
       setView('whatsapp');

@@ -80,7 +80,8 @@ api.interceptors.response.use(
       
       // 2. Redirigimos al usuario a la página de inicio.
       // Añadimos un parámetro para que la página de inicio pueda mostrar un mensaje.
-      window.location.href = '/?session_expired=true';
+      window.location.href = '/';
+      // window.location.href = '/?session_expired=true';
     }
     
     // Para cualquier otro error, simplemente lo devolvemos para que el
