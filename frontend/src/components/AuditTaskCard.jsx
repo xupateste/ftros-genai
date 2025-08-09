@@ -65,7 +65,7 @@ export function AuditTaskCard({ task, onSolveClick }) {
         <button  
           className="text-sm font-semibold text-purple-600 hover:text-purple-800 flex items-center gap-1"
         >
-          {isExpanded ? 'Ocultar' : 'Ver Detalles y Solución'} <FiChevronDown className={`transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+          {isExpanded ? 'Ocultar' : 'Ver Detalles y Solución'} <FiChevronDown className={`transition-transform transform ${isExpanded ? 'rotate-180' : ''}`} />
         </button>
       </div>
 

@@ -1,4 +1,7 @@
 TOOLTIPS_GLOSSARY = {
+    "reports_header_tooltip": "Si la Auditoría es el 'resumen ejecutivo', esta es tu 'sala de análisis profundo'. Usa estas herramientas especializadas para explorar áreas específicas de tu negocio, aplicar filtros y ordenamientos personalizados, y obtener los datos detallados que necesitas para tomar decisiones estratégicas.",
+    "audit_header_tooltip": "Esta sección es tu 'resumen ejecutivo' instantáneo. El Puntaje de Eficiencia te da una nota general de la salud de tu inventario, y los KPIs cuantifican en Soles (S/.) los problemas más grandes que afectan tu puntaje.",
+    "action_plan_tooltip": "Aquí es donde la inteligencia se convierte en acción. Te presentamos una lista de 'tareas' priorizadas por su impacto. Cada tarea te explica el problema, por qué es importante, y te da un enlace directo a la herramienta que necesitas para solucionarlo.",
     "puntaje_eficiencia": "Este es el puntaje de salud general de tu inventario. Se calcula en una escala de 0 a 100, tomando en cuenta factores clave como el porcentaje de tu capital que está inmovilizado en stock muerto y el riesgo de ventas perdidas por quiebres de stock en tus productos más importantes.",
     
     # --- Parámetros de Auditoría de Calidad de Datos ---

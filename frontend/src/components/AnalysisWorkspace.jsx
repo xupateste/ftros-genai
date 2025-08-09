@@ -857,17 +857,15 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         {renderMainContent()}
         
         {filesReady && (
-          <div className="text-center mt-12">
-              <h3 className="text-xl font-semibold text-gray-300">¿Necesitas análisis más profundos o personalizados?</h3>
-              <button 
-                  // onClick={() => document.getElementById('tools-section')?.scrollIntoView({ behavior: 'smooth', block: 'start'})}
-                  className="mt-4 text-purple-400 font-bold transition-all duration-300 hover:translate-y-2"
-              >
-                  ↓ Explorar todas las Herramientas de Análisis
-              </button>
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-white mt-8 mb-2">
+              Profundiza en tus Datos
+              <Tooltip text={tooltips['reports_header_tooltip']} />
+            </h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">Cada reporte es una herramienta especializada. Úsalas para responder a preguntas clave sobre rentabilidad, compras, estrategia y más.</p>
           </div>
         )}
-        <div id="tools-section" className="w-full space-y-8 pt-12 px-4">
+        <div id="tools-section" className="w-full space-y-8 px-4 mb-6">
           {filesReady && Object.entries(reportData).map(([categoria, reportes]) => (
               <div key={categoria} className="mb-6">
                 <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">

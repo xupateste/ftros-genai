@@ -8,7 +8,7 @@ import { FiArchive, FiTrendingDown, FiDollarSign, FiInfo, FiArrowUp, FiArrowDown
 import { Tooltip } from './Tooltip'; // <-- 2. Importamos el componente
 
 // --- Sub-componente 1: El "Anillo de Progreso" (con Animación Corregida) ---
-const ScoreRing = ({ score = 0 }) => {
+const ScoreRing = ({ score = 0, tooltipText}) => {
   const radius = 80;
   const circumference = 2 * Math.PI * radius;
 
@@ -97,6 +97,7 @@ const ScoreRing = ({ score = 0 }) => {
         />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <Tooltip text={tooltipText} />
         <span className={`text-5xl font-bold transition-colors duration-500 ${currentColors.text}`}>{displayScore}</span>
         <span className="text-sm font-semibold text-gray-400">/ 100</span>
       </div>
@@ -174,13 +175,11 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
       
       {/* --- Pilar 1: El Diagnóstico Impactante --- */}
       <AnimateOnScroll>
-        <section className="text-center">
-          <h2 className="text-2xl font-bold text-white mb-8">
-            {/*{isEvolutionReport ? "Informe de Evolución" : "Diagnóstico de Eficiencia de Inventario"}*/}
-            {"Diagnóstico de Eficiencia de Inventario"}
-          </h2>
-          <Tooltip text={tooltips['puntaje_eficiencia']} />
-          <ScoreRing score={score} />
+        <section className="text-center"> 
+            <h2 className="text-2xl font-bold text-white mb-4">Diagnóstico de Eficiencia de Inventario
+              <Tooltip text={tooltips['audit_header_tooltip']} />
+            </h2>
+          <ScoreRing score={score} tooltipText={tooltips['puntaje_eficiencia']} />
           {isEvolutionReport && auditResult.puntaje_delta && (
              <p className={`mt-4 text-2xl font-bold ${parseFloat(auditResult.puntaje_delta) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
                 {auditResult.puntaje_delta} puntos desde tu última auditoría
@@ -217,7 +216,9 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
        <section>
          <AnimateOnScroll>
            <div className="text-center">
-             <h3 className="text-2xl font-bold text-white mb-2">Tu Hoja de Ruta para Mejorar tu Puntaje</h3>
+             <h2 className="text-2xl font-bold text-white mb-2">Recomendaciones Estratégicas
+                <Tooltip text={tooltips['action_plan_tooltip']} />
+             </h2>
              <p className="text-gray-400 max-w-2xl mx-auto">Hemos identificado las siguientes áreas, priorizadas por impacto, para aumentar la eficiencia de tu negocio.</p>
            </div>
          </AnimateOnScroll>
@@ -243,7 +244,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
         </div>
         {/* --- NUEVO BOTÓN "CARGAR MÁS" CONDICIONAL --- */}
         {plan_de_accion.length > visibleTasksCount && (
-            <div className="text-center mt-8">
+            <div className="text-center mt-4">
                 <AnimateOnScroll>
                     <button 
                         onClick={handleLoadMore}
