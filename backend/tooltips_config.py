@@ -85,6 +85,12 @@ TOOLTIPS_GLOSSARY = {
 }
 
 KPI_TOOLTIPS_GLOSSARY = {
+    # --- NUEVA SUITE DE KPIs ESTRATÉGICOS ---
+    "Capital en Riesgo (S/.)": "La suma del valor de costo de tu 'Stock Muerto' y tu 'Exceso de Stock'. Es el capital total que podrías liberar y reinvertir en productos más rentables.",
+    "Venta Perdida Potencial (S/.)": "Una estimación del ingreso que podrías perder este mes por no tener stock de tus productos 'Clase A' más importantes.",
+    "Salud del Margen (%)": "El porcentaje de tus productos vendidos recientemente cuyo margen fue positivo. Un puntaje bajo puede indicar errores de precio, aumentos de costo no repercutidos o descuentos excesivos.",
+    "Rotación Anual Estimada": "Una estimación de cuántas veces vendes y reemplazas tu inventario completo en un año. Un número más alto indica una mayor eficiencia. El promedio del sector ferretero suele estar entre 4 y 6.",
+
     # KPIs de Auditoría de Eficiencia / Reporte Maestro
     "Pérdida por Margen Negativo": "La pérdida de dinero real generada por vender tus productos importantes (Clase A o B) a un precio inferior a su costo. Este es el impacto financiero directo de tener precios incorrectos en tus productos populares.",
     "Capital Inmovilizado": "La suma total del costo de tu inventario que está clasificado como 'Stock Muerto'. Es el capital que tienes inmovilizado y en riesgo.",

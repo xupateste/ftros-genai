@@ -547,7 +547,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       return <AuditDashboard auditResult={auditState.data} onSolveClick={handleSolveClick} />;
     }
 
-    return <p className="text-center text-gray-500">Error al cargar la auditoría.</p>;
+    // return <p className="text-center text-gray-500">Error al cargar la auditoría.</p>;
+    return (
+      <button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
+        <FiRefreshCw /> Generar Nueva Auditoría
+      </button>
+    )
   };
 
   const handleSolveClick = (reportKey) => {
