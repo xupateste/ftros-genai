@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useConfig } from '../context/ConfigProvider'; // <-- 1. Importamos el hook
 import { AuditTaskCard } from './AuditTaskCard';
 import { AnimateOnScroll } from './AnimateOnScroll';
-import { FiArchive, FiTrendingDown, FiDollarSign, FiInfo, FiArrowUp, FiArrowDown, FiChevronsDown, FiThumbsUp, FiRepeat} from 'react-icons/fi';
+import { FiArchive, FiTrendingDown, FiTrendingUp, FiDollarSign, FiInfo, FiArrowUp, FiTarget, FiArrowDown, FiChevronsDown, FiThumbsUp, FiRepeat} from 'react-icons/fi';
 import { Tooltip } from './Tooltip'; // <-- 2. Importamos el componente
 
 // --- Sub-componente 1: El "Anillo de Progreso" (con Animación Corregida) ---
@@ -108,8 +108,24 @@ const ScoreRing = ({ score = 0, tooltipText}) => {
 
 // --- Sub-componente 2: La Tarjeta de KPI Contextual (sin cambios) ---
 const KpiCard = ({ label, value, icon, colorClass, delta, deltaType, tooltipText }) => {
-  const isPositive = deltaType === 'positive';
-  const isNegative = deltaType === 'negative';
+  // const isPositive = deltaType === 'positive';
+  // const isNegative = deltaType === 'negative';
+  const deltaStyles = {
+    positivo: {
+      icon: <FiArrowDown size={14} />,
+      color: 'text-green-500',
+    },
+    negativo: {
+      icon: <FiArrowUp size={14} />,
+      color: 'text-red-500',
+    },
+    neutral: {
+      icon: <FiArrowUp size={14} />,
+      color: 'text-gray-500',
+    }
+  };
+
+  const currentDeltaStyle = deltaStyles[deltaType] || deltaStyles.neutral;
   
   return (
     <div className={`bg-white p-4 rounded-lg shadow border-l-4 ${colorClass} flex flex-col justify-between transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full`}>
@@ -127,10 +143,16 @@ const KpiCard = ({ label, value, icon, colorClass, delta, deltaType, tooltipText
         <p className="text-4xl font-bold text-gray-800">{value}</p>
         
         {/* Componente 3: El Delta */}
-        {delta && (
+        {/*{delta && (
           <div className={`flex items-center justify-center text-sm font-semibold mt-1 ${isPositive ? 'text-green-500' : isNegative ? 'text-red-500' : 'text-gray-500'}`}>
             {isPositive && <FiArrowUp size={14} />}
             {isNegative && <FiArrowDown size={14} />}
+            <span className="ml-1">{delta} desde la última carga</span>
+          </div>
+        )}*/}
+        {/* --- RENDERIZADO DEL DELTA INTELIGENTE --- */}
+        {delta && (
+          <div className={`flex items-center justify-center text-sm font-semibold mt-1 ${currentDeltaStyle.color}`}>
             <span className="ml-1">{delta} desde la última carga</span>
           </div>
         )}
@@ -168,16 +190,17 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
   const kpiConfig = {
     "Capital en Riesgo (S/.)": { icon: <FiArchive />, color: 'border-red-500' },
     "Venta Perdida Potencial (S/.)": { icon: <FiTrendingDown />, color: 'border-orange-500' },
-    "Salud del Margen (%)": { icon: <FiThumbsUp />, color: 'border-blue-500' },
+    "Eficiencia de Margen (%)": { icon: <FiTrendingUp />, color: 'border-blue-500' },
     "Rotación Anual Estimada": { icon: <FiRepeat />, color: 'border-green-500' },
   };
+
 
   const handleLoadMore = () => {
     setVisibleTasksCount(prevCount => prevCount + 3);
   };
 
   return (
-    <div className="w-full space-y-12 p-4">
+    <div className="w-full space-y-4 p-4">
       
       {/* --- Pilar 1: El Diagnóstico Impactante --- */}
       <AnimateOnScroll>
@@ -213,18 +236,19 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
 
       {/* --- INICIO DE LA SOLUCIÓN: CARRUSEL DE KPIs --- */}
       {/* Usamos un div contenedor en lugar de la sección para un mejor control del padding */}
-      <div className="w-full">
+      {/*<div className="w-full">*/}
         <AnimateOnScroll delay={300}>
           {/* La "Pista de Deslizamiento" */}
           <div className="flex overflow-x-auto gap-6 py-4 snap-x snap-mandatory scrollbar-hide">
             {kpis && Object.entries(kpis).map(([key, data]) => (
               // Cada "Vagón" del carrusel
-              <div key={key} className="w-4/5 md:w-1/3 flex-shrink-0 snap-center">
+              <div key={key} className="md:w-1/3 sm:w-4/5 flex-shrink-0 snap-center">
                 <KpiCard 
                   label={key} 
                   value={isEvolutionReport ? data.actual : data} 
                   delta={isEvolutionReport ? data.delta : null}
-                  deltaType={isEvolutionReport && parseFloat(data.delta) >= 0 ? 'positive' : 'negative'}
+                  // deltaType={isEvolutionReport && parseFloat(data.delta) >= 0 ? 'positive' : 'negative'}
+                  deltaType={isEvolutionReport ? data.delta_type : null}
                   icon={kpiConfig[key]?.icon || <FiInfo />}
                   colorClass={kpiConfig[key]?.color || 'border-gray-300'}
                   tooltipText={kpiTooltips[key]}
@@ -233,7 +257,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
             ))}
           </div>
         </AnimateOnScroll>
-      </div>
+      {/*</div>*/}
       {/* --- FIN DE LA SOLUCIÓN --- */}
 
       {/* --- Log de Eventos (Solo para Informes de Evolución) --- */}

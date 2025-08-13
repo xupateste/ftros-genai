@@ -63,5 +63,16 @@ AUDIT_KNOWLEDGE_BASE = {
             "Para estos productos, considera usar el 'Pedido Mínimo Sugerido' en lugar del 'Ideal' para minimizar la inversión.",
             "Evalúa si algunos de estos productos pueden ser comprados con menos frecuencia pero en mayor volumen para reducir la gestión."
         ]
+    },
+    
+    # --- NUEVA ENTRADA PARA LA ALERTA DE EFICIENCIA DE MARGEN ---
+    "eficiencia_margen_baja": {
+        "why": "Una baja eficiencia de margen es una 'fuga de rentabilidad silenciosa'. Significa que, aunque tus productos sean rentables en papel, en la práctica (por descuentos, errores o costos no actualizados) estás dejando de ganar una cantidad significativa de dinero que te corresponde.",
+        "how": [
+            "Ejecuta la 'Auditoría de Desviación de Margen' para identificar los productos específicos con la mayor desviación.",
+            "Ordena por 'Mayor Impacto Financiero' para encontrar las 'fugas' de dinero más grandes.",
+            "Revisa si los precios de compra de tus proveedores han subido recientemente y ajusta tus precios de venta en consecuencia.",
+            "Audita tus procesos en el punto de venta para asegurar que los descuentos se apliquen correctamente."
+        ]
     }
 }

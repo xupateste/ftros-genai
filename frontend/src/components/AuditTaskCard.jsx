@@ -33,7 +33,7 @@ const PreviewTable = ({ data }) => {
           {data.map((item, index) => (
             <tr key={index}>
               <td className="px-4 py-2">
-                <div className="font-medium text-gray-800">{item['Nombre del producto'] || item.nombre_producto}</div>
+                <div className="font-medium text-gray-800 overflow-hidden text-ellipsis">{item['Nombre del producto'] || item.nombre_producto}</div>
                 <div className="text-xs text-gray-500">SKU: {item['SKU / Código de producto'] || item.sku}</div>
               </td>
               {headers.map(header => (

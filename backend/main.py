@@ -2,6 +2,7 @@ import os
 import uvicorn
 import json
 import asyncio
+import re
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -29,7 +30,7 @@ from typing import Optional, Dict, Any, Literal, Callable # Any para pd.ExcelWri
 from datetime import datetime, timedelta, timezone # Para pd.Timestamp.now()
 from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
 from track_expenses import process_csv_abc, procesar_stock_muerto
-from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
+from track_expenses import process_csv_puntos_alerta_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos_nuevo
 from track_expenses import auditar_margenes_de_productos, diagnosticar_catalogo, auditar_calidad_datos
@@ -375,14 +376,47 @@ def clean_for_json(obj: Any) -> Any:
         return None
     return obj
 
-def _parse_kpi_value(kpi_string: str) -> float:
-    """Extrae el valor numérico de un string de KPI (ej. 'S/ 1,234.56' -> 1234.56)."""
+# def _parse_kpi_value(kpi_string: str) -> float:
+#     """Extrae el valor numérico de un string de KPI (ej. 'S/ 1,234.56' -> 1234.56)."""
+#     try:
+#         # Elimina el prefijo 'S/ ', las comas y convierte a float.
+#         return float(kpi_string.replace("S/ ", "").replace(",", ""))
+#     except (ValueError, AttributeError):
+#         # Si no es un string de moneda o ya es un número, lo devuelve tal cual.
+#         return float(kpi_string) if isinstance(kpi_string, (int, float, str)) and str(kpi_string).replace('.','',1).isdigit() else 0.0
+
+def _parse_kpi_value(kpi_value: Any) -> float:
+    """
+    Extrae el valor numérico de un string de KPI, sin importar el formato.
+    Puede manejar: 'S/ 1,234.50', '5.1 veces', '95.5%', '-10.2', etc.
+    """
+    # Si ya es un número, lo devolvemos directamente.
+    if isinstance(kpi_value, (int, float)):
+        return float(kpi_value)
+        
+    # Si no es un string, no podemos procesarlo.
+    if not isinstance(kpi_value, str):
+        return 0.0
+
     try:
-        # Elimina el prefijo 'S/ ', las comas y convierte a float.
-        return float(kpi_string.replace("S/ ", "").replace(",", ""))
-    except (ValueError, AttributeError):
-        # Si no es un string de moneda o ya es un número, lo devuelve tal cual.
-        return float(kpi_string) if isinstance(kpi_string, (int, float, str)) and str(kpi_string).replace('.','',1).isdigit() else 0.0
+        # --- LÓGICA DE "TRADUCCIÓN" MEJORADA ---
+        # 1. Limpiamos el string de elementos comunes como el símbolo de Soles y las comas.
+        cleaned_string = kpi_value.replace("S/ ", "").replace(",", "").strip()
+        
+        # 2. Usamos una expresión regular para encontrar el primer número (entero o decimal)
+        #    al principio del string. Esto encontrará "5.1" en "5.1 veces" o "95.5" en "95.5%".
+        match = re.match(r'^-?(\d*\.?\d+)', cleaned_string)
+        
+        if match:
+            # Si encontramos un número, lo convertimos a float y lo devolvemos.
+            return float(match.group(1))
+        else:
+            # Si no se encuentra ningún número, devolvemos 0 como un valor seguro.
+            return 0.0
+            
+    except (ValueError, TypeError):
+        # Si ocurre cualquier error durante la conversión, devolvemos 0.
+        return 0.0
 
 
 def comparar_auditorias(actual: Dict[str, Any], previa: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -400,6 +434,14 @@ def comparar_auditorias(actual: Dict[str, Any], previa: Optional[Dict[str, Any]]
             "source_files": actual.get("source_files", {})
         }
 
+    kpi_success_direction = {
+        "Capital en Riesgo (S/.)": False,
+        "Venta Perdida Potencial (S/.)": False,
+        "Eficiencia de Margen (%)": True,
+        "Rotación Anual Estimada": True,
+        # Añade aquí otros KPIs que puedan aparecer en el futuro
+    }
+
     # --- Componente 1: El "Antes y Después" Cuantificado ---
     kpis_con_delta = {}
     kpis_actuales = actual.get("kpis_dolor", {})
@@ -410,7 +452,22 @@ def comparar_auditorias(actual: Dict[str, Any], previa: Optional[Dict[str, Any]]
         current_value = _parse_kpi_value(current_value_str)
         previous_value = _parse_kpi_value(previous_value_str)
         delta = current_value - previous_value
-        kpis_con_delta[key] = {"actual": current_value_str, "delta": f"{delta:+.2f}"}
+        # kpis_con_delta[key] = {"actual": current_value_str, "delta": f"{delta:+.2f}"}
+        delta_type = "neutral" # Por defecto
+        if delta != 0:
+            # Obtenemos la regla para este KPI, con un default de True
+            increase_is_good = kpi_success_direction.get(key, True)
+            if (delta > 0 and increase_is_good) or (delta < 0 and not increase_is_good):
+                delta_type = "positivo"
+            else:
+                delta_type = "negativo"
+        
+        kpis_con_delta[key] = {
+            "actual": current_value_str,
+            "delta": f"{delta:+.2f}",
+            "delta_type": delta_type # <-- Añadimos la nueva clave
+        }
+        
 
     puntaje_delta = actual.get("puntaje_salud", 0) - previa.get("puntaje_salud", 0)
 
