@@ -2105,6 +2105,10 @@ async def run_analisis_estrategico_rotacion(
     umbral_sobre_stock_dias: int = Form(180, description="Días a partir de los cuales un producto se considera 'Sobre-stock'."),
     umbral_stock_bajo_dias: int = Form(15, description="Días por debajo de los cuales un producto se considera con 'Stock Bajo'."),
     # pesos_importancia_json: Optional[str] = Form(None, description='(Avanzado) Redefine los pesos del Índice de Importancia. Formato JSON.')
+
+    filtro_bcg_json: Optional[str] = Form(None),
+    min_valor_stock: Optional[float] = Form(0.0),
+
     # --- NUEVO: Recibimos los scores de la estrategia desde el frontend ---
     score_ventas: int = Form(...),
     score_ingreso: int = Form(...),
@@ -2134,6 +2138,7 @@ async def run_analisis_estrategico_rotacion(
     # --- 2. Procesar Parámetros Complejos desde JSON ---
     filtro_categorias = json.loads(filtro_categorias_json) if filtro_categorias_json else None
     filtro_marcas = json.loads(filtro_marcas_json) if filtro_marcas_json else None
+    filtro_bcg_list = json.loads(filtro_bcg_json) if filtro_bcg_json else None
     # (Se podría añadir un try-except más robusto aquí si se desea)
 
     # pesos_importancia = json.loads(pesos_importancia_json) if pesos_importancia_json else None
@@ -2166,7 +2171,9 @@ async def run_analisis_estrategico_rotacion(
         "max_dias_cobertura": max_dias_cobertura,
         "min_dias_cobertura": min_dias_cobertura,
         "sort_by": sort_by,
-        "sort_ascending": sort_ascending
+        "sort_ascending": sort_ascending,
+        "filtro_bcg": filtro_bcg_list,
+        "min_valor_stock": min_valor_stock,
     }
 
     full_params_for_logging = dict(await request.form())
@@ -2494,7 +2501,9 @@ async def lista_basica_reposicion_historico(
     score_ventas: int = Form(...),
     score_ingreso: int = Form(...),
     score_margen: int = Form(...),
-    score_dias_venta: int = Form(...)
+    score_dias_venta: int = Form(...),
+
+    filtro_skus_json: Optional[str] = Form(None)
 ):
     user_id = None
     
@@ -2543,8 +2552,15 @@ async def lista_basica_reposicion_historico(
             'dias_venta': score_dias_venta / total_scores
         }
 
+    try:
+        filtro_skus = json.loads(filtro_skus_json) if filtro_skus_json else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro de SKUs inválido.")
+
+
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
+        "filtro_skus": filtro_skus,
         "dias_analisis_ventas_recientes": dias_analisis_ventas_recientes,
         "dias_analisis_ventas_general": dias_analisis_ventas_general,
         "ordenar_por": ordenar_por,

@@ -40,6 +40,9 @@ TOOLTIPS_GLOSSARY = {
     "sort_by_rotacion": "Elige el criterio principal para ordenar tu 'radar' de productos. 'Importancia' te mostrará tus productos más críticos primero, mientras que 'Próximos a Agotarse' te alertará sobre los riesgos inmediatos.",
     "pesos_estrategia": "Anula temporalmente los pesos de tu estrategia global para simular diferentes escenarios de importancia en este reporte específico.",
     "umbrales_stock": "Define los umbrales en días de cobertura para que la herramienta clasifique un producto como 'Stock Bajo' (riesgo de quiebre) o 'Sobre-stock' (capital inmovilizado).",
+    "filtro_bcg": "Aísla y analiza cuadrantes específicos de tu portafolio. Es ideal para crear planes de acción enfocados, como una estrategia de liquidación solo para tus productos 'Perro'.",
+    "ordenar_por_tendencia": "Prioriza los productos que están acelerando sus ventas más rápidamente, sin importar su importancia actual. Es una herramienta clave para detectar 'virales' y oportunidades emergentes.",
+    "filtro_inversion": "Enfócate en los problemas y oportunidades que tienen el mayor impacto financiero. Filtra el ruido de los productos de bajo costo para concentrarte en lo que realmente mueve la aguja de tu negocio.",
 
     "chart_placeholder": "Visualiza tus datos para descubrir patrones y tendencias clave. Esta es una herramienta estratégica que te ayuda a interpretar los resultados de tu reporte de un solo vistazo, permitiéndote tomar decisiones más rápidas e informadas.",
     
@@ -141,6 +144,10 @@ KPI_TOOLTIPS_GLOSSARY = {
     "SKUs Problemáticos (Sobre-stock)": "Productos de alta importancia (Clase A/B) en los que tienes demasiado inventario. Están inmovilizando capital que podrías usar en otros productos.",
     "Valor en Sobre-stock": "La suma total del costo de tu inventario que está clasificado como 'Sobre-stock'. Es el capital que podrías liberar con promociones o liquidaciones.",
     "Rotación Promedio (Ejemplo)": "Una métrica futura que medirá la velocidad promedio a la que rota todo tu inventario.",
+    "# de Estrellas 🌟": "El número de productos que son a la vez muy importantes para tu negocio y están creciendo en ventas. Estos son tus motores de crecimiento futuro; la estrategia es invertir en ellos.",
+    "# de Vacas Lecheras 🐄": "El número de productos que son muy importantes pero tienen un crecimiento estable. Son los pilares sólidos que financian tu negocio. La estrategia es proteger su rentabilidad.",
+    "# de Dilemas ❓": "El número de productos que aún no son muy importantes pero cuyas ventas están acelerando. Son tus 'apuestas' o potenciales futuras Estrellas. La estrategia es analizarlos de cerca.",
+    "# de Perros 🐕": "El número de productos de baja importancia y bajo crecimiento. A menudo inmovilizan capital y espacio. La estrategia es considerar su liquidación o descontinuación.",
 
     # --- Tooltips para Reporte ABC ---
     "SKUs Clase A (Vitales)": "El número de productos que son críticos para tu negocio. Son pocos, pero generan la mayor parte de tu valor.",

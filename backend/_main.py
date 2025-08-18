@@ -2,6 +2,7 @@ import os
 import uvicorn
 import json
 import asyncio
+import re
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
@@ -29,7 +30,7 @@ from typing import Optional, Dict, Any, Literal, Callable # Any para pd.ExcelWri
 from datetime import datetime, timedelta, timezone # Para pd.Timestamp.now()
 from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
 from track_expenses import process_csv_abc, procesar_stock_muerto
-from track_expenses import process_csv_puntos_alerta_stock, process_csv_reponer_stock
+from track_expenses import process_csv_puntos_alerta_stock
 from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos_nuevo
 from track_expenses import auditar_margenes_de_productos, diagnosticar_catalogo, auditar_calidad_datos
@@ -375,14 +376,47 @@ def clean_for_json(obj: Any) -> Any:
         return None
     return obj
 
-def _parse_kpi_value(kpi_string: str) -> float:
-    """Extrae el valor numérico de un string de KPI (ej. 'S/ 1,234.56' -> 1234.56)."""
+# def _parse_kpi_value(kpi_string: str) -> float:
+#     """Extrae el valor numérico de un string de KPI (ej. 'S/ 1,234.56' -> 1234.56)."""
+#     try:
+#         # Elimina el prefijo 'S/ ', las comas y convierte a float.
+#         return float(kpi_string.replace("S/ ", "").replace(",", ""))
+#     except (ValueError, AttributeError):
+#         # Si no es un string de moneda o ya es un número, lo devuelve tal cual.
+#         return float(kpi_string) if isinstance(kpi_string, (int, float, str)) and str(kpi_string).replace('.','',1).isdigit() else 0.0
+
+def _parse_kpi_value(kpi_value: Any) -> float:
+    """
+    Extrae el valor numérico de un string de KPI, sin importar el formato.
+    Puede manejar: 'S/ 1,234.50', '5.1 veces', '95.5%', '-10.2', etc.
+    """
+    # Si ya es un número, lo devolvemos directamente.
+    if isinstance(kpi_value, (int, float)):
+        return float(kpi_value)
+        
+    # Si no es un string, no podemos procesarlo.
+    if not isinstance(kpi_value, str):
+        return 0.0
+
     try:
-        # Elimina el prefijo 'S/ ', las comas y convierte a float.
-        return float(kpi_string.replace("S/ ", "").replace(",", ""))
-    except (ValueError, AttributeError):
-        # Si no es un string de moneda o ya es un número, lo devuelve tal cual.
-        return float(kpi_string) if isinstance(kpi_string, (int, float, str)) and str(kpi_string).replace('.','',1).isdigit() else 0.0
+        # --- LÓGICA DE "TRADUCCIÓN" MEJORADA ---
+        # 1. Limpiamos el string de elementos comunes como el símbolo de Soles y las comas.
+        cleaned_string = kpi_value.replace("S/ ", "").replace(",", "").strip()
+        
+        # 2. Usamos una expresión regular para encontrar el primer número (entero o decimal)
+        #    al principio del string. Esto encontrará "5.1" en "5.1 veces" o "95.5" en "95.5%".
+        match = re.match(r'^-?(\d*\.?\d+)', cleaned_string)
+        
+        if match:
+            # Si encontramos un número, lo convertimos a float y lo devolvemos.
+            return float(match.group(1))
+        else:
+            # Si no se encuentra ningún número, devolvemos 0 como un valor seguro.
+            return 0.0
+            
+    except (ValueError, TypeError):
+        # Si ocurre cualquier error durante la conversión, devolvemos 0.
+        return 0.0
 
 
 def comparar_auditorias(actual: Dict[str, Any], previa: Optional[Dict[str, Any]]) -> Dict[str, Any]:
@@ -393,14 +427,20 @@ def comparar_auditorias(actual: Dict[str, Any], previa: Optional[Dict[str, Any]]
         # Si no hay auditoría previa, devolvemos un informe base sin comparación.
         return {
             "tipo": "inicial",
-            "puntaje_actual": actual.get("puntaje_salud"),
-            "kpis_con_delta": {k: {"actual": v, "delta": None} for k, v in actual.get("kpis_dolor", {}).items()},
-            # "log_eventos": {
-            #     "nuevos_problemas": actual.get("plan_de_accion", []),
-            #     "problemas_resueltos": []
-            # },
-            "plan_de_accion": actual.get("plan_de_accion", [])
+            "fecha_actual": actual.get("fecha"),
+            "puntaje_salud": actual.get("puntaje_salud"),
+            "kpis_dolor": actual.get("kpis_dolor", {}),
+            "plan_de_accion": actual.get("plan_de_accion", []),
+            "source_files": actual.get("source_files", {})
         }
+
+    kpi_success_direction = {
+        "Capital en Riesgo (S/.)": False,
+        "Venta Perdida Potencial (S/.)": False,
+        "Eficiencia de Margen (%)": True,
+        "Rotación Anual Estimada": True,
+        # Añade aquí otros KPIs que puedan aparecer en el futuro
+    }
 
     # --- Componente 1: El "Antes y Después" Cuantificado ---
     kpis_con_delta = {}
@@ -409,39 +449,49 @@ def comparar_auditorias(actual: Dict[str, Any], previa: Optional[Dict[str, Any]]
 
     for key, current_value_str in kpis_actuales.items():
         previous_value_str = kpis_previos.get(key, "0")
-        
         current_value = _parse_kpi_value(current_value_str)
         previous_value = _parse_kpi_value(previous_value_str)
-        
         delta = current_value - previous_value
+        # kpis_con_delta[key] = {"actual": current_value_str, "delta": f"{delta:+.2f}"}
+        delta_type = "neutral" # Por defecto
+        if delta != 0:
+            # Obtenemos la regla para este KPI, con un default de True
+            increase_is_good = kpi_success_direction.get(key, True)
+            if (delta > 0 and increase_is_good) or (delta < 0 and not increase_is_good):
+                delta_type = "positivo"
+            else:
+                delta_type = "negativo"
         
         kpis_con_delta[key] = {
             "actual": current_value_str,
-            "delta": f"{delta:,.2f}"
+            "delta": f"{delta:+.2f}",
+            "delta_type": delta_type # <-- Añadimos la nueva clave
         }
+        
 
     puntaje_delta = actual.get("puntaje_salud", 0) - previa.get("puntaje_salud", 0)
 
     # --- Componente 2: El "Log de Eventos de Negocio" ---
     tareas_actuales_ids = {task['id'] for task in actual.get("plan_de_accion", [])}
     tareas_previas_ids = {task['id'] for task in previa.get("plan_de_accion", [])}
-
     nuevos_problemas_ids = tareas_actuales_ids - tareas_previas_ids
     problemas_resueltos_ids = tareas_previas_ids - tareas_actuales_ids
-
     nuevos_problemas = [task for task in actual.get("plan_de_accion", []) if task['id'] in nuevos_problemas_ids]
     problemas_resueltos = [task for task in previa.get("plan_de_accion", []) if task['id'] in problemas_resueltos_ids]
 
     return {
         "tipo": "evolucion",
+        "fecha_actual": actual.get("fecha"),
+        "fecha_previa": previa.get("fecha"),
         "puntaje_actual": actual.get("puntaje_salud"),
-        "puntaje_delta": f"{puntaje_delta:+}", # Añade el signo + o -
+        "puntaje_delta": f"{puntaje_delta:+}",
         "kpis_con_delta": kpis_con_delta,
         "log_eventos": {
             "nuevos_problemas": nuevos_problemas,
             "problemas_resueltos": problemas_resueltos
         },
-        "plan_de_accion": actual.get("plan_de_accion", [])
+        "plan_de_accion": actual.get("plan_de_accion", []),
+        "source_files": actual.get("source_files", {})
     }
 
 # Funcionando antes del push
@@ -555,7 +605,7 @@ async def get_audit_status(
 ):
     """
     Compara los archivos actuales con los usados en la última auditoría guardada
-    y devuelve el estado: 'up_to_date' (con datos) o 'outdated'.
+    y devuelve el estado y el INFORME COMPLETO si está actualizado.
     """
     try:
         # 1. Identificar el contexto y la referencia base
@@ -578,26 +628,25 @@ async def get_audit_status(
         current_venta_id = last_venta_doc.id if last_venta_doc else None
         current_inventario_id = last_inventario_doc.id if last_inventario_doc else None
 
-        # 3. Buscar la última auditoría guardada
+        # 3. Buscar el único documento de auditoría guardado
         audit_ref = base_ref.collection('auditorias').document('latest')
         last_audit_doc = audit_ref.get()
 
         if not last_audit_doc.exists:
-            # Si nunca se ha ejecutado una auditoría, devolvemos el nuevo estado.
-            print("No se encontró auditoría previa para este contexto.")
             return JSONResponse(content={"status": "no_audit_found", "data": None})
 
         last_audit_data_raw = last_audit_doc.to_dict()
-        
-        # Limpiamos los datos del caché para un envío seguro
         last_audit_data_clean = clean_for_json(last_audit_data_raw)
         source_files = last_audit_data_clean.get("source_files", {})
 
         # 4. La Comparación Inteligente
         if source_files.get("ventas_id") == current_venta_id and source_files.get("inventario_id") == current_inventario_id:
+            # Cache Hit: Devolvemos el informe completo que ya estaba guardado
             return JSONResponse(content={"status": "up_to_date", "data": last_audit_data_clean})
         else:
+            # Cache Miss: Devolvemos el informe antiguo para que el usuario pueda verlo
             return JSONResponse(content={"status": "outdated", "data": last_audit_data_clean})
+
 
     except Exception as e:
         traceback.print_exc()
@@ -606,7 +655,7 @@ async def get_audit_status(
 
 
 # --- ENDPOINT 2: La Ejecución "Bajo Demanda" (Pesado) ---
-@app.post("/auditoria/run", summary="Ejecuta una nueva auditoría, la compara y la guarda", tags=["Auditoría"])
+@app.post("/auditoria/run", summary="Ejecuta, compara y guarda un nuevo Informe de Evolución", tags=["Auditoría"])
 async def run_new_audit(
     request: Request,
     current_user: Optional[dict] = Depends(get_current_user_optional),
@@ -616,48 +665,74 @@ async def run_new_audit(
     inventario_file_id: str = Form(...)
 ):
     """
-    Ejecuta la función pesada `generar_auditoria_inventario`, la compara con la
-    versión anterior, guarda el nuevo resultado y lo devuelve al frontend.
+    Implementa el "Registro Único y Dorado". Ejecuta una nueva auditoría,
+    la compara con la anterior, guarda el informe de evolución completo y lo devuelve.
     """
-    user_id = current_user['email'] if current_user else None
-    if user_id and not workspace_id:
-        raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
-    
     try:
-        # 1. Cargar los DataFrames
-        # ... (tu lógica para `descargar_contenido_de_storage` y crear `df_ventas` y `df_inventario`)
+        # 1. Determinar el contexto
+        user_id = current_user['email'] if current_user else None
+        if user_id and not workspace_id:
+            raise HTTPException(status_code=400, detail="Se requiere un 'workspace_id' para usuarios autenticados.")
+        
+        if user_id:
+            base_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
+        elif X_Session_ID:
+            base_ref = db.collection('sesiones_anonimas').document(X_Session_ID)
+        else:
+            raise HTTPException(status_code=400, detail="Contexto no válido.")
+        
+        audit_ref = base_ref.collection('auditorias').document('latest')
+
+        # --- FASE 1: Rotación (Leer 'latest' y guardarlo como 'previa') ---
+        print("Fase 1: Rotando la auditoría anterior...")
+        # Leemos el informe anterior directamente desde nuestro "registro dorado"
+        informe_previo = audit_ref.get().to_dict() if audit_ref.get().exists else None
+
+        auditoria_previa = None
+        if informe_previo:
+            print("Informe previo encontrado. Extrayendo 'snapshot' para comparación...")
+            # Extraemos la "foto" de la auditoría anterior del informe previo
+            kpis_previos_con_delta = informe_previo.get("kpis_con_delta", {})
+            kpis_previos_simples = {key: data.get("actual") for key, data in kpis_previos_con_delta.items()} if informe_previo.get("tipo") == "evolucion" else informe_previo.get("kpis_dolor")
+            
+            auditoria_previa = {
+                "fecha": informe_previo.get("fecha_actual") or informe_previo.get("fecha"),
+                "puntaje_salud": informe_previo.get("puntaje_actual") or informe_previo.get("puntaje_salud"),
+                "kpis_dolor": kpis_previos_simples,
+                "plan_de_accion": informe_previo.get("plan_de_accion", [])
+            }
+
+        # --- FASE 2: Ejecución ---
+        print("Fase 2: Ejecutando la nueva auditoría...")
+        # ... (tu lógica para cargar df_ventas y df_inventario)
         ventas_contents = await descargar_contenido_de_storage(user_id, workspace_id, X_Session_ID, ventas_file_id)
         inventario_contents = await descargar_contenido_de_storage(user_id, workspace_id, X_Session_ID, inventario_file_id)
         df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
         df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
-        
-        # 2. Ejecutar la auditoría actual
+
         auditoria_actual = generar_auditoria_inventario(df_ventas, df_inventario)
         now_iso = datetime.now(timezone.utc).isoformat()
         auditoria_actual["fecha"] = now_iso
         auditoria_actual["source_files"] = { "ventas_id": ventas_file_id, "inventario_id": inventario_file_id }
-
-        # 3. Buscar la auditoría previa para la comparación
-        if user_id and workspace_id:
-            base_ref = db.collection('usuarios').document(user_id).collection('espacios_trabajo').document(workspace_id)
-        elif X_Session_ID:
-            base_ref = db.collection('sesiones_anonimas').document(X_Session_ID)
         
-        audit_ref = base_ref.collection('auditorias').document('latest')
-        auditoria_previa = audit_ref.get().to_dict() if audit_ref.get().exists else None
+        print(f"Incrementando contador de auditorías para el workspace: {workspace_id}")
+        base_ref.update({"auditorias_ejecutadas": firestore.Increment(1)})
 
-        # 4. Generar el Informe de Evolución
+        # --- FASE 3: Comparación y Generación del Informe de Evolución ---
         informe_evolucion_raw = comparar_auditorias(auditoria_actual, auditoria_previa)
+        
+
+        # --- FASE 4: Guardado Persistente ---
+        # Guardamos el informe de evolución completo en nuestro "registro dorado", sobrescribiendo el anterior
+        audit_ref.set(informe_evolucion_raw)
+
+        # --- FASE 5: Respuesta ---
         informe_evolucion_clean = clean_for_json(informe_evolucion_raw)
-
-        # 5. Guardar el nuevo resultado, sobrescribiendo el anterior
-        audit_ref.set(auditoria_actual)
-
         return JSONResponse(content=informe_evolucion_clean)
 
     except Exception as e:
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=f"Ocurrió un error crítico durante la auditoría: {e}")
+        raise HTTPException(status_code=500, detail=f"Ocurrió un error crítico al ejecutar la auditoría: {e}")
 
 
 # ===================================================================================
@@ -1121,12 +1196,15 @@ async def get_workspace_state(
         # print("\n--- DEBUG: Auditoría de Serialización JSON ---")
         metadata_payload = get_metadata_from_context(workspace_ref)
 
+        auditorias_ejecutadas = workspace_data.get("auditorias_ejecutadas", 0)
+
         final_content = {
             "credits": credits_data,
             "history": historial_list,
             "files": files_map,
             "available_filters": available_filters,
             "date_range_bounds": date_range_bounds,
+            "auditorias_ejecutadas": auditorias_ejecutadas,
             **metadata_payload
         }
         
@@ -1303,7 +1381,8 @@ async def create_workspace(
             "nombre": workspace.nombre,
             "fechaCreacion": datetime.now(timezone.utc),
             "fechaUltimoAcceso": datetime.now(timezone.utc), # Inicializamos el campo de ordenamiento
-            "isPinned": False # Inicializamos el campo de fijado
+            "isPinned": False,
+            "auditorias_ejecutadas": 0
         }
         
         update_time, new_workspace_ref = workspaces_ref.add(new_workspace_data)

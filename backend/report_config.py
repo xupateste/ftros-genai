@@ -555,7 +555,7 @@ REPORTS_CONFIG = {
     ]
   },
   "ReporteAnalisisEstrategicoRotacion": {
-    "label": '🔄 Análisis Estratégico de Rotación',
+    "label": '🔄 Análisis Estratégico de Rotación (BCG)',
     "endpoint": '/rotacion-general-estrategico',
     # "key": 'ReporteAnalisisEstrategicoRotacion',
     "categoria": "🧠 Análisis Estratégico",
@@ -595,15 +595,37 @@ REPORTS_CONFIG = {
         "tooltip_key": "sort_by_rotacion",
         "options": [
           { "value": 'Importancia_Dinamica', "label": 'Índice de Importancia (Recomendado)' },
-          { "value": 'Inversion_Stock_Actual', "label": 'Mayor Inversión en Stock' },
-          { "value": 'Dias_Cobertura_Stock_Actual', "label": 'Próximos a Agotarse (Cobertura)' }
+          { "value": "Tendencia de Crecimiento (%)", "label": "Mayor Tendencia de Crecimiento" },
+          { "value": "Inversion_Stock_Actual", "label": "Mayor Inversión en Stock" },
+          { "value": "Dias_Cobertura_Stock_Actual", "label": "Próximos a Agotarse (Cobertura)" }
         ],
         "defaultValue": 'Importancia_Dinamica'
       },
       { "name": 'filtro_categorias_json', "label": 'Filtrar por Categorías', "type": 'multi-select', "optionsKey": 'categorias', "tooltip_key": 'filtro_categorias', "defaultValue": [] },
-      { "name": 'filtro_marcas_json', "label": 'Filtrar por Marcas', "type": 'multi-select', "optionsKey": 'marcas', "tooltip_key": 'filtro_marcas', "defaultValue": [] }
+      { "name": 'filtro_marcas_json', "label": 'Filtrar por Marcas', "type": 'multi-select', "optionsKey": 'marcas', "tooltip_key": 'filtro_marcas', "defaultValue": [] },
+      {
+        "name": "filtro_bcg_json",
+        "label": "Mostrar solo productos clasificados como...",
+        "type": "multi-select",
+        "optionsKey": "filtro_bcg",
+        "tooltip_key": "filtro_bcg",
+        "defaultValue": [],
+        "static_options": [
+            { "value": "🌟 Estrella", "label": "🌟 Estrella" },
+            { "value": "🐄 Vaca Lechera", "label": "🐄 Vaca Lechera" },
+            { "value": "❓ Dilema", "label": "❓ Dilema" },
+            { "value": "🐕 Perro", "label": "🐕 Perro" }
+        ]
+      }
     ],
     "advanced_parameters": [
+      { 
+        "name": "min_valor_stock", 
+        "label": "Mostrar solo si la inversión en stock supera (S/.)", 
+        "type": "number", 
+        "defaultValue": 0,
+        "tooltip_key": "filtro_inversion"
+      },
       { "name": 'dias_analisis_ventas_general', "label": 'Período de Análisis General (días)', "type": 'number', "tooltip_key": "dias_analisis_ventas_general", "defaultValue": 180, "min": 30 },
       { "name": 'dias_analisis_ventas_recientes', "label": 'Período de Análisis (días)', "type": 'number', "defaultValue": 30, "min": 15, "tooltip_key": "dias_analisis_ventas_recientes" },
       { "name": 'umbral_stock_bajo_dias', "label": "Umbral para 'Stock Bajo' (días)", "type": "number", "defaultValue": 15, "tooltip_key": "umbrales_stock" },
@@ -641,16 +663,31 @@ REPORTS_CONFIG = {
           "min": 1, "max": 10
       },
     ],
+    # "accionable_columns": [
+    #   "SKU / Código de producto", "Nombre del producto", "Clasificación", 
+    #   "Stock Actual (Unds)", "Alerta de Stock", "Índice de Importancia", "Cobertura Actual (Días)"
+    # ],
     "accionable_columns": [
-      "SKU / Código de producto", "Nombre del producto", "Clasificación", 
-      "Stock Actual (Unds)", "Alerta de Stock", "Índice de Importancia", "Cobertura Actual (Días)"
+        "SKU / Código de producto",
+        "Nombre del producto",
+        "Clasificación BCG",
+        "Índice de Importancia",
+        "Tendencia de Crecimiento (%)",
+        "Cobertura Actual (Días)"
     ],
+    # "preview_details": [
+    #   { "label": "Clasificación", "data_key": "Clasificación" },
+    #   { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
+    #   { "label": "Alerta de Stock", "data_key": "Alerta de Stock" },
+    #   { "label": "Cobertura", "data_key": "Cobertura Actual (Días)", "suffix": " días" }
+    # ]
     "preview_details": [
-      { "label": "Clasificación", "data_key": "Clasificación" },
-      { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
-      { "label": "Alerta de Stock", "data_key": "Alerta de Stock" },
-      { "label": "Cobertura", "data_key": "Cobertura Actual (Días)", "suffix": " días" }
+        { "label": "Clasificación BCG", "data_key": "Clasificación BCG" },
+        { "label": "Índice de Importancia", "data_key": "Índice de Importancia" },
+        { "label": "Tendencia de Crecimiento", "data_key": "Tendencia de Crecimiento (%)", "suffix": "%" },
+        { "label": "Cobertura Actual", "data_key": "Cobertura Actual (Días)", "suffix": " días" }
     ]
+
   },
 
 
@@ -815,6 +852,18 @@ REPORTS_CONFIG = {
         "Stock Mínimo Sugerido (Unds)",
         "Precio Compra Actual (S/.)",
         "Pedido Ideal Sugerido (Unds)"
+    ],
+    "detalle_columns": [
+        # "SKU / Código de producto", "Nombre del producto", "Categoría", "Marca",
+        # "Stock Actual (Unds)", "Punto de Alerta Mínimo (Unds)", 
+        # "Diferencia (Stock vs Alerta Mín.)", "¿Pedir Ahora?", "Índice de Importancia"
+        
+        "SKU / Código de producto", "Nombre del producto", "Categoría", "Subcategoría", "Marca",
+        "Precio Compra Actual (S/.)", "Stock Actual (Unds)", "Cobertura Actual (Días)",
+        "Punto de Alerta Mínimo (Unds)", "Punto de Alerta Ideal (Unds)", "¿Pedir Ahora?",
+        "Stock de Seguridad (Unds)", "Stock Mínimo Sugerido (Unds)", "Stock Ideal Sugerido (Unds)",
+        "Pedido Mínimo Sugerido (Unds)", "Pedido Ideal Sugerido (Unds)", "Índice de Importancia",
+        "Promedio Venta Diaria (Unds)", "Ventas Recientes ({dias_recientes}d) (Unds)", "Ventas Periodo General ({dias_general}d) (Unds)"
     ],
     "preview_details": [
         { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },

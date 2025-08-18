@@ -29,6 +29,8 @@ import { TruncatedResultModal } from './TruncatedResultModal';
 import { BecomeStrategistModal } from './BecomeStrategistModal';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
 import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
+import { ContextualBanner } from './ContextualBanner'; // <-- Importamos el nuevo componente
+
 
 // --- IMPORTAMOS LOS NUEVOS MODALES ---
 import { RegisterToUnlockModal } from './RegisterToUnlockModal';
@@ -83,7 +85,7 @@ const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
 );
 
 
-export function ReportModal({ reportConfig, context, initialView = 'parameters', availableFilters, onClose, onAnalysisComplete, onInsufficientCredits, onLoginSuccess }) {
+export function ReportModal({ reportConfig, context, contextInfo, initialView = 'parameters', initialSkuFilter, availableFilters, onClose, onAnalysisComplete, onInsufficientCredits, onLoginSuccess }) {
   const { strategy } = useStrategy();
   const { tooltips, kpiTooltips } = useConfig();
   const { updateCredits, credits } = useWorkspace()
@@ -105,7 +107,9 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
   const [confirmBack, setConfirmBack] = useState(false); // Para el botón de volver
   const backButtonTimer = useRef(null);
 
-    // Efecto para establecer la vista inicial cuando el modal se monta
+  const [activeContext, setActiveContext] = useState(contextInfo);
+
+  // Efecto para establecer la vista inicial cuando el modal se monta
   useEffect(() => {
     if (initialView === 'info') {
       // Usamos un pequeño timeout para que la animación de deslizamiento sea visible
@@ -116,7 +120,13 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
     }
   }, [initialView]);
 
+  useEffect(() => {
+    setActiveContext(contextInfo);
+  }, [contextInfo]);
 
+  const handleClearFilter = () => {
+    setActiveContext(null); // Esto ocultará el panel y desactivará el filtro
+  };
 
   // Efecto para inicializar los parámetros cuando el modal se abre
   useEffect(() => {
@@ -340,6 +350,10 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
       formData.append("current_user", token);
     }
 
+    if (activeContext && activeContext.skus && activeContext.skus.length > 0) {
+      formData.append('filtro_skus_json', JSON.stringify(activeContext.skus));
+    }
+
     // console.log('modalParams')
     // console.log(modalParams)
     Object.entries(modalParams).forEach(([key, value]) => {
@@ -449,6 +463,13 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
     setModalParams(prev => ({ ...prev, ...advancedDefaults }));
   };
 
+  const stripEmojis = (text) => {
+    if (typeof text !== 'string') return text;
+    // Expresión regular para detectar la mayoría de los emojis
+    const emojiRegex = /(\u00a9|\u00ae|[\u2000-\u3300]|\ud83c[\ud000-\udfff]|\ud83d[\ud000-\udfff]|\ud83e[\ud000-\udfff])/g;
+    return text.replace(emojiRegex, '').trim();
+  };
+
   const handleOpenPDF = () => {
     const dataToUse = filteredData;
     if (!dataToUse || dataToUse.length === 0) {
@@ -500,10 +521,26 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
     }
 
     // 4. Dibujamos la tabla de datos
+    // const headers = reportConfig.accionable_columns || [];
+    // const finalHeaders = [...headers];
+    // const body = dataToUse.map(row => {
+    //     const rowData = headers.map(header => row[header] || '');
+    //     return rowData;
+    // });
     const headers = reportConfig.accionable_columns || [];
     const finalHeaders = [...headers];
+
     const body = dataToUse.map(row => {
-        const rowData = headers.map(header => row[header] || '');
+        const rowData = headers.map(header => {
+            const value = row[header] || '';
+            // Si la columna es la de clasificación, le quitamos los emojis
+            if (header === 'Clasificación BCG') {
+                return stripEmojis(value);
+            }
+            return value;
+        });
+        rowData.push(''); // Añadimos el valor vacío para 'Check ✓'
+        rowData.push(''); // Añadimos el valor vacío para 'Cant. Final'
         return rowData;
     });
 
@@ -731,6 +768,7 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
 
               {modalView === 'parameters' && (
                 <div className="p-4 text-black flex-col">
+                  <ContextualBanner contextInfo={activeContext} onClear={handleClearFilter} />
                   <div className="flex-1 min-h-0 gap-4 p-4 text-black">
                     {(reportConfig.basic_parameters?.length > 0 || reportConfig.advanced_parameters?.length > 0) && (
                       <div className="p-4 border-2 rounded-md shadow-md bg-gray-50">
@@ -781,6 +819,8 @@ export function ReportModal({ reportConfig, context, initialView = 'parameters',
                 <div className="h-full flex flex-col">
                   {/* --- SECCIÓN SUPERIOR CON KPIs --- */}
                   <div className="p-4 sm:p-6 text-left">
+                    <ContextualBanner contextInfo={activeContext} onClear={handleClearFilter} />
+
                     {/*<h3 className="text-lg font-bold text-gray-800 mb-4">📊 Resumen Ejecutivo</h3>*/}
                     {/* Insight Clave */}
                     <div className="mb-6 p-4 bg-purple-50 border-l-4 border-purple-500">

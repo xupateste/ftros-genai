@@ -108,24 +108,18 @@ const ScoreRing = ({ score = 0, tooltipText}) => {
 
 // --- Sub-componente 2: La Tarjeta de KPI Contextual (sin cambios) ---
 const KpiCard = ({ label, value, icon, colorClass, delta, deltaType, tooltipText }) => {
-  // const isPositive = deltaType === 'positive';
-  // const isNegative = deltaType === 'negative';
-  const deltaStyles = {
-    positivo: {
-      icon: <FiArrowDown size={14} />,
-      color: 'text-green-500',
-    },
-    negativo: {
-      icon: <FiArrowUp size={14} />,
-      color: 'text-red-500',
-    },
-    neutral: {
-      icon: <FiArrowUp size={14} />,
-      color: 'text-gray-500',
-    }
-  };
+  const deltaColorClass = {
+    positivo: 'text-green-500',
+    negativo: 'text-red-500',
+    neutral: 'text-gray-500',
+  }[deltaType] || 'text-gray-500';
 
-  const currentDeltaStyle = deltaStyles[deltaType] || deltaStyles.neutral;
+
+  const deltaIcon = parseFloat(delta) > 0 
+    ? <FiArrowUp size={14} /> 
+    : parseFloat(delta) < 0 
+    ? <FiArrowDown size={14} /> 
+    : null;
   
   return (
     <div className={`bg-white p-4 rounded-lg shadow border-l-4 ${colorClass} flex flex-col justify-between transition-all duration-300 hover:shadow-lg hover:-translate-y-1 h-full`}>
@@ -141,18 +135,11 @@ const KpiCard = ({ label, value, icon, colorClass, delta, deltaType, tooltipText
       <div className="text-center my-4">
         {/* Componente 2: Valor Principal */}
         <p className="text-4xl font-bold text-gray-800">{value}</p>
-        
-        {/* Componente 3: El Delta */}
-        {/*{delta && (
-          <div className={`flex items-center justify-center text-sm font-semibold mt-1 ${isPositive ? 'text-green-500' : isNegative ? 'text-red-500' : 'text-gray-500'}`}>
-            {isPositive && <FiArrowUp size={14} />}
-            {isNegative && <FiArrowDown size={14} />}
-            <span className="ml-1">{delta} desde la última carga</span>
-          </div>
-        )}*/}
+
         {/* --- RENDERIZADO DEL DELTA INTELIGENTE --- */}
         {delta && (
-          <div className={`flex items-center justify-center text-sm font-semibold mt-1 ${currentDeltaStyle.color}`}>
+          <div className={`flex items-center justify-center text-sm font-semibold mt-1 ${deltaColorClass}`}>
+            {deltaIcon}
             <span className="ml-1">{delta} desde la última carga</span>
           </div>
         )}
@@ -180,13 +167,6 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
   // 3. Unificamos el plan de acción
   const plan_de_accion = auditResult.plan_de_accion || [];
 
-  // const { puntaje_salud, kpis_dolor, plan_de_accion } = auditResult;
-
-  // const kpiConfig = {
-  //   "Capital Inmovilizado": { icon: <FiArchive />, color: 'border-red-500' },
-  //   "Venta Perdida Potencial": { icon: <FiTrendingDown />, color: 'border-orange-500' },
-  //   "Margen Bruto Congelado": { icon: <FiDollarSign />, color: 'border-yellow-500' },
-  // };
   const kpiConfig = {
     "Capital en Riesgo (S/.)": { icon: <FiArchive />, color: 'border-red-500' },
     "Venta Perdida Potencial (S/.)": { icon: <FiTrendingDown />, color: 'border-orange-500' },
@@ -217,47 +197,28 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
         </section>
       </AnimateOnScroll>
 
-      {/* --- KPIs Contextuales --- */}
-      {/*<section className="grid md:grid-cols-3 gap-6">
-        {kpis && Object.entries(kpis).map(([key, data], index) => (
-          <AnimateOnScroll key={key} delay={index * 150}>
-            <KpiCard 
-              label={key} 
-              value={isEvolutionReport ? data.actual : data} 
-              delta={isEvolutionReport ? data.delta : null}
-              deltaType={isEvolutionReport && parseFloat(data.delta) >= 0 ? 'positive' : 'negative'}
-              icon={kpiConfig[key]?.icon || <FiInfo />}
-              colorClass={kpiConfig[key]?.color || 'border-gray-300'}
-              tooltipText={kpiTooltips[key]}
-            />
-          </AnimateOnScroll>
-        ))}
-      </section>*/}
-
       {/* --- INICIO DE LA SOLUCIÓN: CARRUSEL DE KPIs --- */}
       {/* Usamos un div contenedor en lugar de la sección para un mejor control del padding */}
-      {/*<div className="w-full">*/}
-        <AnimateOnScroll delay={300}>
-          {/* La "Pista de Deslizamiento" */}
-          <div className="flex overflow-x-auto gap-6 py-4 snap-x snap-mandatory scrollbar-hide">
-            {kpis && Object.entries(kpis).map(([key, data]) => (
-              // Cada "Vagón" del carrusel
-              <div key={key} className="md:w-1/3 sm:w-4/5 flex-shrink-0 snap-center">
-                <KpiCard 
-                  label={key} 
-                  value={isEvolutionReport ? data.actual : data} 
-                  delta={isEvolutionReport ? data.delta : null}
-                  // deltaType={isEvolutionReport && parseFloat(data.delta) >= 0 ? 'positive' : 'negative'}
-                  deltaType={isEvolutionReport ? data.delta_type : null}
-                  icon={kpiConfig[key]?.icon || <FiInfo />}
-                  colorClass={kpiConfig[key]?.color || 'border-gray-300'}
-                  tooltipText={kpiTooltips[key]}
-                />
-              </div>
-            ))}
-          </div>
-        </AnimateOnScroll>
-      {/*</div>*/}
+      <AnimateOnScroll delay={300}>
+        {/* La "Pista de Deslizamiento" */}
+        <div className="flex overflow-x-auto gap-6 py-4 snap-x snap-mandatory scrollbar-hide">
+          {kpis && Object.entries(kpis).map(([key, data]) => (
+            // Cada "Vagón" del carrusel
+            <div key={key} className="md:w-1/3 sm:w-4/5 flex-shrink-0 snap-center">
+              <KpiCard 
+                label={key} 
+                value={isEvolutionReport ? data.actual : data} 
+                delta={isEvolutionReport ? data.delta : null}
+                // deltaType={isEvolutionReport && parseFloat(data.delta) >= 0 ? 'positive' : 'negative'}
+                deltaType={isEvolutionReport ? data.delta_type : null}
+                icon={kpiConfig[key]?.icon || <FiInfo />}
+                colorClass={kpiConfig[key]?.color || 'border-gray-300'}
+                tooltipText={kpiTooltips[key]}
+              />
+            </div>
+          ))}
+        </div>
+      </AnimateOnScroll>
       {/* --- FIN DE LA SOLUCIÓN --- */}
 
       {/* --- Log de Eventos (Solo para Informes de Evolución) --- */}
@@ -270,7 +231,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
       {/* --- Pilar 2: Las Guías Accionables (con Título Mejorado) --- */}
        <section>
          <AnimateOnScroll>
-           <div className="text-center">
+           <div className="text-center mt-6">
              <h2 className="text-2xl font-bold text-white mb-2">Recomendaciones Estratégicas
                 <Tooltip text={tooltips['action_plan_tooltip']} />
              </h2>
@@ -299,16 +260,16 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
         </div>
         {/* --- NUEVO BOTÓN "CARGAR MÁS" CONDICIONAL --- */}
         {plan_de_accion.length > visibleTasksCount && (
-            <div className="text-center mt-4">
-                <AnimateOnScroll>
-                    <button 
-                        onClick={handleLoadMore}
-                        className="bg-gray-700 text-purple-300 font-semibold py-2 px-6 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 mx-auto"
-                    >
-                        <FiChevronsDown /> Cargar 3 Tareas Más
-                    </button>
-                </AnimateOnScroll>
-            </div>
+          <div className="text-center mt-4">
+              <AnimateOnScroll>
+                  <button 
+                      onClick={handleLoadMore}
+                      className="bg-gray-700 text-purple-300 font-semibold py-2 px-6 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 mx-auto"
+                  >
+                      <FiChevronsDown /> Cargar 3 Tareas Más
+                  </button>
+              </AnimateOnScroll>
+          </div>
         )}
       </section>
     </div>

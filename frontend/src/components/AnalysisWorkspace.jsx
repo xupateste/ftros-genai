@@ -162,6 +162,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   // 1. ESTADO DE CARGA PRINCIPAL
   const [isLoading, setIsLoading] = useState(true);
+  const [initialSkuFilter, setInitialSkuFilter] = useState(null);
 
   // 2. ESTADOS DEL WORKSPACE (con inicialización segura)
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
@@ -196,6 +197,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
   const [infoModalReport, setInfoModalReport] = useState(null); // Nuevo estado para el modal de info
   const [modalInitialView, setModalInitialView] = useState('parameters');
+  const [reportContextInfo, setReportContextInfo] = useState(null);
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
   const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
@@ -555,12 +557,27 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     )
   };
 
-  const handleSolveClick = (reportKey) => {
+  const handleSolveClick = (title, target_report, skus_afectados) => {
+
+    if (!target_report || !skus_afectados) return;
+
     // Esta función se llama desde una AuditTaskCard
-    const reportConfig = Object.values(reportData).flat().find(r => r.key === reportKey);
+    const reportConfig = Object.values(reportData).flat().find(r => r.key === target_report);
+    // const reportConfig = Object.values(reportData).flat().find(r => r.key === reportKey);
     if (reportConfig) {
+      // setInitialSkuFilter(skus_afectados || []);
+      setReportContextInfo({
+        title: title,
+        skus: skus_afectados || []
+      });
       setSelectedReport(reportConfig);
     }
+  };
+
+  const handleCloseReportModal = () => {
+    setSelectedReport(null);
+    // setInitialSkuFilter(null); // Limpiamos el filtro al cerrar
+    setReportContextInfo(null);
   };
 
   // Función para limpiar el estado al cambiar de workspace
@@ -913,7 +930,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           context={{...context, fileIds: uploadedFileIds}} // Pasamos toda la info necesaria
           initialView={modalInitialView} // <-- Pasamos la vista inicial
           availableFilters={availableFilters}
-          onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
+          contextInfo={reportContextInfo} // <-- Pasamos la nueva prop
+          initialSkuFilter={initialSkuFilter} // <-- Pasamos la nueva prop
+          onClose={handleCloseReportModal}
+          // onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
           onInsufficientCredits={handleInsufficientCredits} // <-- Pasamos la nueva función
           onAnalysisComplete={handleAnalysisCompletion}
           onLoginSuccess={handleLoginFromModal}
