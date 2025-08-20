@@ -48,7 +48,7 @@ AUDIT_KNOWLEDGE_BASE = {
         "why": "'Basura entra, basura sale'. Si los datos de tus productos más importantes son incorrectos (ej. precio de compra en cero o categoría faltante), todos los análisis de rentabilidad y estrategia en esta plataforma serán imprecisos. Corregir esto es fundamental para confiar en tus resultados.",
         "how": [
             "Ejecuta la 'Auditoría de Integridad de Catálogo' para obtener una lista completa de los productos con errores.",
-            "Dedica tiempo a actualizar la información faltante (Marca, Categoría, Precio de Compra) directamente en tu sistema de punto de venta o inventario.",
+            "Dedica tiempo a actualizar la información faltante (Marca, Categoría, Precio de Compra, Precio de Venta, Productos Duplicados) directamente en tu sistema de punto de venta o inventario.",
             "Establece un proceso para que cada nuevo producto que se ingrese al sistema tenga todos sus datos completos desde el inicio."
         ]
     },

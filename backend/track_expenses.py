@@ -3249,13 +3249,13 @@ def generar_auditoria_inventario(
     resultado_audit = auditar_calidad_datos(df_ventas=None, df_inventario=df_inventario.copy(), ordenar_por='valor_stock_s', criterios_auditoria= criterios_auditoria_json)
     # --- CAMBIO CLAVE: Extraemos el DataFrame de la clave "data" ---
     df_audit = resultado_audit.get("data")
-    print(f"df_audit {df_audit}")
+    # print(f"df_audit {df_audit}")
     if df_audit is not None and not df_audit.empty:
         cols_a_unir = [SKU_COL, "Problema Detectado"]
         df_maestro = pd.merge(df_maestro, df_audit[[col for col in cols_a_unir if col in df_audit.columns]], on=SKU_COL, how='left', suffixes=('', '_right'))
 
 
-    print(f"df_maestro {df_maestro.columns.tolist()}")
+    # print(f"df_maestro {df_maestro.columns.tolist()}")
     # print(f"{df_maestro}")
 
     dynamic_params = {'dias_recientes': 30, 'dias_general': 180}
@@ -3426,7 +3426,7 @@ def generar_auditoria_inventario(
         tasks.append({
             "id": "task_exceso_stock_vaca",
             "type": "warning",
-            "title": f"Tienes {len(alerta6_df)} '🐄 Vacas Lecheras' con exceso de stock.",
+            "title": f"Tienes {len(alerta6_df)} productos '🐄 Vacas Lecheras' con exceso de stock.",
             "impact": f"Capital perezoso inmovilizado: S/ {capital_perezoso:,.2f}.",
             "solution_button_text": "Analizar Rotación y Cobertura",
             "target_report": target_report_key_6,
@@ -3452,7 +3452,7 @@ def generar_auditoria_inventario(
         
         # Identificamos los productos cuya velocidad reciente es al menos 50% mayor que la general
         estrellas_emergentes = alerta7_df[velocidad_reciente > (velocidad_general * 0.9)].copy()
-        print(f"estrellas_emergentes {estrellas_emergentes}")
+        # print(f"estrellas_emergentes {estrellas_emergentes}")
         if not estrellas_emergentes.empty:
             # Calculamos la tendencia para poder ordenarlos y mostrarla
             estrellas_emergentes['Tendencia de Crecimiento (%)'] = ((velocidad_reciente / velocidad_general.replace(0, np.nan) - 1) * 100).fillna(1000) # Usamos un valor alto para los que no tenían ventas antes
@@ -3472,8 +3472,8 @@ def generar_auditoria_inventario(
             tasks.append({
                 "id": "task_estrellas_emergentes",
                 "type": "opportunity",
-                "title": f"Se han detectado {len(estrellas_emergentes)} '🐄 Vacas Lecheras' con ventas en aceleración.",
-                "impact": "Potencial de convertirse en tus nuevas 'vacas lecheras'.",
+                "title": f"Se han detectado {len(estrellas_emergentes)} productos '🐄 Vacas Lecheras' con aceleración en ventas.",
+                "impact": "Potencial de convertirse en tus nuevas '🌟 Estrellas'.",
                 "solution_button_text": "Analizar Productos de Alto Potencial",
                 "target_report": target_report_key_7,
                 "knowledge": AUDIT_KNOWLEDGE_BASE.get("oportunidad_clase_b"),

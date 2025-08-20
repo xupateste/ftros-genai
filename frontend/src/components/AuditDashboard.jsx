@@ -266,7 +266,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
                       onClick={handleLoadMore}
                       className="bg-gray-700 text-purple-300 font-semibold py-2 px-6 rounded-lg hover:bg-gray-600 transition-colors flex items-center gap-2 mx-auto"
                   >
-                      <FiChevronsDown /> Cargar 3 Tareas Más
+                      <FiChevronsDown /> Cargar Más Acciones
                   </button>
               </AnimateOnScroll>
           </div>
