@@ -436,6 +436,7 @@ def generar_reporte_maestro_inventario(
     ordenar_por: str = 'prioridad',
     incluir_solo_categorias: Optional[List[str]] = None,
     incluir_solo_marcas: Optional[List[str]] = None,
+    filtro_skus: Optional[List[str]] = None,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -444,6 +445,17 @@ def generar_reporte_maestro_inventario(
     """
     print("Iniciando generación de Reporte Maestro de Inventario...")
     
+    sku_col = 'SKU / Código de producto'
+    
+    # Forzamos la columna de unión a ser string
+    df_ventas[sku_col] = df_ventas[sku_col].astype(str).str.strip()
+    df_inventario[sku_col] = df_inventario[sku_col].astype(str).str.strip()
+
+    if filtro_skus:
+        print(f"Ejecutando reporte en modo contextual para {len(filtro_skus)} SKUs.")
+        df_inventario = df_inventario[df_inventario[sku_col].isin(filtro_skus)]
+        df_ventas = df_ventas[df_ventas[sku_col].isin(filtro_skus)]
+
     # --- PASO 1: Ejecutar Análisis de Salud del Stock ---
     # Usamos una versión simplificada de la lógica de stock muerto para obtener la clasificación
     print("Paso 1/5: Ejecutando análisis de salud del stock...")
@@ -642,6 +654,7 @@ def process_csv_analisis_estrategico_rotacion(
 
     filtro_bcg: Optional[List[str]] = None,
     min_valor_stock: Optional[float] = None,
+    filtro_skus: Optional[List[str]] = None,
 ) -> Dict[str, Any]:
     """
     Genera un análisis estratégico de portafolio utilizando una adaptación de la
@@ -668,9 +681,12 @@ def process_csv_analisis_estrategico_rotacion(
     df_ventas_proc = df_ventas.copy()
     df_inventario_proc = df_inventario.copy()
 
-    # Normalización de datos (igual que antes)
+    # Forzamos la columna de unión a ser string
     df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
     df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+
+
+    # Normalización de datos (igual que antes)
     df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
     df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
     df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
@@ -830,6 +846,10 @@ def process_csv_analisis_estrategico_rotacion(
     # --- 8. Filtros y Ordenamiento Final ---
     df_resultado = df_analisis.copy()
 
+    # Aplicamos el filtro de SKUs si viene desde la auditoría
+    if filtro_skus:
+        df_resultado = df_resultado[df_resultado[sku_col].isin(filtro_skus)]
+
     # Aplicación de filtros dinámicos...
     if filtro_categorias and categoria_col_stock in df_resultado.columns:
         df_resultado = df_resultado[df_resultado[categoria_col_stock].isin(filtro_categorias)]
@@ -917,7 +937,7 @@ def process_csv_analisis_estrategico_rotacion(
         'Clasificacion_BCG', 'Importancia_Dinamica', 'Tendencia de Crecimiento (%)', stock_actual_col_stock, precio_compra_actual_col_stock, "Precio de venta actual (S/.)", 'Inversion_Stock_Actual',
         # Diagnóstico y Rendimiento
         'Dias_Cobertura_Stock_Actual', 'Alerta_Stock',  'Ventas_Total_Reciente', 'Ventas_Total_General', 
-        'PDA_Final', 'PDA_Demanda_Estrategica', 'Precio_Venta_Prom_Reciente'
+        'PDA_Final', 'PDA_Demanda_Estrategica', 'Precio_Venta_Prom_Reciente', 'Ingreso_Total_Reciente'
     ]
     
     df_final = df_resultado[[col for col in columnas_salida_optimas if col in df_resultado.columns]].copy()
@@ -1869,8 +1889,6 @@ def process_csv_lista_basica_reposicion_historico(
     temp_urgency_array = np.where(condicion_urgencia, urgency_score_series, 0)
     df_resultado['Índice de Urgencia'] = pd.Series(temp_urgency_array, index=df_resultado.index).fillna(0)
 
-    print(f"df_resultado.columns {df_resultado.columns}")
-
     # --- SECCIÓN DE ORDENAMIENTO DINÁMICO ---
     if ordenar_por == 'Inversion Requerida':
         df_resultado['temp_sort_col'] = df_resultado['Sugerencia_Pedido_Ideal_Unds'] * df_resultado[precio_compra_actual_col_stock]
@@ -2044,6 +2062,7 @@ def procesar_stock_muerto(
     ordenar_por: str = 'valor_stock_s',
     incluir_solo_categorias: Optional[List[str]] = None,
     incluir_solo_marcas: Optional[List[str]] = None,
+    filtro_skus: Optional[List[str]] = None,
     **kwargs # Acepta argumentos extra para compatibilidad
 ) -> Dict[str, Any]:
     """
@@ -2066,6 +2085,18 @@ def procesar_stock_muerto(
 
     # --- PASO 1: Definición de Nombres de Columna y Pre-procesamiento ---
     # --- 0. Renombrar y Preprocesar Datos ---
+    sku_col = 'SKU / Código de producto'
+
+    df_ventas[sku_col] = df_ventas[sku_col].astype(str).str.strip()
+    df_inventario[sku_col] = df_inventario[sku_col].astype(str).str.strip()
+
+    if filtro_skus:
+        print(f"Ejecutando reporte en modo contextual para {len(filtro_skus)} SKUs.")
+        df_inventario = df_inventario[df_inventario[sku_col].isin(filtro_skus)]
+        df_ventas = df_ventas[df_ventas[sku_col].isin(filtro_skus)]
+
+
+
     df_ventas = df_ventas.rename(columns={
         'Fecha de venta': 'fecha_venta',
         'SKU / Código de producto': 'sku',
@@ -2657,6 +2688,7 @@ def auditar_margenes_de_productos_nuevo(
     umbral_desviacion_porcentaje: float = 10.0,
     filtro_categorias: Optional[List[str]] = None,
     filtro_marcas: Optional[List[str]] = None,
+    periodo_analisis_dias: int = 30,
     ordenar_por: str = 'impacto_financiero',
     **kwargs
 ) -> Dict[str, Any]:
@@ -2688,6 +2720,15 @@ def auditar_margenes_de_productos_nuevo(
 
     df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
     df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+
+    # 0. Filtramos el DataFrame de ventas según el período seleccionado
+    FECHA_VENTA = 'Fecha de venta'
+    df_ventas_proc[FECHA_VENTA] = pd.to_datetime(df_ventas_proc[FECHA_VENTA], format='%d/%m/%Y', errors='coerce')
+    df_ventas_proc.dropna(subset=[FECHA_VENTA], inplace=True)
+    fecha_max_venta = df_ventas_proc[FECHA_VENTA].max()
+    if periodo_analisis_dias > 0 and pd.notna(fecha_max_venta):
+        fecha_inicio = fecha_max_venta - pd.Timedelta(days=periodo_analisis_dias)
+        df_ventas_proc = df_ventas_proc[df_ventas_proc[FECHA_VENTA] >= fecha_inicio]
     
     numeric_cols_inv = [
         'Cantidad en stock actual', 
@@ -2987,6 +3028,7 @@ def auditar_calidad_datos(
     filtro_categorias: Optional[List[str]] = None,
     filtro_marcas: Optional[List[str]] = None,
     ordenar_por: str = 'valor_stock_s',
+    filtro_skus: Optional[List[str]] = None,
     **kwargs
 ) -> Dict[str, Any]:
     """
@@ -3012,6 +3054,12 @@ def auditar_calidad_datos(
     for col in [SKU, NOMBRE_PROD, CATEGORIA, MARCA, PRECIO_COMPRA, PRECIO_VENTA, STOCK_ACTUAL]:
         if col not in df_audit.columns:
             df_audit[col] = np.nan
+    
+    df_audit[SKU] = df_audit[SKU].astype(str).str.strip()
+
+    if filtro_skus:
+        print(f"Ejecutando reporte en modo contextual para {len(filtro_skus)} SKUs.")
+        df_audit = df_audit[df_audit[SKU].isin(filtro_skus)]
 
     # Limpieza de tipos
     for col in [PRECIO_COMPRA, PRECIO_VENTA, STOCK_ACTUAL]:
@@ -3179,7 +3227,7 @@ def generar_auditoria_inventario(
     resultado_margenes = auditar_margenes_de_productos_nuevo(df_ventas.copy(), df_inventario.copy())
     df_margenes = resultado_margenes.get("data")
     if df_margenes is not None and not df_margenes.empty:
-        cols_a_unir = [SKU_COL, 'Margen Real (S/.)']
+        cols_a_unir = [SKU_COL, 'Margen Real (S/.)', 'Precio Venta de Lista (S/.)', 'Margen Teórico (S/.)', 'Desviación de Margen (%)', 'Precio de compra actual (S/.)', 'Precio Venta Promedio (S/.)', 'Cantidad vendida', 'Impacto Financiero Total (S/.)']
         df_maestro = pd.merge(df_maestro, df_margenes[[col for col in cols_a_unir if col in df_margenes.columns]], on=SKU_COL, how='left', suffixes=('', '_right'))
         df_maestro['Margen Real (S/.)'].fillna(0, inplace=True)
     else:
@@ -3192,11 +3240,22 @@ def generar_auditoria_inventario(
     # --- CAMBIO CLAVE: Extraemos el DataFrame de la clave "data" ---
     df_salud = resultado_salud.get("data")
     if df_salud is not None and not df_salud.empty:
-        cols_a_unir = [SKU_COL, 'Clasificación Diagnóstica']
+        cols_a_unir = [SKU_COL, 'Clasificación Diagnóstica', 'Valor stock (S/.)', "Ventas totales (Unds)", "Ventas últimos 3m (Unds)", "Última venta", "Días sin venta"]
         df_maestro = pd.merge(df_maestro, df_salud[[col for col in cols_a_unir if col in df_salud.columns]], on=SKU_COL, how='left', suffixes=('', '_right'))
 
+    # 1.5. Ejecutamos el Análisis de Calidad de Datos
+    # La función `auditar_calidad_datos` devuelve un diccionario.
+    criterios_auditoria_json = ["marca_faltante","categoria_faltante","precio_compra_cero","nombres_duplicados","precio_venta_menor_costo"]
+    resultado_audit = auditar_calidad_datos(df_ventas=None, df_inventario=df_inventario.copy(), ordenar_por='valor_stock_s', criterios_auditoria= criterios_auditoria_json)
+    # --- CAMBIO CLAVE: Extraemos el DataFrame de la clave "data" ---
+    df_audit = resultado_audit.get("data")
+    print(f"df_audit {df_audit}")
+    if df_audit is not None and not df_audit.empty:
+        cols_a_unir = [SKU_COL, "Problema Detectado"]
+        df_maestro = pd.merge(df_maestro, df_audit[[col for col in cols_a_unir if col in df_audit.columns]], on=SKU_COL, how='left', suffixes=('', '_right'))
 
-    # print(f"df_maestro {df_maestro.columns.tolist()}")
+
+    print(f"df_maestro {df_maestro.columns.tolist()}")
     # print(f"{df_maestro}")
 
     dynamic_params = {'dias_recientes': 30, 'dias_general': 180}
@@ -3205,22 +3264,22 @@ def generar_auditoria_inventario(
     print("Fase 2: Detectando alertas y oportunidades...")
 
     # Alerta 0: Quiebre de Stock en "Vacas Lecheras"
-    alerta0_df = df_maestro[(df_maestro['Clasificación BCG'].isin(['🌟 Estrella'])) & (df_maestro['Alerta de Stock'].isin(['Agotado', 'Stock Bajo']))].copy()
+    alerta1_df = df_maestro[(df_maestro['Clasificación BCG'].isin(['🌟 Estrella'])) & (df_maestro['Alerta de Stock'].isin(['Agotado', 'Stock Bajo']))].copy()
 
-    if not alerta0_df.empty:
-        skus_afectados = alerta0_df['SKU / Código de producto'].tolist()
+    if not alerta1_df.empty:
+        skus_afectados = alerta1_df['SKU / Código de producto'].tolist()
 
         target_report_key = "ReporteListaBasicaReposicionHistorica"
 
-        if 'Índice de Urgencia' in alerta0_df.columns:
-            alerta0_df.sort_values(by='Índice de Urgencia', ascending=False, inplace=True)
+        if 'Índice de Urgencia' in alerta1_df.columns:
+            alerta1_df.sort_values(by='Índice de Urgencia', ascending=False, inplace=True)
        
         column_templates = REPORTS_CONFIG.get(target_report_key, {}).get('detalle_columns', [])
         preview_cols = [
             col.format(**dynamic_params) for col in column_templates
         ]
 
-        preview_df = alerta0_df[[col for col in preview_cols if col in alerta0_df.columns]].head(3)
+        preview_df = alerta1_df[[col for col in preview_cols if col in alerta1_df.columns]].head(3)
         preview_data = _clean_preview_data(preview_df) # _clean_preview_data ahora devuelve una lista        
 
         preview_headers = [
@@ -3228,11 +3287,11 @@ def generar_auditoria_inventario(
             if col not in ['SKU / Código de producto', 'Nombre del producto']
         ]
         
-        venta_perdida_estimada = (alerta0_df['PDA_Demanda_Estrategica'] * alerta0_df['Precio Venta (S/.)'] * 25).sum()
+        venta_perdida_estimada = (alerta1_df['PDA_Demanda_Estrategica'] * alerta1_df['Precio Venta (S/.)'] * 25).sum()
         tasks.append({
-            "id": "task_quiebre_stock_aA", "type": "error",
-            "title": f"Tienes {len(alerta0_df)} productos 'Clase A' en riesgo de quiebre de stock.",
-            "impact": f"Riesgo de venta perdida: S/ {venta_perdida_estimada:,.2f} este mes.",
+            "id": "task_quiebre_stock_a", "type": "error",
+            "title": f"Tienes {len(alerta1_df)} productos '🌟 Estrella' en riesgo de quiebre de stock.",
+            "impact": f"Riesgo de pérdida de ventas: S/ {venta_perdida_estimada:,.2f} este mes.",
             "solution_button_text": "Ver y Reponer Urgentes",
             "target_report": target_report_key,
             "knowledge": AUDIT_KNOWLEDGE_BASE.get("quiebre_stock_clase_a"),
@@ -3241,62 +3300,291 @@ def generar_auditoria_inventario(
             "skus_afectados": skus_afectados
         })
 
-    # Alerta 1: Quiebre de Stock en "Vacas Lecheras"
-    alerta1_df = df_maestro[(df_maestro['Clasificación BCG'].isin(['🌟 Estrella'])) & (df_maestro['Alerta de Stock'].isin(['Agotado', 'Stock Bajo']))].copy()
-    # print(f"alerta1_df {alerta1_df}")
-    if not alerta1_df.empty:
-        venta_perdida_estimada = (alerta1_df['PDA_Demanda_Estrategica'] * alerta1_df['Precio Venta (S/.)'] * 15).sum()
-        tasks.append({ "id": "task_quiebre_stock_a", "type": "error", "title": f"Tienes {len(alerta1_df)} productos 'Clase A' en riesgo de quiebre de stock.", "impact": f"Riesgo de venta perdida: S/ {venta_perdida_estimada:,.2f} este mes.", "solution_button_text": "Ver y Reponer Urgentes", "target_report": "ReporteListaBasicaReposicionHistorica", "knowledge": AUDIT_KNOWLEDGE_BASE.get("quiebre_stock_clase_a"), "preview_data": _clean_preview_data(alerta1_df.head(3)) })
+    # Primero, identificamos todo el stock muerto
+    df_stock_muerto_general = df_maestro[df_maestro['Clasificación Diagnóstica'] == 'Stock Muerto'].copy()
 
-    # Alerta 2: Margen Negativo en Productos de Alta Rotación
-    alerta2_df = df_maestro[
-        (df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
-        (df_maestro['Margen Real (S/.)'] <= 0)
-    ].copy()
-    if not alerta2_df.empty:
-        # Calculamos el impacto: la pérdida total generada por estos productos en el período reciente.
-        # Usamos abs() para mostrar la pérdida como un número positivo.
-        perdida_realizada = abs((alerta2_df['Margen Real (S/.)'] * alerta2_df['Ventas Recientes (30d) (Unds)']).sum())
-        tasks.append({ "id": "task_margen_negativo_rotacion", "type": "error", "title": f"Tienes {len(alerta2_df)} productos importantes con margen de venta negativo.", "impact": f"Pérdida generada: S/ {perdida_realizada:,.2f} en el último mes.", "solution_button_text": "Auditar Rentabilidad", "target_report": "ReporteAuditoriaMargenes", "knowledge": AUDIT_KNOWLEDGE_BASE.get("margen_negativo_alta_rotacion"), "preview_data": alerta2_df.head(3).to_dict(orient='records') })      
-
-    # Alerta 3: Stock Muerto de Alto Valor
-    alerta3_df = df_maestro[(df_maestro['Clasificación Diagnóstica'] == 'Stock Muerto') & (df_maestro['Inversión Stock Actual (S/.)'] > 300)]
+    # Alerta 3 (Advertencia): "Capital Inmovilizado en Productos 'Perro'"
+    alerta3_df = df_stock_muerto_general[df_stock_muerto_general['Clasificación BCG'] == '🐕 Perro'].copy()
+    # print(f"alerta3_df.colums {alerta3_df.columns}")
+    # print(f"alerta3_df {alerta3_df}")
     if not alerta3_df.empty:
-        capital_inmovilizado = alerta3_df['Inversión Stock Actual (S/.)'].sum()
-        tasks.append({ "id": "task_stock_muerto_valor", "type": "warning", "title": f"Tienes {len(alerta3_df)} productos de stock muerto con un valor significativo.", "impact": f"Capital inmovilizado: S/ {capital_inmovilizado:,.2f}.", "solution_button_text": "Ver y Crear Plan de Liquidación", "target_report": "ReporteDiagnosticoStockMuerto", "knowledge": AUDIT_KNOWLEDGE_BASE.get("stock_muerto_alto_valor"), "preview_data": _clean_preview_data(alerta3_df.head(3)) })
+        capital_inmovilizado = alerta3_df['Valor stock (S/.)'].sum()
+        skus_afectados_3 = alerta3_df['SKU / Código de producto'].tolist()
         
-    # Alerta 4: Exceso de Stock en Productos Clase A o B
-    alerta4_df = df_maestro[(df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & (df_maestro['Alerta de Stock'] == 'Sobre-stock')]
+        target_report_key_3 = "ReporteDiagnosticoStockMuerto"
+
+        if 'Valor stock (S/.)' in alerta3_df.columns:
+            alerta3_df.sort_values(by='Valor stock (S/.)', ascending=False, inplace=True)
+
+        preview_cols_3 = REPORTS_CONFIG.get(target_report_key_3, {}).get('detalle_columns', [])
+        preview_df_3 = alerta3_df[[col for col in preview_cols_3 if col in alerta3_df.columns]].head(3)
+        
+        preview_headers_3 = [
+            col for col in preview_df_3.columns 
+            if col not in ['SKU / Código de producto', 'Nombre del producto']
+        ]
+
+        tasks.append({
+            "id": "task_stock_muerto_perro",
+            "type": "warning",
+            "title": f"Tienes {len(alerta3_df)} productos '🐕 Perro' (baja importancia) como stock muerto.",
+            "impact": f"Capital inmovilizado: S/ {capital_inmovilizado:,.2f}.",
+            "solution_button_text": "Ver y Crear Plan de Liquidación",
+            "target_report": target_report_key_3,
+            "knowledge": AUDIT_KNOWLEDGE_BASE.get("stock_muerto_perro"),
+            "preview_data": _clean_preview_data(preview_df_3),
+            "preview_headers": preview_headers_3, # <-- LA LISTA ORDENADA
+            "skus_afectados": skus_afectados_3
+        })
+   
+    # Alerta 4 (Error Crítico): "Héroes Caídos: Productos Importantes en Riesgo"
+    alerta4_df = df_stock_muerto_general[df_stock_muerto_general['Clasificación BCG'].isin(['🐄 Vaca Lechera', '🌟 Estrella'])].copy()
     if not alerta4_df.empty:
-        capital_excedente = ( (alerta4_df['Stock Actual (Unds)'] - alerta4_df['Punto de Alerta Mínimo (Unds)']) * alerta4_df['Precio Compra (S/.)'] ).sum()
-        tasks.append({ "id": "task_exceso_stock_importantes", "type": "warning", "title": f"Tienes {len(alerta4_df)} productos importantes con exceso de stock.", "impact": f"Capital excedente inmovilizado: S/ {capital_excedente:,.2f}.", "solution_button_text": "Analizar Rotación y Cobertura", "target_report": "ReporteAnalisisEstrategicoRotacion", "knowledge": AUDIT_KNOWLEDGE_BASE.get("exceso_stock_clase_ab"), "preview_data": _clean_preview_data(alerta4_df.head(3)) })
-    
-    # Alerta 5: Potenciales "Estrellas" Emergentes
-    alerta5_df = df_maestro[df_maestro['Clasificación BCG'] == '🐄 Vaca Lechera'].copy()
-    if not alerta5_df.empty and 'Ventas Recientes (30d) (Unds)' in alerta5_df.columns and 'Ventas Periodo General (180d) (Unds)' in alerta5_df.columns:
-        alerta5_df['tendencia'] = alerta5_df['Ventas Recientes (30d) (Unds)'] / 30 > alerta5_df['Ventas Periodo General (180d) (Unds)'] / 180
-        estrellas_emergentes = alerta5_df[alerta5_df['tendencia'] == True]
-        if not estrellas_emergentes.empty:
-            tasks.append({ "id": "task_estrellas_emergentes", "type": "opportunity", "title": f"Se han detectado {len(estrellas_emergentes)} productos 'Clase B' con ventas en aceleración.", "impact": "Potencial de convertirse en tus nuevas 'vacas lecheras'.", "solution_button_text": "Analizar Productos de Alto Potencial", "target_report": "ReporteAnalisisEstrategicoRotacion", "knowledge": AUDIT_KNOWLEDGE_BASE.get("oportunidad_clase_b"), "preview_data": _clean_preview_data(estrellas_emergentes.head(3)) })
+        valor_estrategico_riesgo = alerta4_df['Valor stock (S/.)'].sum()
+        skus_afectados_4 = alerta4_df['SKU / Código de producto'].tolist()
 
-    # Alerta 6: Inversión Ineficiente en Productos Clase C
-    alerta6_df = df_maestro[(df_maestro['¿Pedir Ahora?'].str.contains('Sí', na=False)) & (df_maestro['Clasificación BCG'] == '🐕 Perro')]
+        target_report_key_4 = "ReporteMaestro"
+
+        if 'Valor stock (S/.)' in alerta3_df.columns:
+            alerta4_df.sort_values(by=['Valor stock (S/.)'], ascending=[False], inplace=True)
+        
+
+        preview_cols_4 = REPORTS_CONFIG.get(target_report_key_4, {}).get('detalle_columns', [])
+        preview_df_4 = alerta4_df[[col for col in preview_cols_4 if col in alerta4_df.columns]].head(3)
+
+        preview_headers_4 = [
+            col for col in preview_df_4.columns 
+            if col not in ['SKU / Código de producto', 'Nombre del producto']
+        ]
+
+        tasks.append({
+            "id": "task_stock_muerto_heroe_caido",
+            "type": "error",
+            "title": f"¡Alerta Crítica! {len(alerta4_df)} de tus productos importantes se han convertido en stock muerto.",
+            "impact": f"Valor estratégico en riesgo: S/ {valor_estrategico_riesgo:,.2f}.",
+            "solution_button_text": "Investigar Causa Raíz",
+            "target_report": target_report_key_4,
+            "knowledge": AUDIT_KNOWLEDGE_BASE.get("stock_muerto_heroe_caido"),
+            "preview_data": _clean_preview_data(preview_df_4),
+            "preview_headers": preview_headers_4, # <-- LA LISTA ORDENADA
+            "skus_afectados": skus_afectados_4
+        })
+
+
+    # Primero, identificamos todo el exceso de stock en productos importantes
+    df_exceso_stock_general = df_maestro[
+        (df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) &
+        (df_maestro['Alerta de Stock'] == 'Sobre-stock')
+    ].copy()
+
+    # Nueva Alerta #4 (Oportunidad): "Optimizar Inversión en 'Estrellas'"
+    alerta5_df = df_exceso_stock_general[df_exceso_stock_general['Clasificación BCG'] == '🌟 Estrella'].copy()
+    if not alerta5_df.empty:
+        # Asumimos que 'Stock Ideal Sugerido (Unds)' y 'Precio Compra (S/.)' existen en df_maestro
+        capital_excedente = ((alerta5_df['Stock Actual (Unds)'] - alerta5_df['Stock Ideal Sugerido (Unds)']) * alerta5_df['Precio Compra (S/.)']).sum()
+        skus_afectados_5 = alerta5_df['SKU / Código de producto'].tolist()
+
+        target_report_key_5 = "ReporteListaBasicaReposicionHistorica"
+
+        preview_cols_5 = REPORTS_CONFIG.get(target_report_key_5, {}).get('detalle_columns', [])
+        preview_df_5 = alerta5_df[[col for col in preview_cols_5 if col in alerta5_df.columns]].head(3)
+
+        preview_headers_5 = [
+            col for col in preview_df_5.columns 
+            if col not in ['SKU / Código de producto', 'Nombre del producto']
+        ]
+        
+        tasks.append({
+            "id": "task_exceso_stock_estrella",
+            "type": "opportunity",
+            "title": f"Tienes {len(alerta5_df)} productos '🌟 Estrella' con exceso de stock.",
+            "impact": f"Capital excedente que puedes optimizar: S/ {capital_excedente:,.2f}.",
+            "solution_button_text": "Ajustar Plan de Compra",
+            "target_report": target_report_key_5,
+            "knowledge": AUDIT_KNOWLEDGE_BASE.get("exceso_stock_estrella"),
+            "preview_data": _clean_preview_data(alerta5_df.head(3)),
+            "preview_headers": preview_headers_5, # <-- LA LISTA ORDENADA
+            "skus_afectados": skus_afectados_5
+        })
+
+    # Nueva Alerta #6 (Advertencia): "Liberar Capital de 'Vacas Lecheras'"
+    alerta6_df = df_exceso_stock_general[df_exceso_stock_general['Clasificación BCG'] == '🐄 Vaca Lechera'].copy()
     if not alerta6_df.empty:
-        inversion_ineficiente = (alerta6_df['Pedido Mínimo Sugerido (Unds)'] * alerta6_df['Precio Compra (S/.)']).sum()
-        tasks.append({ "id": "task_inversion_ineficiente", "type": "opportunity", "title": f"Se sugiere reponer {len(alerta6_df)} productos de 'Clase C' (baja importancia).", "impact": f"Inversión de baja prioridad sugerida: S/ {inversion_ineficiente:,.2f}.", "solution_button_text": "Optimizar Plan de Compra", "target_report": "ReportePlanDeCompra", "knowledge": AUDIT_KNOWLEDGE_BASE.get("inversion_ineficiente_clase_c"), "preview_data": _clean_preview_data(alerta6_df.head(3)) })
+        capital_perezoso = alerta6_df['Inversión Stock Actual (S/.)'].sum()
+        skus_afectados_6 = alerta6_df['SKU / Código de producto'].tolist()
 
-    # Alerta 7: Inconsistencias de Datos Críticas
-    alerta7_df = df_maestro[(df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & ((df_maestro['Precio Compra (S/.)'] == 0) | (df_maestro['Categoría'].isnull()) | (df_maestro['Marca'].isnull()))]
+        target_report_key_6 = "ReporteAnalisisEstrategicoRotacion"
+
+        preview_cols_6 = REPORTS_CONFIG.get(target_report_key_6, {}).get('detalle_columns', [])
+        preview_df_6 = alerta6_df[[col for col in preview_cols_6 if col in alerta6_df.columns]].head(3)
+
+        preview_headers_6 = [
+            col for col in preview_df_6.columns 
+            if col not in ['SKU / Código de producto', 'Nombre del producto']
+        ]
+
+        tasks.append({
+            "id": "task_exceso_stock_vaca",
+            "type": "warning",
+            "title": f"Tienes {len(alerta6_df)} '🐄 Vacas Lecheras' con exceso de stock.",
+            "impact": f"Capital perezoso inmovilizado: S/ {capital_perezoso:,.2f}.",
+            "solution_button_text": "Analizar Rotación y Cobertura",
+            "target_report": target_report_key_6,
+            "knowledge": AUDIT_KNOWLEDGE_BASE.get("exceso_stock_vaca"),
+            "preview_data": _clean_preview_data(alerta6_df.head(3)),
+            "preview_headers": preview_headers_6, # <-- LA LISTA ORDENADA
+            "skus_afectados": skus_afectados_6
+        })
+
+    # Alerta 7 (Oportunidad): Potenciales "Estrellas" Emergentes
+    print("Ejecutando Alerta 7: Potenciales Estrellas Emergentes...")
+    # Nos aseguramos de que las columnas necesarias para el cálculo de tendencia existan
+    # required_cols_alert7 = ['Clasificación BCG', 'Ventas Recientes (30d) (Unds)', 'Ventas Periodo General (180d) (Unds)']
+    # if all(col in df_maestro.columns for col in required_cols_alert7):
+        
+    # Filtramos para obtener solo los productos de Clase B
+    # alerta7_df = df_maestro[df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])].copy()
+    alerta7_df = df_maestro[df_maestro['Clasificación BCG'] == '🐄 Vaca Lechera'].copy()
     if not alerta7_df.empty:
-        tasks.append({ "id": "task_datos_criticos", "type": "warning", "title": f"Tienes {len(alerta7_df)} productos importantes con datos críticos faltantes.", "impact": "La falta de estos datos afecta la precisión de todos tus análisis.", "solution_button_text": "Corregir Datos del Catálogo", "target_report": "ReporteAuditoriaCalidadDatos", "knowledge": AUDIT_KNOWLEDGE_BASE.get("inconsistencias_datos_criticos"), "preview_data": _clean_preview_data(alerta7_df.head(3)) })
+        # Calculamos la velocidad de venta para ambos períodos
+        velocidad_reciente = alerta7_df['Ventas Recientes (30d) (Unds)'] / 30
+        velocidad_general = alerta7_df['Ventas Periodo General (180d) (Unds)'] / 180
+        
+        # Identificamos los productos cuya velocidad reciente es al menos 50% mayor que la general
+        estrellas_emergentes = alerta7_df[velocidad_reciente > (velocidad_general * 0.9)].copy()
+        print(f"estrellas_emergentes {estrellas_emergentes}")
+        if not estrellas_emergentes.empty:
+            # Calculamos la tendencia para poder ordenarlos y mostrarla
+            estrellas_emergentes['Tendencia de Crecimiento (%)'] = ((velocidad_reciente / velocidad_general.replace(0, np.nan) - 1) * 100).fillna(1000) # Usamos un valor alto para los que no tenían ventas antes
+            estrellas_emergentes.sort_values(by='Tendencia de Crecimiento (%)', ascending=False, inplace=True)
 
-    # Alerta 8: Eficiencia de Margen
-    df_con_ventas_recientes = df_maestro[df_maestro['Ventas Recientes (30d) (Unds)'] > 0].copy()
+            skus_afectados_7 = estrellas_emergentes['SKU / Código de producto'].tolist()
+            target_report_key_7 = "ReporteAnalisisEstrategicoRotacion"
+
+            preview_cols_7 = REPORTS_CONFIG.get(target_report_key_7, {}).get('detalle_columns', [])
+            preview_df_7 = estrellas_emergentes[preview_cols_7].head(3)
+
+            preview_headers_7 = [
+                col for col in preview_df_7.columns 
+                if col not in ['SKU / Código de producto', 'Nombre del producto']
+            ]
+
+            tasks.append({
+                "id": "task_estrellas_emergentes",
+                "type": "opportunity",
+                "title": f"Se han detectado {len(estrellas_emergentes)} '🐄 Vacas Lecheras' con ventas en aceleración.",
+                "impact": "Potencial de convertirse en tus nuevas 'vacas lecheras'.",
+                "solution_button_text": "Analizar Productos de Alto Potencial",
+                "target_report": target_report_key_7,
+                "knowledge": AUDIT_KNOWLEDGE_BASE.get("oportunidad_clase_b"),
+                "preview_data": _clean_preview_data(preview_df_7),
+                "preview_headers": preview_headers_7, # <-- LA LISTA ORDENADA
+                "skus_afectados": skus_afectados_7
+            })
+    else:
+        print("Advertencia: Faltan columnas para ejecutar la Alerta 5. Se omitirá.")
+
+    # Alerta 6 (Advertencia): "Héroes en Declive"
+    print("Ejecutando Alerta 8: Héroes en Declive...")
+    # Nos aseguramos de que las columnas necesarias existan
+    # required_cols_alert6 = ['Clasificacion_BCG', 'Tendencia de Crecimiento (%)', 'Ingreso_Total_Reciente']
+    # if all(col in df_maestro.columns for col in required_cols_alert6):
+        
+    # Filtramos para obtener solo los productos importantes
+    alerta8_df = df_maestro[df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])].copy()
     
+    if not alerta8_df.empty:
+        # Identificamos los productos cuya tendencia de crecimiento es fuertemente negativa
+        heroes_en_declive = alerta8_df[alerta8_df['Tendencia de Crecimiento (%)'] < -20].copy()
+
+        if not heroes_en_declive.empty:
+            # Calculamos el impacto: la caída en los ingresos mensuales proyectados
+            # (Necesitaríamos el ingreso del período general para un cálculo preciso,
+            # por ahora, usaremos el ingreso reciente como referencia del impacto)
+            caida_venta_mensual = heroes_en_declive['Ingreso_Total_Reciente'].sum() # Simplificación del impacto
+
+            skus_afectados_8 = heroes_en_declive['SKU / Código de producto'].tolist()
+            target_report_key_8 = "ReporteAnalisisEstrategicoRotacion"
+            preview_cols_8 = REPORTS_CONFIG.get(target_report_key_8, {}).get('detalle_columns', [])
+            preview_df_8 = heroes_en_declive[preview_cols_8].head(3)
+
+            preview_headers_8 = [
+                col for col in preview_df_8.columns 
+                if col not in ['SKU / Código de producto', 'Nombre del producto']
+            ]
+
+            tasks.append({
+                "id": "task_heroes_en_declive",
+                "type": "warning",
+                "title": f"Se han detectado {len(heroes_en_declive)} productos importantes con ventas en declive.",
+                "impact": f"Caída de ingresos de S/ {caida_venta_mensual:,.2f} en el último período.",
+                "solution_button_text": "Investigar Causa de la Caída",
+                "target_report": target_report_key_8,
+                "knowledge": AUDIT_KNOWLEDGE_BASE.get("heroes_en_declive"),
+                "preview_data": _clean_preview_data(preview_df_8),
+                "preview_headers": preview_headers_8, # <-- LA LISTA ORDENADA
+                "skus_afectados": skus_afectados_8
+            })
+    else:
+        print("Advertencia: Faltan columnas para ejecutar la Alerta 6. Se omitirá.")
+
+    print("Ejecutando Alerta 9: Inversión Ineficiente en Productos 'Perro'...")
+    # Nos aseguramos de que las columnas necesarias existan
+    # required_cols_alert6 = ['Accion_Requerida', 'Clasificacion_BCG', 'Sugerencia_Pedido_Minimo_Unds', 'Precio Compra (S/.)']
+    # if all(col in df_maestro.columns for col in required_cols_alert6):
+
+    # Filtramos para encontrar productos 'Perro' que el sistema sugiere reponer
+    alerta9_df = df_maestro[
+        (df_maestro['¿Pedir Ahora?'].str.contains('Sí', na=False)) & 
+        (df_maestro['Clasificación BCG'] == '🐕 Perro')
+    ].copy()
+
+    if not alerta9_df.empty:
+        # Calculamos el impacto: la inversión sugerida en estos productos de bajo rendimiento
+        inversion_ineficiente = (alerta9_df['Pedido Mínimo Sugerido (Unds)'] * alerta9_df['Precio Compra (S/.)']).sum()
+        
+        skus_afectados_9 = alerta9_df['SKU / Código de producto'].tolist()
+        target_report_key_9 = "ReporteListaBasicaReposicionHistorica"
+
+        if 'Índice de Urgencia' in alerta9_df.columns:
+            alerta9_df.sort_values(by='Índice de Urgencia', ascending=False, inplace=True)
+       
+        column_templates = REPORTS_CONFIG.get(target_report_key_9, {}).get('detalle_columns', [])
+        preview_cols_9 = [
+            col.format(**dynamic_params) for col in column_templates
+        ]
+
+        preview_df_9 = alerta9_df[[col for col in preview_cols_9 if col in alerta9_df.columns]].head(3)
+        preview_data_9 = _clean_preview_data(preview_df_9) # _clean_preview_data ahora devuelve una lista        
+
+        preview_headers_9 = [
+            col for col in preview_df_9.columns 
+            if col not in ['SKU / Código de producto', 'Nombre del producto']
+        ]
+
+        tasks.append({
+            "id": "task_inversion_ineficiente_perro",
+            "type": "opportunity",
+            "title": f"Se sugiere reponer {len(alerta9_df)} productos '🐕 Perro' (baja importancia).",
+            "impact": f"Inversión de baja prioridad sugerida: S/ {inversion_ineficiente:,.2f}.",
+            "solution_button_text": "Optimizar Plan de Compra",
+            "target_report": target_report_key_9,
+            "knowledge": AUDIT_KNOWLEDGE_BASE.get("inversion_ineficiente_perro"),
+            "preview_data": preview_data_9,
+            "preview_headers": preview_headers_9, # <-- LA LISTA ORDENADA
+            "skus_afectados": skus_afectados_9
+        })
+    else:
+        print("Advertencia: Faltan columnas para ejecutar la Alerta 6. Se omitirá.")
+
+    # Alerta 10: Eficiencia de Margen
+    df_con_ventas_recientes = df_maestro[df_maestro['Ventas Recientes (30d) (Unds)'] > 0].copy()
+
     if not df_con_ventas_recientes.empty:
         df_con_ventas_recientes['margen_teorico_total'] = (
-            (df_con_ventas_recientes['Precio Venta (S/.)'] - df_con_ventas_recientes['Precio Compra (S/.)']) * df_con_ventas_recientes['Ventas Recientes (30d) (Unds)']
+            (df_con_ventas_recientes['Precio Venta de Lista (S/.)'] - df_con_ventas_recientes['Precio de compra actual (S/.)']) * df_con_ventas_recientes['Ventas Recientes (30d) (Unds)']
         )
+
         df_con_ventas_recientes['margen_real_total'] = (
             df_con_ventas_recientes['Margen Real (S/.)'] * df_con_ventas_recientes['Ventas Recientes (30d) (Unds)']
         )
@@ -3305,20 +3593,86 @@ def generar_auditoria_inventario(
         suma_margen_real = df_con_ventas_recientes['margen_real_total'].sum()
         
         eficiencia_de_margen = (suma_margen_real / suma_margen_teorico * 100) if suma_margen_teorico > 0 else 100.0
-        
-        # Si la eficiencia es menor al 90%, generamos la alerta
-        if eficiencia_de_margen < 90:
-            ganancia_perdida = suma_margen_teorico - suma_margen_real
+
+        if eficiencia_de_margen < 95:
+            # ganancia_perdida = suma_margen_teorico - suma_margen_real
+            ganancia_perdida = (df_con_ventas_recientes['Margen Teórico (S/.)'] - df_con_ventas_recientes['Margen Real (S/.)']).sum()
+            
+            # 1. Identificar a los "culpables" y priorizarlos
+            df_culpables = df_maestro[df_maestro['Margen Real (S/.)'] < df_maestro['Margen Teórico (S/.)']].copy()
+            df_culpables.sort_values(by='Desviación de Margen (%)', ascending=True, inplace=True)
+            
+            # 2. Extraer la lista de SKUs
+            skus_afectados = df_culpables['SKU / Código de producto'].tolist()
+            
+            # 3. Crear la Vista Previa "A Medida"
+            target_report_key = "ReporteAuditoriaMargenes"
+
+            if 'Impacto Financiero Total (S/.)' in df_culpables.columns:
+                df_culpables.sort_values(by='Impacto Financiero Total (S/.)', ascending=False, inplace=True)
+       
+
+            preview_cols = REPORTS_CONFIG.get(target_report_key, {}).get('detalle_columns', [])
+            preview_df = df_culpables[preview_cols].head(3)
+            preview_data = _clean_preview_data(preview_df)
+            preview_headers = [col for col in preview_df.columns if col not in ['SKU / Código de producto', 'Nombre del producto']]
+
             tasks.append({
-                "id": "task_eficiencia_margen", "type": "warning",
+                "id": "task_eficiencia_margen",
+                "type": "warning",
                 "title": f"Tu eficiencia de margen es del {eficiencia_de_margen:.1f}%.",
                 "impact": f"Has dejado de ganar un estimado de S/ {ganancia_perdida:,.2f} en el último período.",
                 "solution_button_text": "💸 Auditar Desviaciones de Margen",
-                "target_report": "ReporteAuditoriaMargenes",
-                "knowledge": AUDIT_KNOWLEDGE_BASE.get("eficiencia_margen_baja"), # Necesitarás añadir esto a tu KNOWLEDGE_BASE
-                "preview_data": [] # Esta alerta es global, no tiene productos específicos
+                "target_report": target_report_key,
+                "knowledge": AUDIT_KNOWLEDGE_BASE.get("eficiencia_margen_baja"),
+                "context_params": { "periodo_analisis_dias": 30 },
+                "preview_data": preview_data,
+                "preview_headers": preview_headers,
+                "skus_afectados": skus_afectados
             })
 
+
+    # Alerta 11 (Advertencia): "Inconsistencias de Datos Críticas"
+    print("Ejecutando Alerta 11: Inconsistencias de Datos Críticas...")
+
+    # Nos aseguramos de que las columnas necesarias existan
+    required_cols_alert11 = ['Clasificación BCG', 'Precio Compra (S/.)', 'Categoría', 'Marca', 'Problema Detectado']
+    if all(col in df_maestro.columns for col in required_cols_alert11):
+        
+        # Filtramos para obtener solo los productos importantes (Clase A y B)
+        df_importantes = df_maestro[df_maestro['Clasificación BCG'].isin(['🐄 Vaca Lechera', '🌟 Estrella'])].copy()
+        
+        # Definimos las condiciones de los problemas de datos
+        condicion_precio_cero = df_importantes['Precio Compra (S/.)'].fillna(0) == 0
+        condicion_categoria_faltante = pd.isna(df_importantes['Categoría']) | (df_importantes['Categoría'].str.strip() == '')
+        condicion_marca_faltante = pd.isna(df_importantes['Marca']) | (df_importantes['Marca'].str.strip() == '')
+
+        # Combinamos las condiciones con un OR lógico
+        alerta11_df = df_importantes[condicion_precio_cero | condicion_categoria_faltante | condicion_marca_faltante].copy()
+
+        if not alerta11_df.empty:
+            skus_afectados_11 = alerta11_df['SKU / Código de producto'].tolist()
+            target_report_key_11 = "ReporteAuditoriaCalidadDatos"
+
+            preview_cols_11 = REPORTS_CONFIG.get(target_report_key_11, {}).get('detalle_columns', [])
+            preview_df_11 = alerta11_df[preview_cols_11].head(3)
+            preview_data_11 = _clean_preview_data(preview_df_11)
+            preview_headers = [col for col in preview_df_11.columns if col not in ['SKU / Código de producto', 'Nombre del producto']]
+
+            tasks.append({
+                "id": "task_datos_criticos",
+                "type": "warning",
+                "title": f"Tienes {len(alerta11_df)} productos importantes con datos críticos faltantes.",
+                "impact": "La falta de estos datos afecta la precisión de todos tus análisis.",
+                "solution_button_text": "Corregir Datos del Catálogo",
+                "target_report": target_report_key_11,
+                "knowledge": AUDIT_KNOWLEDGE_BASE.get("inconsistencias_datos_criticos"),
+                "preview_data": preview_data_11,
+                "preview_headers": preview_headers,
+                "skus_afectados": skus_afectados_11
+            })
+    else:
+        print("Advertencia: Faltan columnas para ejecutar la Alerta 7. Se omitirá.")
 
     # ... (Aquí iría la lógica para las otras 5 alertas que diseñamos)
     # --- FASE 3: Cálculo de KPIs y Puntaje ---
@@ -3340,7 +3694,8 @@ def generar_auditoria_inventario(
     if not df_con_ventas_recientes.empty:
         # Calculamos el margen teórico para cada transacción reciente
         df_con_ventas_recientes['margen_teorico_total'] = (
-            (df_con_ventas_recientes['Precio Venta (S/.)'] - df_con_ventas_recientes['Precio Compra (S/.)']) * df_con_ventas_recientes['Ventas Recientes (30d) (Unds)']
+            (df_con_ventas_recientes['Precio Venta de Lista (S/.)'] - df_con_ventas_recientes['Precio de compra actual (S/.)']) * df_con_ventas_recientes['Ventas Recientes (30d) (Unds)']
+            # (df_con_ventas_recientes['Precio Venta (S/.)'] - df_con_ventas_recientes['Precio Compra (S/.)']) * df_con_ventas_recientes['Ventas Recientes (30d) (Unds)']
         )
         # Calculamos el margen real para cada transacción reciente
         df_con_ventas_recientes['margen_real_total'] = (
@@ -3359,11 +3714,7 @@ def generar_auditoria_inventario(
 
 
     puntaje_salud = 65 # Placeholder
-    # kpis_dolor = {
-    #     "Capital Inmovilizado": "S/ 16,300", # Placeholder
-    #     "Venta Perdida Potencial": f"S/ {venta_perdida_estimada:,.2f}" if 'venta_perdida_estimada' in locals() else "S/ 0.00",
-    #     "Pérdida por Margen Negativo": f"S/ {perdida_realizada:,.2f}" if 'perdida_realizada' in locals() else "S/ 0.00"
-    # }
+
     kpis_dolor = {
         "Capital en Riesgo (S/.)": f"S/ {capital_en_riesgo:,.2f}",
         "Venta Perdida Potencial (S/.)": f"S/ {venta_perdida_potencial:,.2f}",

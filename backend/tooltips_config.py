@@ -18,6 +18,7 @@ TOOLTIPS_GLOSSARY = {
     "tipo_analisis_margen": "Elige qué tipo de problema de precios quieres auditar. 'Desviación Negativa' te muestra productos rentables pero que se venden más barato de lo esperado. 'Margen Negativo' te muestra los productos que te están generando pérdidas directas.",
     "umbral_desviacion": "Filtra los resultados para ignorar pequeñas diferencias de precio. Pon '20' para encontrar solo los productos cuyo margen real se desvía más de un 20% de su margen de lista.",
     "ordenar_auditoria_por": "Elige el criterio principal para ordenar el reporte. 'Impacto Financiero' te mostrará primero las fugas de dinero más grandes, mientras que 'Peor Margen' se enfocará en los productos que generan pérdidas directas.",
+    "periodo_analisis_margen": "Define el rango de tiempo de las ventas que se usarán para este análisis. Un período más corto refleja tendencias recientes, mientras que uno más largo muestra la estabilidad histórica.",
 
     # --- Parámetros de maestro inventario ---
     "maestro_ordenar_por": "Elige el criterio principal para ordenar el reporte. 'Prioridad' te mostrará los problemas más urgentes primero, mientras que 'Valor en Riesgo' se enfocará en el impacto financiero.",

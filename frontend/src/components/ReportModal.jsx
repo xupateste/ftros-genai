@@ -85,7 +85,7 @@ const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
 );
 
 
-export function ReportModal({ reportConfig, context, contextInfo, initialView = 'parameters', initialSkuFilter, availableFilters, onClose, onAnalysisComplete, onInsufficientCredits, onLoginSuccess }) {
+export function ReportModal({ reportConfig, context, initialParams, contextInfo, initialView = 'parameters', initialSkuFilter, availableFilters, onClose, onAnalysisComplete, onInsufficientCredits, onLoginSuccess }) {
   const { strategy } = useStrategy();
   const { tooltips, kpiTooltips } = useConfig();
   const { updateCredits, credits } = useWorkspace()
@@ -130,20 +130,26 @@ export function ReportModal({ reportConfig, context, contextInfo, initialView = 
 
   // Efecto para inicializar los parámetros cuando el modal se abre
   useEffect(() => {
-    const initialParams = {};
+    const initialValues = {};
     const allParamsConfig = [
       ...(reportConfig.basic_parameters || []),
       ...(reportConfig.advanced_parameters || [])
     ];
     allParamsConfig.forEach(param => {
-      if (strategy && strategy[param.name] !== undefined) {
-        initialParams[param.name] = strategy[param.name];
+      if (initialParams && initialParams[param.name] !== undefined) {
+        initialValues[param.name] = initialParams[param.name];
       } else {
-        initialParams[param.name] = param.defaultValue;
-      }
+        // Si no hay contexto, usamos el valor de la estrategia o el por defecto
+        initialValues[param.name] = strategy[param.name] ?? param.defaultValue;
+      }   
+      // if (strategy && strategy[param.name] !== undefined) {
+      //   initialParams[param.name] = strategy[param.name];
+      // } else {
+      //   initialParams[param.name] = param.defaultValue;
+      // }
     });
-    setModalParams(initialParams);
-  }, [reportConfig, strategy]);
+    setModalParams(initialValues);
+  }, [reportConfig, strategy, initialParams]);
 
   // useEffect(() => {
   //   setVisibleItemsCount(10)

@@ -2113,7 +2113,9 @@ async def run_analisis_estrategico_rotacion(
     score_ventas: int = Form(...),
     score_ingreso: int = Form(...),
     score_margen: int = Form(...),
-    score_dias_venta: int = Form(...)
+    score_dias_venta: int = Form(...),
+
+    filtro_skus_json: Optional[str] = Form(None)
 ):
     user_id = None
     
@@ -2157,9 +2159,14 @@ async def run_analisis_estrategico_rotacion(
             'dias_venta': score_dias_venta / total_scores
         }
     
+    try:
+        filtro_skus = json.loads(filtro_skus_json) if filtro_skus_json else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro de SKUs inválido.")
 
     # Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
+        "filtro_skus": filtro_skus,
         "pesos_importancia": pesos_calculados,
         "dias_analisis_ventas_recientes": dias_analisis_ventas_recientes,
         "dias_analisis_ventas_general": dias_analisis_ventas_general,
@@ -2210,7 +2217,8 @@ async def diagnostico_stock_muerto(
     umbral_valor_stock: float = Form(0.0),
     ordenar_por: str = Form(...),
     incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
-    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas.")
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
+    filtro_skus_json: Optional[str] = Form(None)
 ):
     # --- LÓGICA DE DETERMINACIÓN DE CONTEXTO ---
     # --- Determinación del Contexto ---
@@ -2242,7 +2250,13 @@ async def diagnostico_stock_muerto(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
 
+    try:
+        filtro_skus = json.loads(filtro_skus_json) if filtro_skus_json else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro de SKUs inválido.")
+
     processing_params = {
+        "filtro_skus": filtro_skus,
         "dias_sin_venta_muerto": dias_sin_venta_muerto,
         "umbral_valor_stock": umbral_valor_stock,
         "ordenar_por": ordenar_por,
@@ -2296,7 +2310,9 @@ async def generar_reporte_maestro_endpoint(
 
     # --- Parámetros Opcionales para el Análisis de Salud ---
     meses_analisis_salud: Optional[int] = Form(None, description="Meses para analizar ventas recientes en el diagnóstico de salud."),
-    dias_sin_venta_muerto: Optional[int] = Form(None, description="Umbral de días para clasificar un producto como 'Stock Muerto'.")
+    dias_sin_venta_muerto: Optional[int] = Form(None, description="Umbral de días para clasificar un producto como 'Stock Muerto'."),
+
+    filtro_skus_json: Optional[str] = Form(None)
 ):
     user_id = None
     
@@ -2340,10 +2356,15 @@ async def generar_reporte_maestro_endpoint(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
 
-   
+    try:
+        filtro_skus = json.loads(filtro_skus_json) if filtro_skus_json else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro de SKUs inválido.")
+
 
     # 1. Preparamos el diccionario de parámetros para la función de lógica
     processing_params = {
+        "filtro_skus": filtro_skus,
         "criterio_abc": criterio_abc,
         "periodo_abc": periodo_abc,
         # "pesos_combinado": pesos_combinado,
@@ -2757,6 +2778,8 @@ async def generar_auditoria_margenes(
     incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
     incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
 
+    periodo_analisis_dias: int = Form(30),
+
     # --- Recibimos los nuevos parámetros del formulario ---
     tipo_analisis_margen: str = Form("desviacion_negativa"),
     umbral_desviacion_porcentaje: float = Form(10.0),
@@ -2779,6 +2802,7 @@ async def generar_auditoria_margenes(
         "umbral_desviacion_porcentaje": umbral_desviacion_porcentaje,
         "filtro_categorias": filtro_categorias,
         "filtro_marcas": filtro_marcas,
+        "periodo_analisis_dias": periodo_analisis_dias,
         "ordenar_por": ordenar_por
     }
     
@@ -2865,7 +2889,8 @@ async def generar_auditoria_calidad_datos(
     criterios_auditoria_json: str = Form(...),
     incluir_solo_categorias: Optional[str] = Form(None),
     incluir_solo_marcas: Optional[str] = Form(None),
-    ordenar_por: str = Form("valor_stock_s")
+    ordenar_por: str = Form("valor_stock_s"),
+    filtro_skus_json: Optional[str] = Form(None)    
 ):
     user_id = current_user['email'] if current_user else None
     if user_id and not workspace_id:
@@ -2882,7 +2907,14 @@ async def generar_auditoria_calidad_datos(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato de filtro inválido.")
 
+    try:
+        filtro_skus = json.loads(filtro_skus_json) if filtro_skus_json else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro de SKUs inválido.")
+
+
     processing_params = {
+        "filtro_skus": filtro_skus,
         "criterios_auditoria": criterios_auditoria,
         "filtro_categorias": filtro_categorias,
         "ordenar_por": ordenar_por,

@@ -201,7 +201,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
       {/* Usamos un div contenedor en lugar de la sección para un mejor control del padding */}
       <AnimateOnScroll delay={300}>
         {/* La "Pista de Deslizamiento" */}
-        <div className="flex overflow-x-auto gap-6 py-4 snap-x snap-mandatory scrollbar-hide">
+        <div className="flex overflow-x-auto gap-6 py-6 snap-x snap-mandatory scrollbar-hide">
           {kpis && Object.entries(kpis).map(([key, data]) => (
             // Cada "Vagón" del carrusel
             <div key={key} className="md:w-1/3 sm:w-4/5 flex-shrink-0 snap-center">
@@ -232,7 +232,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
        <section>
          <AnimateOnScroll>
            <div className="text-center mt-6">
-             <h2 className="text-2xl font-bold text-white mb-2">Recomendaciones Estratégicas
+             <h2 className="text-2xl font-bold text-white mb-2">Acciones Recomendadas
                 <Tooltip text={tooltips['action_plan_tooltip']} />
              </h2>
              <p className="text-gray-400 max-w-2xl mx-auto">Hemos identificado las siguientes áreas, priorizadas por impacto, para aumentar la eficiencia de tu negocio.</p>

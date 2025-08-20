@@ -20,10 +20,6 @@ REPORTS_CONFIG = {
       "categoria": "📋 Auditorías de Datos",
       "description": "Este reporte es tu \"detector de fugas de rentabilidad\". Su misión es encontrar productos que no se están vendiendo al precio que deberían, ya sea porque te están generando pérdidas directas (margen negativo) o porque estás dejando dinero sobre la mesa (desviación negativa). Es una herramienta fundamental para auditar tu política de precios y la ejecución en el punto de venta.",
       "how_it_works": "La herramienta compara dos márgenes para cada producto: el \"Margen Teórico\" (basado en tu precio de lista) y el \"Margen Real\" (basado en tu historial de ventas). La diferencia entre ambos revela inconsistencias en tu política de precios o en la ejecución en el punto de venta.",
-      "data_requirements": {
-          "ventas": ["SKU / Código de producto", "Precio de venta unitario (S/.)"],
-          "inventario": ["SKU / Código de producto", "Precio de compra actual (S/.)", "Precio de venta actual (S/.)"]
-      },
       "planes_de_accion": [
           {
               "title": "Misión: Taponar las Fugas de Dinero (Financiero)",
@@ -74,6 +70,19 @@ REPORTS_CONFIG = {
                   { "value": "todas_las_desviaciones", "label": "Todas las Desviaciones (Positivas y Negativas)" }
               ]
           },
+          {
+              "name": "periodo_analisis_dias",
+              "label": "Analizar ventas de los últimos",
+              "type": "select",
+              "defaultValue": 30,
+              "tooltip_key": "periodo_analisis_margen",
+              "options": [
+                  { "value": 30, "label": "30 días" },
+                  { "value": 90, "label": "90 días" },
+                  { "value": 180, "label": "180 días" },
+                  { "value": 0, "label": "Todo el historial" }
+              ]
+          },
           { 
               "name": "umbral_desviacion_porcentaje", 
               "label": "Mostrar solo si la desviación del margen supera el (%)", 
@@ -86,6 +95,11 @@ REPORTS_CONFIG = {
       "accionable_columns": [
           "SKU / Código de producto", "Nombre del producto", "Precio Venta de Lista (S/.)",
           "Precio Venta Promedio (S/.)", "Margen Teórico (S/.)", "Margen Real (S/.)", "Desviación de Margen (%)"
+      ],
+      "detalle_columns": [
+          "SKU / Código de producto", "Nombre del producto", "Categoría", "Subcategoría", "Marca",
+          "Precio de compra actual (S/.)", "Precio Venta de Lista (S/.)", "Precio Venta Promedio (S/.)",
+          "Margen Teórico (S/.)", "Margen Real (S/.)", "Desviación de Margen (%)", "Cantidad vendida", "Impacto Financiero Total (S/.)"
       ],
       "preview_details": [
           { "label": "Margen de Lista (Esperado)", "data_key": "Margen Teórico (S/.)", "prefix": "S/ " },
@@ -101,10 +115,6 @@ REPORTS_CONFIG = {
       "categoria": "📋 Auditorías de Datos",
       "description": "Este reporte es el 'mantenimiento preventivo' de tu base de datos. Su misión es encontrar 'ruido' en tu catálogo: productos que existen en tu sistema pero no en la realidad de tu negocio (fantasmas), o productos con información crítica faltante. Un catálogo limpio es la base para que todos los demás análisis sean precisos y fiables.",
       "how_it_works": "La herramienta cruza tu lista de inventario con tu historial de ventas para encontrar discrepancias. Adicionalmente, escanea tu inventario en busca de campos de datos esenciales que estén vacíos o con valores incorrectos (como un precio de compra en cero).",
-      "data_requirements": {
-          "ventas": ["SKU / Código de producto"],
-          "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Cantidad en stock actual"]
-      },
       "planes_de_accion": [
           {
               "title": "Misión: La Gran Depuración Anual (Limpieza General)",
@@ -195,10 +205,6 @@ REPORTS_CONFIG = {
       "categoria": "📋 Auditorías de Datos",
       "description": "Este reporte es el 'mantenimiento preventivo' de tu base de datos. Su misión es encontrar 'ruido' en tu catálogo: productos con información crítica faltante o inconsistente. Un catálogo limpio es la base para que todos los demás análisis sean precisos y fiables.",
       "how_it_works": "La herramienta escanea tu archivo de inventario en busca de problemas comunes como campos vacíos (Marca, Categoría), valores ilógicos (Precio de Compra en Cero), inconsistencias de rentabilidad (Precio de Venta menor al Costo) o registros duplicados.",
-      "data_requirements": {
-          "ventas": [], # Este reporte no necesita el archivo de ventas
-          "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Precio de venta actual (S/.)", "Cantidad en stock actual"]
-      },
       "planes_de_accion": [
           {
               "title": "Misión: Fortalecer la Base de Datos (Limpieza General)",
@@ -239,7 +245,7 @@ REPORTS_CONFIG = {
               "type": "multi-select",
               "optionsKey": "criterios_auditoria", # Usaremos una clave estática
               "tooltip_key": "criterios_auditoria",
-              "defaultValue": ["marca_faltante", "categoria_faltante", "precio_compra_cero"],
+              "defaultValue": ["marca_faltante", "categoria_faltante", "precio_compra_cero", "precio_venta_menor_costo", "nombres_duplicados"],
               # Opciones estáticas, ya que no dependen de los datos del usuario
               "static_options": [
                   { "value": "marca_faltante", "label": "Marca Faltante" },
@@ -256,6 +262,10 @@ REPORTS_CONFIG = {
       "accionable_columns": [
           "SKU / Código de producto", "Nombre del producto", "Problema Detectado",
           "Stock Actual (Unds)", "Valor stock (S/.)"
+      ],
+      "detalle_columns": [
+        "SKU / Código de producto", "Nombre del producto", "Categoría", "Subcategoría", "Marca",
+        "Stock Actual (Unds)", "Valor stock (S/.)", "Problema Detectado"
       ],
       "preview_details": [
           { "label": "Problema Detectado", "data_key": "Problema Detectado" },
@@ -281,10 +291,6 @@ REPORTS_CONFIG = {
     "categoria": "🧠 Análisis Estratégico",
     "description": "Aplica el principio de Pareto (80/20) a tu inventario, clasificando cada producto en Clases (A, B, C) para revelar cuáles son los pocos items vitales que generan la mayor parte de tu valor.",
     "how_it_works": "La herramienta calcula el valor de cada producto según el criterio que elijas (margen, ingresos o unidades). Luego, los ordena y calcula el porcentaje acumulado para asignar la clasificación: el 80% del valor son Clase A, el siguiente 15% son Clase B, y el 5% final son Clase C.",
-    "data_requirements": {
-        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
-        "inventario": ["SKU / Código de producto", "Precio de compra actual (S/.)"]
-    },
     "planes_de_accion": [
         {
             "title": "Misión: Proteger a tus Estrellas (Gestión de Riesgo)",
@@ -370,10 +376,6 @@ REPORTS_CONFIG = {
     "costo": 8,
     "description": "Identifica los productos que no han rotado en un período determinado, representando capital inmovilizado y ocupando espacio valioso en tu almacén.",
     "how_it_works": "El análisis calcula los días transcurridos desde la última venta de cada producto con stock y lo compara contra un umbral (por defecto o personalizado) para clasificarlo como 'Stock Muerto'.",
-    "data_requirements": {
-        "ventas": ["SKU / Código de producto", "Fecha de venta"],
-        "inventario": ["SKU / Código de producto", "Cantidad en stock actual", "Precio de compra actual (S/.)"]
-    },
     "planes_de_accion": [
         {
             "title": "Misión: Rescate de Capital (Financiero)",
@@ -454,6 +456,12 @@ REPORTS_CONFIG = {
         "Días sin venta",
         "Clasificación Diagnóstica"
     ],
+    "detalle_columns": [
+        "SKU / Código de producto", "Nombre del producto", "Categoría", "Subcategoría", "Marca",
+        "Precio Compra (S/.)", "Stock Actual (Unds)", "Valor stock (S/.)", "Ventas totales (Unds)",
+        "Ventas últimos 3m (Unds)", "Última venta", "Días sin venta", "Días para Agotar Stock (Est.3m)",
+        "Clasificación Diagnóstica", "Prioridad y Acción (DAS 3m)"
+    ],
     "preview_details": [
         { "label": "Días sin Venta", "data_key": "Días sin venta", "suffix": " días" },
         { "label": "Valor Inmovilizado", "data_key": "Valor stock (S/.)", "prefix": "S/ " },
@@ -470,10 +478,6 @@ REPORTS_CONFIG = {
     "costo": 7,
     "description": "Este es tu centro de mando unificado. Combina el análisis de Importancia (ABC) con el de Salud (Diagnóstico) en una única vista poderosa. Su misión es darte una radiografía completa de cada producto en tu inventario para que puedas tomar decisiones complejas que equilibren la rentabilidad, el riesgo y la inversión.",
     "how_it_works": "La herramienta ejecuta internamente los análisis de ABC y de Salud del Stock. Luego, cruza ambos resultados y aplica un modelo de priorización para asignar una \"Prioridad Estratégica\" a cada producto, destacando las oportunidades y los riesgos más críticos.",
-    "data_requirements": {
-        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
-        "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Cantidad en stock actual"]
-    },
     "planes_de_accion": [
         {
             "title": "Misión: Revisión Gerencial Semanal",
@@ -547,6 +551,12 @@ REPORTS_CONFIG = {
         "SKU / Código de producto", "Nombre del producto", "Clasificación ABC", 
         "Clasificación Diagnóstica", "Prioridad Estratégica", "Días sin venta"
     ],
+    "detalle_columns": [
+        "SKU / Código de producto", "Nombre del producto", "Categoría", "Subcategoría", "Marca",
+        "Valor stock (S/.)", "Stock Actual (Unds)", "Días sin venta", "Margen Total (S/.)",
+        "Ventas últimos 3m (Unds)", "Última venta", "Clasificación ABC", "Prioridad Estratégica",
+        "Clasificación Diagnóstica"
+    ],
     "preview_details": [
         { "label": "Clasificación ABC", "data_key": "Clasificación ABC" },
         { "label": "Diagnóstico de Salud", "data_key": "Clasificación Diagnóstica" },
@@ -563,10 +573,6 @@ REPORTS_CONFIG = {
     "costo": 8,
     "description": "Este reporte es tu \"velocímetro\" de inventario. Mide la eficiencia y la velocidad con la que tu capital invertido en productos se convierte en ingresos. Responde a la pregunta fundamental: \"¿Qué tan rápido está trabajando mi dinero para mí?\".",
     "how_it_works": "La herramienta calcula el Índice de Importancia y la Cobertura Actual (Días) para cada producto. Luego, los posiciona en una matriz estratégica para identificar cuatro tipos de productos: \"Estrellas\" (alta importancia, buena rotación), \"Vacas Lecheras\" (alta importancia, riesgo de quiebre), \"Dilemas\" (baja importancia, sobre-stock) y \"Triviales\".",
-    "data_requirements": {
-        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
-        "inventario": ["SKU / Código de producto", "Nombre del producto", "Categoría", "Marca", "Precio de compra actual (S/.)", "Cantidad en stock actual"]
-    },
     "planes_de_accion": [
         {
             "title": "Misión: Identificar a tus \"Vacas Lecheras\"",
@@ -663,10 +669,6 @@ REPORTS_CONFIG = {
           "min": 1, "max": 10
       },
     ],
-    # "accionable_columns": [
-    #   "SKU / Código de producto", "Nombre del producto", "Clasificación", 
-    #   "Stock Actual (Unds)", "Alerta de Stock", "Índice de Importancia", "Cobertura Actual (Días)"
-    # ],
     "accionable_columns": [
         "SKU / Código de producto",
         "Nombre del producto",
@@ -675,12 +677,14 @@ REPORTS_CONFIG = {
         "Tendencia de Crecimiento (%)",
         "Cobertura Actual (Días)"
     ],
-    # "preview_details": [
-    #   { "label": "Clasificación", "data_key": "Clasificación" },
-    #   { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
-    #   { "label": "Alerta de Stock", "data_key": "Alerta de Stock" },
-    #   { "label": "Cobertura", "data_key": "Cobertura Actual (Días)", "suffix": " días" }
-    # ]
+
+    "detalle_columns": [
+        "SKU / Código de producto", "Nombre del producto", "Categoría", "Subcategoría", "Marca",
+        "Clasificación BCG", "Índice de Importancia", "Tendencia de Crecimiento (%)", "Stock Actual (Unds)",
+        "Precio Compra (S/.)", "Precio Venta (S/.)", "Inversión Stock Actual (S/.)", "Cobertura Actual (Días)",
+        "Alerta de Stock", "Ventas Recientes (30d) (Unds)", "Ventas Periodo General (180d) (Unds)"
+        # PDA_Final PDA_Demanda_Estrategica Precio de Venta Promedio Reciente
+    ],
     "preview_details": [
         { "label": "Clasificación BCG", "data_key": "Clasificación BCG" },
         { "label": "Índice de Importancia", "data_key": "Índice de Importancia" },
@@ -701,10 +705,6 @@ REPORTS_CONFIG = {
     "costo": 9,
     "description": "Este reporte es una herramienta de configuración estratégica. Su misión es calcular los Puntos de Alerta de Stock (Mínimo e Ideal) para cada producto, generando un archivo 'maestro' que puedes usar para alimentar tu sistema de punto de venta (POS).",
     "how_it_works": "La herramienta utiliza el Promedio de Venta Diaria (PDA) y el Índice de Importancia de cada producto, junto con los parámetros que defines (tiempo de entrega y días de seguridad), para calcular los niveles de stock óptimos que previenen quiebres sin generar exceso de inventario.",
-    "data_requirements": {
-        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida"],
-        "inventario": ["SKU / Código de producto", "Cantidad en stock actual", "Precio de compra actual (S/.)"]
-    },
     "planes_de_accion": [
         {
             "title": "Misión: Configuración Inicial del Sistema",
@@ -799,10 +799,6 @@ REPORTS_CONFIG = {
     "costo": 9,
     "description": "Este es tu asistente de compras diario o semanal. Toma los parámetros de alerta y los compara con tu stock actual para generar una lista de compra priorizada y cuantificada.",
     "how_it_works": "La herramienta identifica todos los productos cuyo stock actual está por debajo de su punto de alerta. Luego, calcula la cantidad ideal a pedir para cada uno, considerando su velocidad de venta, importancia y los parámetros de cobertura que has definido.",
-    "data_requirements": {
-        "ventas": ["SKU / Código de producto", "Fecha de venta", "Cantidad vendida", "Precio de venta unitario (S/.)"],
-        "inventario": ["SKU / Código de producto", "Cantidad en stock actual", "Precio de compra actual (S/.)"]
-    },
     "planes_de_accion": [
         {
             "title": "Misión: Compra de Emergencia (Evitar Pérdidas)",

@@ -49,7 +49,7 @@ const PreviewTable = ({ data, headers }) => {
               </td>
               {/* --- Celdas Dinámicas --- */}
               {dynamicHeaders.map(header => (
-                <td key={header} className="px-4 py-2 text-gray-700 align-top">{item[header]}</td>
+                <td key={header} className="px-4 py-2 text-gray-700 align-center">{item[header]}</td>
               ))}
             </tr>
           ))}
@@ -139,7 +139,7 @@ export function AuditTaskCard({ task, onSolveClick }) {
 
           <div className="text-center">
             <button 
-              onClick={() => onSolveClick(task.title, task.target_report, task.skus_afectados)}
+              onClick={() => onSolveClick(task.title, task.target_report, task.skus_afectados, task.context_params)}
               className="bg-purple-600 text-white font-bold py-2 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto"
             >
               <FiExternalLink /> {task.solution_button_text}

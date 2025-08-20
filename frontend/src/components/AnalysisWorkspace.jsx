@@ -31,7 +31,6 @@ import { DateRangePickerModal } from './DateRangePickerModal'; // <-- Importamos
 import { RechargeCreditsModal } from './RechargeCreditsModal';
 import { BecomeStrategistModal } from './BecomeStrategistModal';
 import { ReportButton } from './ReportButton'; // <-- Importamos el nuevo botón
-import { ReportInfoModal } from './ReportInfoModal'; // <-- Importamos el nuevo modal
 import { AuditDashboard } from './AuditDashboard'; // <-- Importamos el nuevo componente
 import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 
@@ -195,7 +194,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isCacheValid, setIsCacheValid] = useState(false);
   const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
-  const [infoModalReport, setInfoModalReport] = useState(null); // Nuevo estado para el modal de info
   const [modalInitialView, setModalInitialView] = useState('parameters');
   const [reportContextInfo, setReportContextInfo] = useState(null);
 
@@ -211,6 +209,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   // --- ESTADOS SIMPLIFICADOS ---
   // El estado del modal de reporte ahora es mucho más simple
   const [selectedReport, setSelectedReport] = useState(null); 
+  const [initialParams, setInitialParams] = useState(null);
 
   const [count, setCount] = useState(0)
   const [auditCount, setAuditCount] = useState(0);
@@ -557,7 +556,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     )
   };
 
-  const handleSolveClick = (title, target_report, skus_afectados) => {
+  const handleSolveClick = (title, target_report, skus_afectados, context_params) => {
 
     if (!target_report || !skus_afectados) return;
 
@@ -570,6 +569,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         title: title,
         skus: skus_afectados || []
       });
+      setInitialParams(context_params || {});
       setSelectedReport(reportConfig);
     }
   };
@@ -578,6 +578,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     setSelectedReport(null);
     // setInitialSkuFilter(null); // Limpiamos el filtro al cerrar
     setReportContextInfo(null);
+    setInitialParams(null); // Limpiamos los parámetros al cerrar
   };
 
   // Función para limpiar el estado al cambiar de workspace
@@ -876,6 +877,9 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             </button>
           </div>
         )}*/}
+        <button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
+          <FiRefreshCw /> Generar Nueva Auditoría
+        </button>
         {renderMainContent()}
         
         {filesReady && (
@@ -902,7 +906,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                         context={context} // <-- Pasa el contexto del usuario
                         onExecute={handleReportView}
                         onInfoClick={handleInfoClick}
-                        // onInfoClick={setInfoModalReport}
                         onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
                       />
                     </AnimateOnScroll>
@@ -914,19 +917,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         <FerreterosLogo/>
       </main>
 
-      {/* --- RENDERIZADO DEL NUEVO MODAL DE INFORMACIÓN --- */}
-      {infoModalReport && (
-        <ReportInfoModal 
-          reportItem={infoModalReport} 
-          onClose={() => setInfoModalReport(null)} 
-        />
-      )}
-
       {/* --- RENDERIZADO DEL MODAL DE REPORTE --- */}
       {/* Se renderiza solo si hay un reporte seleccionado */}
       {selectedReport && (
         <ReportModal 
           reportConfig={selectedReport}
+          initialParams={initialParams} // <-- Pasamos la nueva prop
           context={{...context, fileIds: uploadedFileIds}} // Pasamos toda la info necesaria
           initialView={modalInitialView} // <-- Pasamos la vista inicial
           availableFilters={availableFilters}
