@@ -89,46 +89,120 @@ const AnimationStyles = () => (
   </style>
 );
 
+const DynamicSocialProofText = () => {
+    const messages = [
+        { name: 'Zulema', time: '2 horas' },
+        { name: 'Marcos88', time: '5 días' },
+        { name: 'Andrea', time: '1 día' },
+        { name: 'Sofia12', time: '3 días' },
+        { name: 'Andree2', time: '10 horas' },
+        { name: 'Christian', time: '4 días' },
+        { name: 'Lizeth36', time: '1 día' },
+        { name: 'Karito', time: '8 días' },
+        { name: 'William', time: '5 horas' },
+        { name: 'Karen', time: '3 días' },
+        { name: 'Johan19', time: '5 horas' },
+        { name: 'Simoneta', time: '2 días' },
+        { name: 'Meliton', time: '2 horas' },
+        { name: 'Johanna', time: '6 días' },
+        { name: 'Leoncia', time: '1 día' },
+        { name: 'Miriam19', time: '2 días' },
+    ];
+
+    const [currentIndex, setCurrentIndex] = useState(0);
+    const [isVisible, setIsVisible] = useState(true);
+
+    useEffect(() => {
+        const interval = setInterval(() => {
+            setIsVisible(false); // Inicia el fade-out
+
+            // Espera a que termine la animación de fade-out para cambiar el texto
+            setTimeout(() => {
+                setCurrentIndex(prevIndex => (prevIndex + 1) % messages.length);
+                setIsVisible(true); // Inicia el fade-in con el nuevo texto
+            }, 500); // Debe coincidir con la duración de la transición de opacidad
+
+        }, 6300); // Cambia el texto cada 4 segundos (más pausado)
+
+        return () => clearInterval(interval);
+    }, []);
+
+    const { name, time } = messages[currentIndex];
+    // Oculta parte del nombre para dar un toque de privacidad y realismo
+    const displayName = `${name.substring(0, 2)}****${name.substring(name.length - 1)}`;
+
+    return (
+        <p className={`text-xs text-gray-600 font-medium transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <span className="font-bold text-gray-500">{displayName}</span> se unió hace <span className="font-bold text-gray-500">{time}</span>.
+        </p>
+    );
+};
+
 // Componente reutilizable para el formulario de la lista de espera
 const SlidingAvatars = () => {
-  // Lista completa de avatares. En una app real, vendrían de una API.
+  // Lista de avatares. Ahora es un array de objetos para manejar diferentes tipos.
   const allAvatars = [
-    'https://i.pravatar.cc/150?img=21',
-    'https://i.pravatar.cc/150?img=22',
-    'https://i.pravatar.cc/150?img=23',
-    'https://i.pravatar.cc/150?img=24',
-    'https://i.pravatar.cc/150?img=25',
-    'https://i.pravatar.cc/150?img=26',
-    'https://i.pravatar.cc/150?img=27',
-    'https://i.pravatar.cc/150?img=28',
-    'https://i.pravatar.cc/150?img=29',
-    'https://i.pravatar.cc/150?img=30',
+    { type: 'image', value: 'https://i.pravatar.cc/150?img=41' },
+    { type: 'initials', value: 'KS' },
+    { type: 'image', value: 'https://i.pravatar.cc/150?img=42' },
+    { type: 'initials', value: 'SQ' },
+    { type: 'initials', value: 'RT' },
+    { type: 'initials', value: 'MC' },
+    { type: 'image', value: 'https://i.pravatar.cc/150?img=43' },
+    { type: 'initials', value: 'AV' },
+    { type: 'image', value: 'https://i.pravatar.cc/150?img=44' },
+    { type: 'initials', value: 'SQ' },
+    { type: 'initials', value: 'RM' },
+    { type: 'image', value: 'https://i.pravatar.cc/150?img=45' },
+    { type: 'initials', value: 'JG' },
+    { type: 'initials', value: 'MC' },
+    { type: 'initials', value: 'JG' },
+    { type: 'image', value: 'https://i.pravatar.cc/150?img=46' },
+    { type: 'initials', value: 'ZA' },
+    { type: 'initials', value: 'MS' },
+    { type: 'initials', value: 'RT' },
+    { type: 'initials', value: 'NS' },
+    { type: 'image', value: 'https://i.pravatar.cc/150?img=47' },
+    { type: 'initials', value: 'YT' },
+    { type: 'initials', value: 'ME' },
   ];
 
+  // Paleta de colores para los avatares de iniciales
+  const bgColors = [
+    'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 
+    'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'
+  ];
+
+  // Función para asignar un color consistente basado en las iniciales
+  const getColorForInitials = (initials) => {
+    let hash = 0;
+    for (let i = 0; i < initials.length; i++) {
+        hash = initials.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    const index = Math.abs(hash % bgColors.length);
+    return bgColors[index];
+  };
+
   const [visibleAvatars, setVisibleAvatars] = useState(allAvatars.slice(0, 5));
-  // Estado para rastrear qué avatar debe ejecutar la animación "pop"
   const [poppingAvatar, setPoppingAvatar] = useState(null);
 
   useEffect(() => {
-    // Intervalo para la animación de los avatares
     const interval = setInterval(() => {
       setVisibleAvatars(currentAvatars => {
         const newAvatars = [...currentAvatars];
         newAvatars.shift();
         
-        const lastAvatarUrl = newAvatars[newAvatars.length - 1];
-        const lastIndex = allAvatars.findIndex(url => url === lastAvatarUrl);
+        const lastAvatar = newAvatars[newAvatars.length - 1];
+        const lastIndex = allAvatars.findIndex(a => a.value === lastAvatar.value);
         const nextIndex = (lastIndex + 1) % allAvatars.length;
-        const nextAvatarUrl = allAvatars[nextIndex];
+        const nextAvatar = allAvatars[nextIndex];
         
-        newAvatars.push(nextAvatarUrl);
-        
-        // Asignamos el nuevo avatar para que ejecute la animación "pop"
-        setPoppingAvatar(nextAvatarUrl);
+        newAvatars.push(nextAvatar);
+        setPoppingAvatar(nextAvatar);
         
         return newAvatars;
       });
-    }, 2000); // Cambia el avatar cada 2 segundos
+    }, 3400);
 
     return () => clearInterval(interval);
   }, []);
@@ -138,30 +212,39 @@ const SlidingAvatars = () => {
       <AnimationStyles />
       <div className="flex items-center justify-center sm:justify-start mt-4">
         <div className="flex -space-x-3">
-          {visibleAvatars.map((avatarUrl, index) => {
-            // Comprobamos si el avatar actual es el que debe animarse
-            const isPopping = avatarUrl === poppingAvatar;
-            
-            return (
-              <img
-                key={avatarUrl}
-                className={`w-10 h-10 rounded-full border-2 border-white transition-opacity duration-500 ${
-                  index === 0 
-                    ? 'opacity-0' // El avatar que sale se desvanece
-                    : 'opacity-100'
-                } ${
-                  isPopping ? 'animate-pop' : '' // Aplicamos la animación de keyframes
-                }`}
-                src={avatarUrl}
-                alt={`Usuario ${index + 1}`}
-                style={{ zIndex: visibleAvatars.length + index }}
-              />
-            );
+          {visibleAvatars.map((avatar, index) => {
+            const isPopping = poppingAvatar && avatar.value === poppingAvatar.value;
+            const commonClasses = `w-10 h-10 rounded-full border-2 border-white transition-opacity duration-500 flex-shrink-0`;
+            const animationClass = isPopping ? 'animate-pop' : '';
+            const opacityClass = index === 0 ? 'opacity-0' : 'opacity-100';
+            const zIndexStyle = { zIndex: visibleAvatars.length + index };
+
+            if (avatar.type === 'image') {
+              return (
+                <img
+                  key={avatar.value}
+                  className={`${commonClasses} ${opacityClass} ${animationClass}`}
+                  src={avatar.value}
+                  alt={`Usuario ${index + 1}`}
+                  style={zIndexStyle}
+                />
+              );
+            } else { // type === 'initials'
+              return (
+                <div
+                  key={avatar.value}
+                  className={`${commonClasses} ${opacityClass} ${animationClass} ${getColorForInitials(avatar.value)} flex items-center justify-center text-white font-bold text-sm`}
+                  style={zIndexStyle}
+                >
+                  {avatar.value}
+                </div>
+              );
+            }
           })}
         </div>
-        <p className="ml-4 text-sm text-gray-500 font-medium">
-          <span className="font-bold text-gray-700">200+</span> personas se unieron hoy!
-        </p>
+        <div className="bg-black justify-start px-2 py-2 ml-2">
+          <DynamicSocialProofText />
+        </div>
       </div>
     </>
   );
@@ -172,14 +255,13 @@ const WaitlistForm = ({ buttonText }) => {
 
 return (
   <form className="w-full max-w-md mx-auto">
-    <div className="flex flex-col sm:flex-row gap-2">
+    <div className="flex flex-wrap justify-center gap-2">
       {/*<input 
         type="email" 
         placeholder="Tu correo electrónico" 
         required 
         className="flex-grow p-3 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-purple-500 focus:outline-none text-white" 
       />*/}
-      <p className="text-gray-500">Potencia tu ferretería desde lo que ya hacés bien</p>
       <button 
         type="submit" 
         className="bg-purple-600 flex w-auto items-center justify-center gap-2 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
@@ -264,7 +346,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             </div>
           ) : (
             <>
-              <WaitlistForm buttonText="Obtener Acceso Preeliminar" />
+              <WaitlistForm buttonText="Obtener Acceso" />
               <SlidingAvatars />
               {/*<p className="text-sm text-gray-500 mt-4">Join 100+ SaaS teams creating marketing pages.</p>*/}
             </>
