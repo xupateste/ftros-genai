@@ -65,27 +65,131 @@
 // src/components/LandingView.jsx
 
 import React, { useState, useEffect } from 'react';
-import { FiLogIn, FiCheckCircle } from 'react-icons/fi';
+import { FiLogIn, FiCheckCircle, FiArrowRight } from 'react-icons/fi';
+import { FerreterosLogo } from './FerreterosLogo'
+
+const AnimationStyles = () => (
+  <style>
+    {`
+      @keyframes pop-in {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.25);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+      .animate-pop {
+        animation: pop-in 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) 1;
+      }
+    `}
+  </style>
+);
 
 // Componente reutilizable para el formulario de la lista de espera
-const WaitlistForm = ({ buttonText }) => (
+const SlidingAvatars = () => {
+  // Lista completa de avatares. En una app real, vendrían de una API.
+  const allAvatars = [
+    'https://i.pravatar.cc/150?img=21',
+    'https://i.pravatar.cc/150?img=22',
+    'https://i.pravatar.cc/150?img=23',
+    'https://i.pravatar.cc/150?img=24',
+    'https://i.pravatar.cc/150?img=25',
+    'https://i.pravatar.cc/150?img=26',
+    'https://i.pravatar.cc/150?img=27',
+    'https://i.pravatar.cc/150?img=28',
+    'https://i.pravatar.cc/150?img=29',
+    'https://i.pravatar.cc/150?img=30',
+  ];
+
+  const [visibleAvatars, setVisibleAvatars] = useState(allAvatars.slice(0, 5));
+  // Estado para rastrear qué avatar debe ejecutar la animación "pop"
+  const [poppingAvatar, setPoppingAvatar] = useState(null);
+
+  useEffect(() => {
+    // Intervalo para la animación de los avatares
+    const interval = setInterval(() => {
+      setVisibleAvatars(currentAvatars => {
+        const newAvatars = [...currentAvatars];
+        newAvatars.shift();
+        
+        const lastAvatarUrl = newAvatars[newAvatars.length - 1];
+        const lastIndex = allAvatars.findIndex(url => url === lastAvatarUrl);
+        const nextIndex = (lastIndex + 1) % allAvatars.length;
+        const nextAvatarUrl = allAvatars[nextIndex];
+        
+        newAvatars.push(nextAvatarUrl);
+        
+        // Asignamos el nuevo avatar para que ejecute la animación "pop"
+        setPoppingAvatar(nextAvatarUrl);
+        
+        return newAvatars;
+      });
+    }, 2000); // Cambia el avatar cada 2 segundos
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <>
+      <AnimationStyles />
+      <div className="flex items-center justify-center sm:justify-start mt-4">
+        <div className="flex -space-x-3">
+          {visibleAvatars.map((avatarUrl, index) => {
+            // Comprobamos si el avatar actual es el que debe animarse
+            const isPopping = avatarUrl === poppingAvatar;
+            
+            return (
+              <img
+                key={avatarUrl}
+                className={`w-10 h-10 rounded-full border-2 border-white transition-opacity duration-500 ${
+                  index === 0 
+                    ? 'opacity-0' // El avatar que sale se desvanece
+                    : 'opacity-100'
+                } ${
+                  isPopping ? 'animate-pop' : '' // Aplicamos la animación de keyframes
+                }`}
+                src={avatarUrl}
+                alt={`Usuario ${index + 1}`}
+                style={{ zIndex: visibleAvatars.length + index }}
+              />
+            );
+          })}
+        </div>
+        <p className="ml-4 text-sm text-gray-500 font-medium">
+          <span className="font-bold text-gray-700">200+</span> personas se unieron hoy!
+        </p>
+      </div>
+    </>
+  );
+};
+
+const WaitlistForm = ({ buttonText }) => {
+  const [showActionButtons, setShowActionButtons] = useState(false);
+
+return (
   <form className="w-full max-w-md mx-auto">
-    <div className="flex flex-col sm:flex-row gap-4">
-      <input 
+    <div className="flex flex-col sm:flex-row gap-2">
+      {/*<input 
         type="email" 
         placeholder="Tu correo electrónico" 
         required 
         className="flex-grow p-3 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-purple-500 focus:outline-none text-white" 
-      />
+      />*/}
+      <p className="text-gray-500">Potencia tu ferretería desde lo que ya hacés bien</p>
       <button 
         type="submit" 
-        className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+        className="bg-purple-600 flex w-auto items-center justify-center gap-2 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
       >
         {buttonText}
+        <FiArrowRight />
       </button>
     </div>
   </form>
-);
+)};
 
 export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
 
@@ -127,16 +231,28 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       >
         <div className="absolute inset-0 bg-black bg-opacity-60"></div>
         <div className="relative container mx-auto px-6">
-          <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
+          {/*<h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
             Tu ferretería tiene <span
               className="bg-clip-text text-transparent"
               style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
             >dinero escondido</span>.
             <br />
             Te ayudamos a encontrarlo.
+          </h1>*/}
+          <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
+            Aumenta la rentabilidad de tu Ferretería
+            <span
+              className="bg-clip-text text-transparent ml-3"
+              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+            >
+              desde la próxima compra
+            </span>.
           </h1>
-          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
             Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
+          </p>*/}
+          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+            Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
           </p>
           
           {/* --- RENDERIZADO CONDICIONAL DE BOTONES --- */}
@@ -148,8 +264,9 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             </div>
           ) : (
             <>
-              <WaitlistForm buttonText="UNIRME A LA LISTA DE ESPERA" />
-              <p className="text-sm text-gray-500 mt-4">Sé el primero en recibir acceso prioritario y obtén un beneficio exclusivo de lanzamiento.</p>
+              <WaitlistForm buttonText="Obtener Acceso Preeliminar" />
+              <SlidingAvatars />
+              {/*<p className="text-sm text-gray-500 mt-4">Join 100+ SaaS teams creating marketing pages.</p>*/}
             </>
           )}
         </div>
@@ -159,8 +276,8 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       <section className="py-20 bg-black bg-opacity-40">
         <div className="container mx-auto px-6 text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-6">¿Tu almacén está lleno pero sientes que el dinero no alcanza?</h2>
-          <p className="text-gray-400 max-w-3xl mx-auto mb-12">
-            Cada clavo, perno y herramienta en tu estante es capital invertido. Pero, ¿cuánto de ese capital está realmente trabajando para ti? La mayoría de ferreteros opera basándose en la intuición, perdiendo miles de soles en inventario estancado y compras ineficientes.
+          <p className="text-lg text-purple-400 mb-6">
+            <b>Cada producto que no rota y cada compra en exceso es capital que no trabaja.</b><br/>La intuición te ayuda a vender, pero los datos te ayudan decidir con precisión.
           </p>
           <div className="max-w-2xl mx-auto text-left space-y-6">
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
@@ -169,12 +286,13 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             </div>
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
               <FiCheckCircle className="text-purple-400 text-2xl mt-1 flex-shrink-0" />
-              <p className="font-semibold">¿Sabes cuánto dinero tienes durmiendo en estantes, en productos que no rotan hace meses?</p>
+              <p className="font-semibold">¿Sientes que trabajas más, vendes más, pero no necesariamente ganas más?</p>
             </div>
             <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
               <FiCheckCircle className="text-purple-400 text-2xl mt-1 flex-shrink-0" />
-              <p className="font-semibold">¿Estás seguro de que tus decisiones de compra se basan en datos reales de demanda y no en el "me parece que se va a vender"?</p>
+              <p className="font-semibold">¿Tus Compras son en base a la demanda real o al catálogo del proveedor?</p>
             </div>
+            
           </div>
         </div>
       </section>
@@ -183,16 +301,16 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       {/* Sección 1: Beneficios Clave */}
       <section className="py-20 bg-black bg-opacity-20">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-4xl font-bold mb-4">Transparencia, Independencia y  
+          <h2 className="text-4xl md:text-4xl font-bold mb-4">Solo Tenemos una Lealtad:  
             <span
               className="bg-clip-text text-transparent ml-2"
               style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
             >
-              Rentabilidad
+              Tu Rentabilidad
             </span>.
           </h2>
           <p className="text-lg font-semibold text-purple-400 mb-6">
-            No somos otro software de gestión. Somos tu analista financiero personal.
+            No somos otro software de gestión. <b>Somos tu departamento de inteligencia.</b><br/>Nuestra plataforma se rige por tres principios inquebrantables.
           </p>
           {/*<p className="text-gray-300 max-w-3xl mx-auto text-center mb-6">
             Somos una plataforma 100% independiente. No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestro único objetivo y nuestra única lealtad es con la rentabilidad del ferretero independiente. Tus datos son tuyos, son confidenciales, y solo se usan para darte a ti el poder de decisión.
@@ -201,47 +319,35 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
               <div className="text-4xl text-purple-400 mb-4">🛡️👑</div>
               <h3 className="text-xl font-bold mb-2">Independencia y Confianza</h3>
-              <p className="text-gray-400">Somos una plataforma 100% independiente. No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus datos son tuyos, son confidenciales y solo los usamos para darte a ti el poder de decisión.</p>
+              <p className="text-gray-400">No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus decisiones valen más cuando se basan en datos. Los datos son tuyos y son 100% confidenciales. Siempre.</p>
+              {/*<p className="text-gray-400">No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus datos son tuyos y son 100% confidenciales, Úsalos para tomar mejores decisiones.No te conformes con menos.</p>*/}
             </div>
             <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
               <div className="text-4xl text-purple-400 mb-4">💰📈</div>
-              <h3 className="text-xl font-bold mb-2">Enfoque en Rentabilidad, no en Ventas</h3>
-              <p className="text-gray-400">No te diremos cómo vender más, te ayudaremos a <b>Ganar Más</b>. Nos obsesiona el margen, el flujo de caja y el capital de trabajo. Te mostramos dónde está el dinero real en tu negocio, no las métricas de vanidad.</p>
+              <h3 className="text-xl font-bold mb-2">Obsesión por la Rentabilidad</h3>
+              <p className="text-gray-400">No te diremos cómo vender más, <b>te ayudaremos a Ganar Más</b>. Nos obsesiona el margen, el flujo de caja y el capital de trabajo. Descubre dónde está el dinero real en tu negocio, no las métricas de vanidad que no pagan las facturas.</p>
             </div>
             <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
               <div className="text-4xl text-purple-400 mb-4">💡🎯</div>
               <h3 className="text-xl font-bold mb-2">Simplicidad Radical</h3>
-              <p className="text-gray-400">Traducimos la complejidad de miles de datos en un <b>Plan de Acción claro y directo.</b> No necesitas ser un experto en finanzas para entender tu negocio a un nivel de élite y tomar decisiones que impacten tu resultado final.</p>
+              <p className="text-gray-400">Convierte la complejidad de miles de transacciones en un <b>Plan de Acción claro y directo</b>. No necesitas un MBA para gestionar tu ferretería a un nivel de élite y tomar decisiones como hacen las grandes cadenas ferreteras.</p>
             </div>
           </div>
         </div>
       </section>
 
-      
-      {/* Sección 3: La Solución */}
-      <section className="py-20 text-center">
+      {/* Sección 4: Beneficios Clave */}
+      <section className="py-20 bg-black bg-opacity-30">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Deja de adivinar. Toma el control con 
+          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+            Tu Experiencia + Nuestro Análisis
             <span
               className="bg-clip-text text-transparent ml-2"
               style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
             >
-              Ferretero.IA
+              = Tu Arma Secreta
             </span>.
           </h2>
-          <p className="text-gray-300 max-w-3xl mx-auto">
-            Hemos creado la herramienta que te da la claridad que necesitas. Simplemente subes tus datos de ventas e inventario. En minutos, nuestro motor de análisis te entrega un diagnóstico impactante sobre la salud real de tu negocio.
-          </p>
-          <p className="mt-6 text-lg font-semibold text-purple-400">
-            Sin jerga técnica. Sin reportes complicados. Solo respuestas claras para que tomes acciones inmediatas.
-          </p>
-        </div>
-      </section>
-
-      {/* Sección 4: Beneficios Clave */}
-      <section className="py-20 bg-black bg-opacity-20">
-        <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">Con Claridad, Llega el Crecimiento.</h2>
           <div className="grid md:grid-cols-3 gap-8">
             <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
               <div className="text-4xl text-purple-400 mb-4">💰</div>
@@ -262,12 +368,29 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
         </div>
       </section>
 
-      {/* Sección 5: Llamada a la Acción Final */}
+      {/* Sección 3: La Solución */}
       <section className="py-20 text-center">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">La "Operación Claridad" está por comenzar. <br />¿Estás dentro?</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Deja de adivinar. Toma el control con 
+            <span
+              className="bg-clip-text text-transparent ml-2"
+              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+            >
+              Ferretero.IA
+            </span>.
+          </h2>
+          <p className="mt-6 text-lg font-semibold text-purple-400">
+            Sin tecnicismos. Sin reportes complicados.<br/><b>Solo respuestas claras para que tomes acciones inmediatas.</b>
+          </p>
+        </div>
+      </section>
+
+      {/* Sección 5: Llamada a la Acción Final */}
+      <section className="py-20 bg-black bg-opacity-20 text-center">
+        <div className="container mx-auto px-6">
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Sé el Piloto, <b>no el Pasajero.</b></h2>
           <p className="text-gray-300 max-w-3xl mx-auto mb-8">
-            Los que usen sus datos para tomar decisiones inteligentes liderarán el mercado. No te quedes atrás. Únete a la lista de espera para ser el primero en acceder a Ferretero.IA.
+            La Operación está a punto de despegar. Estamos formando un grupo exclusivo de ferreteros visionarios que serán los primeros en usar esta herramienta para transformar sus negocios. Este no es un lanzamiento masivo, es una invitación.
           </p>
           <WaitlistForm buttonText="QUIERO ACCESO PRIORITARIO" />
           <p className="text-sm text-gray-500 mt-4">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>
@@ -277,6 +400,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       {/* Footer */}
       <footer className="text-center py-8 border-t border-gray-800">
         <p className="text-gray-500">&copy; 2025 Ferretero.IA - Todos los derechos reservados.</p>
+        <FerreterosLogo/>
       </footer>
     </div>
   );
