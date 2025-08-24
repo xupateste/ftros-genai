@@ -65,19 +65,29 @@
 // src/components/LandingView.jsx
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { FiLogIn, FiCheckCircle, FiArrowRight, FiPlus } from 'react-icons/fi';
+import { FiLogIn, FiCheckCircle, FiArrowRight, FiPlus, FiX } from 'react-icons/fi';
 import { FerreterosLogo } from './FerreterosLogo'
 import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
+import api from '../utils/api'; // Usamos nuestro cliente API centralizado
 
 const AnimationStyles = () => (
   <style>
     {`
       @keyframes pop-in { 0% { transform: scale(0.8); } 20% { transform: scale(0.6); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
       .animate-pop { animation: pop-in 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) 1; }
-      @keyframes slide-in-fade-in { 0% { opacity: 0; transform: translateX(-100%); } 100% { opacity: 1; transform: translateX(0); } }
-      @keyframes fade-out { 0% { opacity: 1; } 100% { opacity: 0; } }
-      .toast-enter { animation: slide-in-fade-in 0.5s ease-out forwards; }
-      .toast-exit { animation: fade-out 0.5s ease-in forwards; }
+      /* Nueva animación de entrada desde abajo */
+      @keyframes slide-in-from-bottom { 
+        0% { opacity: 0; transform: translateY(100%); } 
+        100% { opacity: 1; transform: translateY(0); } 
+      }
+      
+      /* Nueva animación de salida hacia abajo */
+      @keyframes slide-out-to-bottom { 
+        0% { opacity: 1; transform: translateY(0); } 
+        100% { opacity: 0; transform: translateY(100%); } 
+      }
+      .toast-enter { animation: slide-in-from-bottom 0.3s ease-out forwards; }
+      .toast-exit { animation: slide-out-to-bottom 0.3s ease-in forwards; }
     `}
   </style>
 );
@@ -143,7 +153,7 @@ const DynamicSocialProofText = () => {
 };
 
 // Componente reutilizable para el formulario de la lista de espera
-const SlidingAvatars = () => {
+const SlidingAvatars = ({ctaClick}) => {
   // Lista de avatares. Ahora es un array de objetos para manejar diferentes tipos.
   const allAvatars = [
     { type: 'image', value: 'https://i.pravatar.cc/50?img=41' },
@@ -280,6 +290,7 @@ const SlidingAvatars = () => {
           <div
             className="w-10 h-10 bg-red-500 rounded-full border-2 border-white transition-opacity duration-500 flex-shrink-0 flex items-center justify-center text-white text-xl hover:bg-red-400 hover:scale-105"
             style={{ zIndex: 90 }}
+            onClick={ ctaClick }
           >
             <FiPlus />
           </div>
@@ -414,12 +425,12 @@ const ToastManager = ({ isHeroVisible }) => {
     }, [isHeroVisible, queueIndex, toastQueue, shuffleArray]);
 
     return (
-        <div className="fixed bottom-4 left-4 z-50 space-y-2">
+        <div className="fixed bottom-4 right-4 z-50 space-y-2">
             {toasts.map(toast => {
                 const displayName = `${toast.name.substring(0, 2)}****${toast.name.substring(toast.name.length - 1)}`;
                 const initials = toast.name.substring(0, 2);
                 return (
-                    <div key={toast.id} className={`${toast.isExiting ? 'toast-exit' : 'toast-enter'} bg-white rounded-lg shadow-lg p-4 flex items-center w-72`}>
+                    <div key={toast.id} className={`${toast.isExiting ? 'toast-exit' : 'toast-enter'} bg-white rounded-lg shadow-lg p-4 flex items-center w-64`}>
                         <div className={`w-10 h-10 rounded-full ${toast.bgColor} flex items-center justify-center text-white font-bold text-lg mr-3 flex-shrink-0 uppercase`}>
                             {initials}
                         </div>
@@ -448,6 +459,7 @@ const WaitlistForm = React.forwardRef((props, ref) => {
         />*/}
         <button 
           type="submit" 
+          onClick={props.ctaClick}
           className="text-white flex items-center gap-2 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-lg text-md px-5 py-2.5 text-center mx-2 mb-2"
         >
           {props.buttonText}
@@ -456,11 +468,221 @@ const WaitlistForm = React.forwardRef((props, ref) => {
       </div>
   )});
 
+// --- NUEVO: Modal de Onboarding ---
+const OnboardingModal = ({ isOpen, onClose }) => {
+    const [step, setStep] = useState(1);
+    const [formData, setFormData] = useState({
+        perfil: '',
+        desafios: [],
+        desafio_otro: '',
+        nombre: '',
+        email: '',
+        whatsapp: '',
+        nombre_negocio: '',
+        ciudad_pais: '',
+    });
+    const [isLoading, setIsLoading] = useState(false);
+
+    const handleNext = () => {
+        if (step === 1 && formData.perfil === 'otro') {
+            setStep('alternate_end');
+        } else {
+            setStep(s => s + 1);
+        }
+    };
+    const handleBack = () => setStep(s => s - 1);
+
+    const handleChange = (e) => {
+        const { name, value, type, checked } = e.target;
+        if (type === 'checkbox') {
+            setFormData(prev => ({
+                ...prev,
+                desafios: checked ? [...prev.desafios, value] : prev.desafios.filter(d => d !== value)
+            }));
+        } else {
+            setFormData(prev => ({ ...prev, [name]: value }));
+        }
+    };
+
+    // const handleSubmit = async (e) => {
+    //     e.preventDefault();
+    //     setIsLoading(true);
+    //     console.log("Enviando a Firebase:", formData);
+    //     await new Promise(resolve => setTimeout(resolve, 1500));
+    //     setIsLoading(false);
+    //     setStep('success');
+    // };
+
+    const handleSubmit = async (e) => {
+      e.preventDefault();
+      setIsLoading(true);
+      try {
+          // Llamada real a la API
+          const response = await api.post('/beta/register', formData);
+          // const response = await api.post('/auditoria/run', formData);
+          console.log("Registro exitoso:", response.data);
+          setIsLoading(false);
+          setStep('success');
+      } catch (error) {
+          console.error("Error en el registro:", error.response?.data || error.message);
+          // Aquí podrías mostrar un mensaje de error al usuario
+          setIsLoading(false);
+      }
+    };
+
+    // https://docs.google.com/forms/d/e/1FAIpQLSdeOgaV1WjMkBXjKUSrW4S9V7Ln1g2H3i9O_tFAiKN_UFXpag/viewform?usp=pp_url&entry.1507800765=nombre&entry.963108386=email&entry.177240001=999333&entry.2146160094=Atenci%C3%B3n+al+cliente&entry.2146160094=Gesti%C3%B3n+de+inventario&entry.976896117=1+a+5+a%C3%B1os&entry.658812330=Cuaderno+y+lapicero&entry.658812330=Hojas+de+c%C3%A1lculo+(Excel,+Google+Sheets)&entry.1331376788=Mejorar+el+control+y+seguimiento+del+inventario&entry.1331376788=Simplificar+la+gesti%C3%B3n+de+ventas+y+caja
+
+    const generateGoogleFormUrl = () => {
+        const formId = "1FAIpQLSdeOgaV1WjMkBXjKUSrW4S9V7Ln1g2H3i9O_tFAiKN_UFXpag"; // <-- REEMPLAZA ESTO
+        const baseUrl = `https://docs.google.com/forms/d/e/${formId}/viewform?usp=pp_url`;
+        const fieldMapping = {
+            perfil: 'entry.123456789',
+            desafios: 'entry.987654321',
+            desafio_otro: 'entry.112233445',
+            nombre: 'entry.1507800765',
+            email: 'entry.963108386',
+            whatsapp: 'entry.177240001',
+            nombre_negocio: 'entry.101010101',
+            ciudad_pais: 'entry.303030303' // ID de ejemplo para Ciudad, País
+        };
+        const params = new URLSearchParams();
+        params.append(fieldMapping.perfil, formData.perfil);
+        params.append(fieldMapping.desafios, formData.desafios.join(', '));
+        if (formData.desafio_otro) {
+            params.append(fieldMapping.desafio_otro, formData.desafio_otro);
+        }
+        params.append(fieldMapping.nombre, formData.nombre);
+        params.append(fieldMapping.email, formData.email);
+        params.append(fieldMapping.whatsapp, formData.whatsapp);
+        params.append(fieldMapping.nombre_negocio, formData.nombre_negocio);
+        params.append(fieldMapping.ciudad_pais, formData.ciudad_pais);
+        return `${baseUrl}&${params.toString()}`;
+    };
+
+    if (!isOpen) return null;
+
+    const progress = step === 1 ? 33 : step === 2 ? 66 : 100;
+    const isStepNumeric = typeof step === 'number';
+
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4 transition-opacity duration-300">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-95 animate-[scale-up_0.3s_ease-out_forwards]">
+                <style>{`.animate-\\[scale-up_0\\.3s_ease-out_forwards\\] { animation-name: scale-up; } @keyframes scale-up { 0% { transform: scale(0.95); } 100% { transform: scale(1); } }`}</style>
+                <div className="p-6 relative">
+                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                        <FiX size={24} />
+                    </button>
+
+                    {isStepNumeric && (
+                        <>
+                            <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
+                                <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
+                            </div>
+                            <h2 className="text-xl font-bold text-gray-800 mb-2">Paso {step} de 3: {step === 1 ? "Verificación" : step === 2 ? "Tu Mayor Desafío" : "Asegura tu Puesto"}</h2>
+                        </>
+                    )}
+
+                    {step === 1 && (
+                        <div>
+                            <p className="text-gray-600 mb-4">¡Estás a punto de asegurar tu lugar! Para garantizar que este grupo sea de máximo valor para todos, por favor confirma que tu negocio principal es una ferretería minorista.</p>
+                            <div className="space-y-3">
+                                <label className={`block p-4 rounded-lg border cursor-pointer ${formData.perfil === 'ferreteria_minorista' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300'}`}>
+                                    <input type="radio" name="perfil" value="ferreteria_minorista" onChange={handleChange} className="mr-2"/>
+                                    Sí, es mi negocio principal.
+                                </label>
+                                <label className={`block p-4 rounded-lg border cursor-pointer ${formData.perfil === 'otro' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300'}`}>
+                                    <input type="radio" name="perfil" value="otro" onChange={handleChange} className="mr-2"/>
+                                    No, mi negocio es otro.
+                                </label>
+                            </div>
+                            <div className="mt-6 flex justify-end">
+                                <button onClick={handleNext} disabled={formData.perfil === ''} className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg disabled:bg-gray-300 disabled:cursor-not-allowed">Siguiente →</button>
+                            </div>
+                        </div>
+                    )}
+                    {step === 2 && (
+                        <div>
+                            <p className="text-gray-600 mb-4">Queremos que esta herramienta resuelva problemas reales. Ayúdanos a entender qué es lo que más te frena hoy. Puedes marcar las opciones que quieras.</p>
+                            <div className="space-y-1">
+                                {['Control de Inventario', 'Gestión de Compras', 'Pérdida de Tiempo', 'Proceso de Ventas Lento', 'Decisiones de Negocio'].map(desafio => (
+                                    <label key={desafio} className="flex items-center p-3 rounded-lg hover:bg-gray-50">
+                                        <input type="checkbox" name="desafios" value={desafio.toLowerCase().replace(/ /g, '_')} onChange={handleChange} checked={formData.desafios.includes(desafio.toLowerCase().replace(/ /g, '_'))} className="h-5 w-5 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" />
+                                        <span className="ml-3 text-gray-700">{desafio}</span>
+                                    </label>
+                                ))}
+                                <div className="p-3">
+                                    <input type="text" name="desafio_otro" placeholder="Otro (opcional)" onChange={handleChange} className="w-full p-2 border-b-2 border-gray-200 focus:border-indigo-500 outline-none" />
+                                </div>
+                            </div>
+                            <div className="mt-6 flex justify-between">
+                                <button onClick={handleBack} className="px-6 py-2 text-gray-600 font-semibold rounded-lg">← Atrás</button>
+                                <button onClick={handleNext} className="px-6 py-2 bg-indigo-600 text-white font-semibold rounded-lg">Siguiente →</button>
+                            </div>
+                        </div>
+                    )}
+                    {step === 3 && (
+                        <form onSubmit={handleSubmit}>
+                            <p className="text-gray-600 mb-4">Perfecto. Estás en la lista. Déjanos tus datos para enviarte la invitación formal y el acceso prioritario.</p>
+                            <div className="space-y-1">
+                                <input type="text" name="nombre" placeholder="Nombre y Apellido" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                                <input type="email" name="email" placeholder="Correo Electrónico Principal" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                                <input type="tel" name="whatsapp" placeholder="WhatsApp" value={formData.whatsapp} onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                                <input type="text" name="nombre_negocio" placeholder="Nombre de tu Ferretería" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                                <input type="text" name="ciudad_pais" placeholder="Ciudad, País" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                            </div>
+                            <div className="mt-6 flex justify-between items-center">
+                                <button type="button" onClick={handleBack} className="px-6 py-2 text-gray-600 font-semibold rounded-lg">← Atrás</button>
+                                <button type="submit" disabled={isLoading} className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-300 flex items-center">
+                                    {isLoading && <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
+                                    {isLoading ? 'Enviando...' : '¡Quiero ser Piloto!'}
+                                </button>
+                            </div>
+                        </form>
+                    )}
+                    {step === 'success' && (
+                        <div className="text-center">
+                            <span className="text-6xl">🚀</span>
+                            <h2 className="text-2xl font-bold text-gray-800 mt-4">¡Todo listo! Tu lugar está reservado.</h2>
+                            <p className="text-gray-600 mt-2">Gracias por registrarte. Has sido añadido a nuestra lista de acceso prioritario. Nuestro equipo se pondrá en contacto contigo.</p>
+                            
+                            <div className="mt-4 bg-indigo-50 p-4 rounded-lg border border-indigo-200">
+                                <p className="text-gray-700">Para terminar, nos encantaría conocer tu opinión en una breve encuesta. ¡Tus respuestas nos ayudan a mejorar el producto para ti!</p>
+                                <a href={generateGoogleFormUrl()} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                                    Completar Encuesta (1 min)
+                                </a>
+                            </div>
+
+                            <div className="mt-4">
+                                <button onClick={onClose} className="px-6 py-2 text-gray-500 font-semibold rounded-lg hover:bg-gray-200">Entendido</button>
+                            </div>
+                        </div>
+                    )}
+                     {step === 'alternate_end' && (
+                        <div className="text-center p-8">
+                            <h2 className="text-xl font-bold text-gray-800 mt-4">Gracias por tu interés</h2>
+                            <p className="text-gray-600 mt-2">El beneficio de esta app es para aquellos que acrediten tener ferretería(s) con fin de venta al público.</p>
+                            <p className="text-gray-600 mt-4">Si necesitas alguna otra app te invitamos a que veas a otras que tenemos para ti en <a href="https://misotras.app" target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-semibold hover:underline">misotras.app</a>.</p>
+                            <div className="mt-8">
+                                <a href="https://misotras.app" target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg">
+                                    Ver otras apps
+                                </a>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
+        </div>
+    );
+};
+
+
+
 export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
   const heroRef = useRef(null);
   const [isHeroVisible, setIsHeroVisible] = useState(true);
 
   const [showActionButtons, setShowActionButtons] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false); // Estado para el modal
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -494,6 +716,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
 
   return (
    <> 
+    <OnboardingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     <ToastManager isHeroVisible={isHeroVisible} />
     <div className="w-full bg-gray-900 text-white animate-fade-in">
       {/* Navbar Simple */}
@@ -533,7 +756,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               <h1 className="text-3xl max-w-4xl py-2 md:text-6xl justify-center mx-auto font-black mb-4 leading-tight">
                 Analiza los números de tu Ferretería y decide mejor en minutos,
                 <span
-                  className="bg-clip-text text-transparent ml-3"
+                  className="bg-clip-text font-extrabold text-transparent ml-3"
                   style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
                 >
                   no en horas
@@ -559,10 +782,10 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               <>
                 <AnimateOnScroll delay={ 900 }>
                   {/*<WaitlistForm  ref={heroRef} />*/}
-                  <WaitlistForm ref={heroRef} buttonText="QUIERO ACCEDER A LA BETA PRIVADA" />
+                  <WaitlistForm ref={heroRef} ctaClick={() => setIsModalOpen(true)} buttonText="QUIERO ACCEDER A LA BETA PRIVADA" />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1000 }>
-                  <SlidingAvatars />
+                  <SlidingAvatars ctaClick={() => setIsModalOpen(true)} />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1100 }>
                   <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>
@@ -723,7 +946,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               Un grupo reducido de ferreteros probará antes que nadie una herramienta pensada para transformar su negocio. Esto no es para todos, es una invitación.
             </p>
             {/*<WaitlistForm />*/}
-            <WaitlistForm buttonText="QUIERO ACCESO PRIORITARIO" />
+            <WaitlistForm ctaClick={() => setIsModalOpen(true)} buttonText="QUIERO ACCESO PRIORITARIO" />
             <p className="text-sm text-gray-500 mt-4 max-w-md mx-auto">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>
           </div>
         </AnimateOnScroll>

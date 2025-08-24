@@ -23,10 +23,10 @@ from firebase_admin import firestore
 from google.cloud.firestore_v1.base_query import FieldFilter
 import firebase_config # Importar para asegurar que se inicialice
 from firebase_helpers import db, upload_to_storage, log_analysis_in_firestore, extraer_metadatos_df, log_file_upload_in_firestore, descargar_contenido_de_storage, log_report_generation
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, EmailStr
 from io import StringIO
 import openpyxl
-from typing import Optional, Dict, Any, Literal, Callable # Any para pd.ExcelWriter
+from typing import Optional, Dict, Any, List, Literal, Callable # Any para pd.ExcelWriter
 from datetime import datetime, timedelta, timezone # Para pd.Timestamp.now()
 from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
 from track_expenses import process_csv_abc, procesar_stock_muerto
@@ -3486,4 +3486,79 @@ async def run_auditoria_margenes(
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id
     )
+
+
+
+# ===================================================================================
+# --- ENDPOINT PARA BETA TESTERS ---
+# ===================================================================================
+class BetaRegistrationPayload(BaseModel):
+    perfil: str
+    desafios: List[str]
+    desafio_otro: Optional[str] = ""
+    nombre: str
+    email: str
+    whatsapp: str
+    nombre_negocio: str
+    ciudad_pais: str
+
+
+# --- Endpoint de Registro ---
+@app.post("/beta/register", summary="Registra un nuevo usuario para la beta", tags=["Beta"])
+async def register_for_beta(payload: BetaRegistrationPayload, request: Request):
+    """
+    Recibe los datos del formulario de onboarding, obtiene la geolocalización del usuario
+    y guarda toda la información en una colección de Firestore.
+    """
+    # 1. Obtener datos de geolocalización basados en la IP del cliente
+    client_ip = request.client.host
+    geoloc_data = {"ip": client_ip, "status": "desconocido"}
+    if client_ip and client_ip not in ["127.0.0.1", "testclient"]:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(f"http://ip-api.com/json/{client_ip}")
+                response.raise_for_status()
+                api_data = response.json()
+                if api_data.get("status") == "success":
+                    geoloc_data = {
+                        "ip": api_data.get("query"),
+                        "pais": api_data.get("country"),
+                        "ciudad": api_data.get("city"),
+                        "region": api_data.get("regionName"),
+                        "isp": api_data.get("isp"),
+                        "status": "exitoso"
+                    }
+        except httpx.RequestError as e:
+            # Si la API de geolocalización falla, no detenemos el proceso, solo lo registramos.
+            print(f"🔥 Advertencia: No se pudo geolocalizar al usuario {payload.email}. Error: {e}")
+
+    # 2. Preparar los datos para guardar en Firestore
+    try:
+        # Convertir el payload de Pydantic a un diccionario
+        user_data = payload.dict()
+
+        now_iso = datetime.now(timezone.utc).isoformat()
+
+        # Añadir la información adicional
+        user_data["fecha_registro"] = now_iso
+        user_data["geolocalizacion"] = geoloc_data
+        
+        # 3. Guardar en Firestore
+        # Crea un nuevo documento en la colección 'beta_registrations'
+        # Firestore generará un ID único para el documento automáticamente.
+        doc_ref = db.collection('beta_registrations').document()
+        doc_ref.set(user_data)
+
+        return {
+            "status": "success",
+            "message": "Usuario registrado exitosamente en la beta.",
+            "user_id": doc_ref.id # Devuelve el ID del nuevo documento creado
+        }
+        
+    except Exception as e:
+        # Manejo de errores en caso de que falle la escritura en Firestore
+        raise HTTPException(
+            status_code=500,
+            detail=f"Ocurrió un error al registrar al usuario: {e}"
+        )
 
