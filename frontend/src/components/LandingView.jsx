@@ -64,27 +64,20 @@
 
 // src/components/LandingView.jsx
 
-import React, { useState, useEffect } from 'react';
-import { FiLogIn, FiCheckCircle, FiArrowRight } from 'react-icons/fi';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { FiLogIn, FiCheckCircle, FiArrowRight, FiPlus } from 'react-icons/fi';
 import { FerreterosLogo } from './FerreterosLogo'
+import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 
 const AnimationStyles = () => (
   <style>
     {`
-      @keyframes pop-in {
-        0% {
-          transform: scale(1);
-        }
-        50% {
-          transform: scale(1.25);
-        }
-        100% {
-          transform: scale(1);
-        }
-      }
-      .animate-pop {
-        animation: pop-in 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) 1;
-      }
+      @keyframes pop-in { 0% { transform: scale(0.8); } 20% { transform: scale(0.6); } 50% { transform: scale(1.25); } 100% { transform: scale(1); } }
+      .animate-pop { animation: pop-in 0.7s cubic-bezier(0.68, -0.55, 0.27, 1.55) 1; }
+      @keyframes slide-in-fade-in { 0% { opacity: 0; transform: translateX(-100%); } 100% { opacity: 1; transform: translateX(0); } }
+      @keyframes fade-out { 0% { opacity: 1; } 100% { opacity: 0; } }
+      .toast-enter { animation: slide-in-fade-in 0.5s ease-out forwards; }
+      .toast-exit { animation: fade-out 0.5s ease-in forwards; }
     `}
   </style>
 );
@@ -97,16 +90,27 @@ const DynamicSocialProofText = () => {
         { name: 'Sofia12', time: '3 días' },
         { name: 'Andree2', time: '10 horas' },
         { name: 'Christian', time: '4 días' },
-        { name: 'Lizeth36', time: '1 día' },
+        { name: 'Lizeth36', time: '11 días' },
         { name: 'Karito', time: '8 días' },
         { name: 'William', time: '5 horas' },
         { name: 'Karen', time: '3 días' },
         { name: 'Johan19', time: '5 horas' },
-        { name: 'Simoneta', time: '2 días' },
+        { name: 'Simoneta', time: '22 días' },
         { name: 'Meliton', time: '2 horas' },
-        { name: 'Johanna', time: '6 días' },
+        { name: 'Johanna', time: '16 días' },
         { name: 'Leoncia', time: '1 día' },
-        { name: 'Miriam19', time: '2 días' },
+        { name: 'Marlene1', time: '12 días' },
+        { name: 'Mathias', time: '11 horas' },
+        { name: 'Zoemi00', time: '17 días' },
+        { name: 'Maxima', time: '9 días' },
+        { name: 'Jorena11', time: '13 horas' },
+        { name: 'Abigail09', time: '5 días' },
+        { name: 'Ernesta', time: '18 días' },
+        { name: 'Histeria', time: '1 día' },
+        { name: 'Fatima', time: '3 días' },
+        { name: 'Celina', time: '6 horas' },
+        { name: 'Yvone', time: '8 días' },
+        { name: 'Gustavo', time: '19 horas' },
     ];
 
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -132,8 +136,8 @@ const DynamicSocialProofText = () => {
     const displayName = `${name.substring(0, 2)}****${name.substring(name.length - 1)}`;
 
     return (
-        <p className={`text-xs text-gray-600 font-medium transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
-            <span className="font-bold text-gray-500">{displayName}</span> se unió hace <span className="font-bold text-gray-500">{time}</span>.
+        <p className={`text-sm text-gray-400 font-medium transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+            <span className="font-bold text-gray-400">{displayName}</span> se unió hace <span className="font-bold text-gray-400">{time}</span>.
         </p>
     );
 };
@@ -142,35 +146,60 @@ const DynamicSocialProofText = () => {
 const SlidingAvatars = () => {
   // Lista de avatares. Ahora es un array de objetos para manejar diferentes tipos.
   const allAvatars = [
-    { type: 'image', value: 'https://i.pravatar.cc/150?img=41' },
-    { type: 'initials', value: 'KS' },
-    { type: 'image', value: 'https://i.pravatar.cc/150?img=42' },
-    { type: 'initials', value: 'SQ' },
-    { type: 'initials', value: 'RT' },
-    { type: 'initials', value: 'MC' },
-    { type: 'image', value: 'https://i.pravatar.cc/150?img=43' },
-    { type: 'initials', value: 'AV' },
-    { type: 'image', value: 'https://i.pravatar.cc/150?img=44' },
-    { type: 'initials', value: 'SQ' },
-    { type: 'initials', value: 'RM' },
-    { type: 'image', value: 'https://i.pravatar.cc/150?img=45' },
-    { type: 'initials', value: 'JG' },
-    { type: 'initials', value: 'MC' },
-    { type: 'initials', value: 'JG' },
-    { type: 'image', value: 'https://i.pravatar.cc/150?img=46' },
-    { type: 'initials', value: 'ZA' },
-    { type: 'initials', value: 'MS' },
-    { type: 'initials', value: 'RT' },
-    { type: 'initials', value: 'NS' },
-    { type: 'image', value: 'https://i.pravatar.cc/150?img=47' },
-    { type: 'initials', value: 'YT' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=41' },
+    { type: 'initials', value: 'KA' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=52' }, //OK
+    { type: 'initials', value: 'SO' },
+    { type: 'initials', value: 'RI' },
     { type: 'initials', value: 'ME' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=58' },//CAMBIAR
+    { type: 'initials', value: 'AB' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=59' }, //CAMBAR
+    { type: 'initials', value: 'SU' },
+    { type: 'initials', value: 'RO' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=20' }, //CAMBIAR
+    { type: 'initials', value: 'JE' },
+    { type: 'initials', value: 'MI' },
+    { type: 'initials', value: 'BA' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=22' }, //Cmbiar
+    { type: 'initials', value: 'ZA' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=35' }, //cambiar
+    { type: 'initials', value: 'LU' },
+    { type: 'initials', value: 'VI' },
+    { type: 'initials', value: 'CO' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=26' }, //cambiar
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=27' }, //cambiar
+    { type: 'initials', value: 'TO' },
+    { type: 'initials', value: 'MA' },
+    { type: 'initials', value: 'QU' },
+    { type: 'initials', value: 'MO' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=30' }, //Cmbiar
+    { type: 'initials', value: 'ZE' },
+    { type: 'initials', value: 'MU' },
+    { type: 'initials', value: 'PE' },
+    { type: 'initials', value: 'KI' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=31' }, //cambiar
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=32' }, //cambiar
+    { type: 'initials', value: 'JI' },
+    { type: 'initials', value: 'HE' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=33' }, //Cmbiar
+    { type: 'initials', value: 'WA' },
+    { type: 'initials', value: 'RE' },
+    { type: 'initials', value: 'GU' },
+    { type: 'initials', value: 'NE' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=34' }, //cambiar
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=37' }, //cambiar
+    { type: 'initials', value: 'YO' },
+    { type: 'initials', value: 'EU' },
+    { type: 'image', value: 'https://i.pravatar.cc/50?img=38' }, //cambiar
   ];
 
   // Paleta de colores para los avatares de iniciales
   const bgColors = [
-    'bg-red-500', 'bg-blue-500', 'bg-green-500', 'bg-yellow-500', 
-    'bg-purple-500', 'bg-pink-500', 'bg-indigo-500', 'bg-teal-500'
+    'bg-red-500', 'bg-blue-300', 'bg-green-500', 'bg-yellow-300', 
+    'bg-purple-300', 'bg-pink-500', 'bg-indigo-300', 'bg-teal-500',
+    'bg-red-300', 'bg-blue-500', 'bg-green-300', 'bg-yellow-500', 
+    'bg-purple-500', 'bg-pink-300', 'bg-indigo-500', 'bg-teal-300'
   ];
 
   // Función para asignar un color consistente basado en las iniciales
@@ -183,34 +212,57 @@ const SlidingAvatars = () => {
     return bgColors[index];
   };
 
+  // Función para barajar un array (algoritmo Fisher-Yates)
+  const shuffleArray = useCallback((array) => {
+    let shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }, []);
+
+  // Estado para la cola de avatares barajados
+  const [avatarQueue, setAvatarQueue] = useState(() => shuffleArray(allAvatars));
+  // Estado para el índice del próximo avatar a mostrar de la cola
+  const [queueIndex, setQueueIndex] = useState(5);
+  // Estado para los 5 avatares actualmente visibles en la UI
   const [visibleAvatars, setVisibleAvatars] = useState(allAvatars.slice(0, 5));
   const [poppingAvatar, setPoppingAvatar] = useState(null);
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setVisibleAvatars(currentAvatars => {
-        const newAvatars = [...currentAvatars];
-        newAvatars.shift();
+      setVisibleAvatars(currentVisible => {
+        let nextIndex = queueIndex;
+        let currentQueue = avatarQueue;
+
+        // Si hemos mostrado todos los avatares de la cola, la barajamos de nuevo.
+        if (nextIndex >= currentQueue.length) {
+          currentQueue = shuffleArray(allAvatars);
+          setAvatarQueue(currentQueue);
+          nextIndex = 0;
+        }
+
+        const nextAvatar = currentQueue[nextIndex];
         
-        const lastAvatar = newAvatars[newAvatars.length - 1];
-        const lastIndex = allAvatars.findIndex(a => a.value === lastAvatar.value);
-        const nextIndex = (lastIndex + 1) % allAvatars.length;
-        const nextAvatar = allAvatars[nextIndex];
-        
-        newAvatars.push(nextAvatar);
-        setPoppingAvatar(nextAvatar);
-        
-        return newAvatars;
+        const newVisible = [...currentVisible];
+        newVisible.shift(); // Quitamos el más antiguo
+        newVisible.push(nextAvatar); // Añadimos el nuevo
+
+        setQueueIndex(nextIndex + 1); // Apuntamos al siguiente en la cola
+        setPoppingAvatar(nextAvatar); // Activamos la animación "pop"
+
+        return newVisible;
       });
     }, 3400);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [queueIndex, avatarQueue, allAvatars, shuffleArray]);
 
   return (
     <>
       <AnimationStyles />
-      <div className="flex items-center justify-center sm:justify-start mt-4">
+      <div className="flex items-center justify-center sm:justify-start mt-4 pr-6">
         <div className="flex -space-x-3">
           {visibleAvatars.map((avatar, index) => {
             const isPopping = poppingAvatar && avatar.value === poppingAvatar.value;
@@ -220,62 +272,216 @@ const SlidingAvatars = () => {
             const zIndexStyle = { zIndex: visibleAvatars.length + index };
 
             if (avatar.type === 'image') {
-              return (
-                <img
-                  key={avatar.value}
-                  className={`${commonClasses} ${opacityClass} ${animationClass}`}
-                  src={avatar.value}
-                  alt={`Usuario ${index + 1}`}
-                  style={zIndexStyle}
-                />
-              );
-            } else { // type === 'initials'
-              return (
-                <div
-                  key={avatar.value}
-                  className={`${commonClasses} ${opacityClass} ${animationClass} ${getColorForInitials(avatar.value)} flex items-center justify-center text-white font-bold text-sm`}
-                  style={zIndexStyle}
-                >
-                  {avatar.value}
-                </div>
-              );
+              return <img key={avatar.value + index} className={`${commonClasses} ${opacityClass} ${animationClass}`} src={avatar.value} alt={`Usuario`} style={zIndexStyle} />;
+            } else {
+              return <div key={avatar.value + index} className={`${commonClasses} ${opacityClass} ${animationClass} ${getColorForInitials(avatar.value)} flex items-center justify-center text-white font-bold text-sm`} style={zIndexStyle}>{avatar.value}</div>;
             }
           })}
-        </div>
-        <div className="bg-black justify-start px-2 py-2 ml-2">
-          <DynamicSocialProofText />
+          <div
+            className="w-10 h-10 bg-red-500 rounded-full border-2 border-white transition-opacity duration-500 flex-shrink-0 flex items-center justify-center text-white text-xl hover:bg-red-400 hover:scale-105"
+            style={{ zIndex: 90 }}
+          >
+            <FiPlus />
+          </div>
         </div>
       </div>
     </>
   );
 };
 
-const WaitlistForm = ({ buttonText }) => {
+// --- NUEVO: Componente Gestor de Toasts (ACTUALIZADO) ---
+const ToastManager = ({ isHeroVisible }) => {
+    const [toasts, setToasts] = useState([]);
+    
+    const toastData = useRef([
+      { name: 'Alejandro', location: 'Madrid, España', time: '3 días'},
+      { name: 'Valentina', location: 'Bogotá, Colombia', time: '1 día'},
+      { name: 'Soledad', location: 'Cúcuta, Colombia', time: '18 horas'},
+      { name: 'Jeronimo', location: 'Bogotá, Colombia', time: '22 días'},
+      { name: 'Waldir', location: 'Bogotá, Colombia', time: '5 días'},
+      { name: 'Ignacio', location: 'Sucre, Bolivia', time: '7 horas'},
+      { name: 'Zepita10', location: 'Santiago, Chile', time: '16 días'},
+      { name: 'Mateo', location: 'Buenos Aires, Argentina', time: '7 horas'},
+      { name: 'Demetrio', location: 'Buenos Aires, Argentina', time: '1 día'},
+      { name: 'Isabella', location: 'Buenos Aires, Argentina', time: '1 hora'},
+      { name: 'Fatima', location: 'Buenos Aires, Argentina', time: '37 minutos'},
+      { name: 'Ignacia', location: 'Buenos Aires, Argentina', time: '18 minutos'},
+      { name: 'Izabella', location: 'Lima, Perú', time: '9 horas'},
+      { name: 'Christian', location: 'Lima, Perú', time: '13 horas'},
+      { name: 'Imabella', location: 'Lima, Perú', time: '9 días'},
+      { name: 'Andrea', location: 'Lima, Perú', time: '1 día'},
+      { name: 'Ricardo', location: 'Arequipa, Perú', time: '3 días'},
+      { name: 'Lorena', location: 'Tarapoto, Perú', time: '6 días'},
+      { name: 'Mesias', location: 'Juliaca, Perú', time: '10 días'},
+      { name: 'Pedro', location: 'Trujillo, Perú', time: '11 días'},
+      { name: 'Nigrid', location: 'Chanchamayo, Perú', time: '23 horas'},
+      { name: 'Yuly', location: 'Huaraz, Perú', time: '53 minutos'},
+      { name: 'Ingrid', location: 'Trujillo, Perú', time: '4 días'},
+      { name: 'Ulises', location: 'Trujillo, Perú', time: '2 días'},
+      { name: 'Sebastián', location: 'Valparaíso, Chile', time: '3 horas'},
+      { name: 'Camila', location: 'Ciudad de México', time: '17 días'},
+      { name: 'Lucas', location: 'Quito, Ecuador', time: '19 días'},
+      { name: 'Jolieta', location: 'Montevideo, Uruguay', time: '2 días'},
+      { name: 'Santiago', location: 'Montevideo, Uruguay', time: '6 días'}, 
+      { name: 'Matias', location: 'Montevideo, Uruguay', time: '8 días'},
+      { name: 'Ernest', location: 'Montevideo, Uruguay', time: '5 horas'},
+      { name: 'Julieta', location: 'Montevideo, Uruguay', time: '9 días'},
+      { name: 'Ruidiaz99', location: 'Lima, Perú', time: '3 días'},
+      { name: 'Vu992', location: 'Arequipa, Perú', time: '5 días'},
+      { name: 'Ye19288', location: 'Lima, Perú', time: '5 días'},
+      { name: 'Ya8288', location: 'Arequipa, Perú', time: '5 días'},
+      { name: 'Ol9129', location: 'Lima, Perú', time: '2 días'},
+      { name: 'Re993', location: 'Arequipa, Perú', time: '2 días'},
+      { name: 'Ta8182', location: 'Lima, Perú', time: '6 horas'},
+      { name: 'Ruaz99', location: 'Huancayo, Perú', time: '3 días'},
+      { name: 'Vu92', location: 'Arequipa, Perú', time: '5 días'},
+      { name: 'Yo1288', location: 'Huancayo, Perú', time: '5 días'},
+      { name: 'Ka288', location: 'Arequipa, Perú', time: '5 días'},
+      { name: 'Ku9129', location: 'Huancayo, Perú', time: '2 días'},
+      { name: 'Re93', location: 'Arequipa, Perú', time: '2 días'},
+      { name: 'Ta182', location: 'Huancayo, Perú', time: '6 horas'},
+      { name: 'Ig9292', location: 'Arequipa, Perú', time: '6 horas'},
+      { name: 'As3382', location: 'Huancayo, Perú', time: '6 días'},
+      { name: 'Uy999329', location: 'Arequipa, Perú', time: '6 días'},
+    ]);
+    const bgColors = useRef([
+      'bg-red-500', 'bg-blue-700', 'bg-green-500', 'bg-yellow-700',
+      'bg-purple-700', 'bg-pink-500', 'bg-indigo-700', 'bg-teal-500',
+      'bg-red-700', 'bg-blue-500', 'bg-green-700', 'bg-yellow-500',
+      'bg-purple-500', 'bg-pink-700', 'bg-indigo-500', 'bg-teal-700',
+    ]);
+
+    const shuffleArray = useCallback((array) => {
+        let shuffled = [...array];
+        for (let i = shuffled.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+        }
+        return shuffled;
+    }, []);
+
+    const [toastQueue, setToastQueue] = useState(() => shuffleArray(toastData.current));
+    const [queueIndex, setQueueIndex] = useState(0);
+    const timeoutRef = useRef(null);
+
+    useEffect(() => {
+        const scheduleNextToast = () => {
+            clearTimeout(timeoutRef.current);
+            const randomDelay = 6000 + Math.random() * 13000; // Frecuencia aleatoria entre 8 y 15 segundos
+
+            timeoutRef.current = setTimeout(() => {
+                let nextIndex = queueIndex;
+                let currentQueue = toastQueue;
+
+                if (nextIndex >= currentQueue.length) {
+                    currentQueue = shuffleArray(toastData.current);
+                    setToastQueue(currentQueue);
+                    nextIndex = 0;
+                }
+
+                const toastInfo = currentQueue[nextIndex];
+                const randomColor = bgColors.current[Math.floor(Math.random() * bgColors.current.length)];
+                const newToast = { id: Date.now(), ...toastInfo, bgColor: randomColor, isExiting: false };
+
+                setToasts(currentToasts => [...currentToasts, newToast]);
+                setQueueIndex(nextIndex + 1);
+
+                // Iniciar la animación de salida después de 4.5 segundos
+                setTimeout(() => {
+                    setToasts(currentToasts =>
+                        currentToasts.map(t =>
+                            t.id === newToast.id ? { ...t, isExiting: true } : t
+                        )
+                    );
+                }, 4500);
+
+                // Eliminar del DOM después de que termine la animación de salida (4500ms + 500ms)
+                setTimeout(() => {
+                    setToasts(currentToasts => currentToasts.filter(t => t.id !== newToast.id));
+                }, 5000);
+
+                scheduleNextToast();
+            }, randomDelay);
+        };
+
+        if (!isHeroVisible) {
+            scheduleNextToast();
+        } else {
+            clearTimeout(timeoutRef.current);
+        }
+
+        return () => clearTimeout(timeoutRef.current);
+    }, [isHeroVisible, queueIndex, toastQueue, shuffleArray]);
+
+    return (
+        <div className="fixed bottom-4 left-4 z-50 space-y-2">
+            {toasts.map(toast => {
+                const displayName = `${toast.name.substring(0, 2)}****${toast.name.substring(toast.name.length - 1)}`;
+                const initials = toast.name.substring(0, 2);
+                return (
+                    <div key={toast.id} className={`${toast.isExiting ? 'toast-exit' : 'toast-enter'} bg-white rounded-lg shadow-lg p-4 flex items-center w-72`}>
+                        <div className={`w-10 h-10 rounded-full ${toast.bgColor} flex items-center justify-center text-white font-bold text-lg mr-3 flex-shrink-0 uppercase`}>
+                            {initials}
+                        </div>
+                        <div>
+                            <p className="font-semibold text-gray-800">{displayName}</p>
+                            <p className="text-xs text-gray-500">se unió hace {toast.time}</p>
+                            <p className="text-xs text-gray-500">desde {toast.location}</p>
+                        </div>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+const WaitlistForm = React.forwardRef((props, ref) => {
   const [showActionButtons, setShowActionButtons] = useState(false);
 
-return (
-  <form className="w-full max-w-md mx-auto">
-    <div className="flex flex-wrap justify-center gap-2">
-      {/*<input 
-        type="email" 
-        placeholder="Tu correo electrónico" 
-        required 
-        className="flex-grow p-3 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-purple-500 focus:outline-none text-white" 
-      />*/}
-      <button 
-        type="submit" 
-        className="bg-purple-600 flex w-auto items-center justify-center gap-2 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-      >
-        {buttonText}
-        <FiArrowRight />
-      </button>
-    </div>
-  </form>
-)};
+  return (
+      <div ref={ref} className="flex flex-wrap justify-center gap-2">
+        {/*<input 
+          type="email" 
+          placeholder="Tu correo electrónico" 
+          required 
+          className="flex-grow p-3 rounded-lg bg-gray-800 border border-gray-700 focus:ring-2 focus:ring-purple-500 focus:outline-none text-white" 
+        />*/}
+        <button 
+          type="submit" 
+          className="text-white flex items-center gap-2 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-lg text-md px-5 py-2.5 text-center mx-2 mb-2"
+        >
+          {props.buttonText}
+          <FiArrowRight />
+        </button>
+      </div>
+  )});
 
 export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
+  const heroRef = useRef(null);
+  const [isHeroVisible, setIsHeroVisible] = useState(true);
 
   const [showActionButtons, setShowActionButtons] = useState(false);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // Actualiza el estado basado en si el elemento está intersectando (visible)
+        setIsHeroVisible(entry.isIntersecting);
+      },
+      { threshold: 0.5 } // Se considera visible si al menos el 50% lo está
+    );
+
+    if (heroRef.current) {
+      observer.observe(heroRef.current);
+    }
+
+    // Limpieza: deja de observar cuando el componente se desmonta
+    return () => {
+      if (heroRef.current) {
+        observer.unobserve(heroRef.current);
+      }
+    };
+  }, []);
 
   // --- LÓGICA PARA ACTIVAR BOTONES DESDE LA URL ---
   useEffect(() => {
@@ -287,9 +493,11 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
   }, []);
 
   return (
+   <> 
+    <ToastManager isHeroVisible={isHeroVisible} />
     <div className="w-full bg-gray-900 text-white animate-fade-in">
       {/* Navbar Simple */}
-      <nav className="p-4 flex justify-between items-center container mx-auto">
+      <nav className="p-4 flex bg-black justify-between items-center">
         <h1 className="text-2xl font-bold gradient-text">
           <span
             className="text-3xl bg-clip-text text-transparent"
@@ -307,74 +515,94 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       </nav>
 
       {/* Sección 0: Héroe (Ahora con imagen de fondo) */}
-      <section 
-        className="relative py-20 md:py-32 text-center bg-cover bg-center" 
-        style={{ backgroundImage: "url('https://placehold.co/1200x600/111827/1f2937?text=xmsaiiiii')" }}
-      >
-        <div className="absolute inset-0 bg-black bg-opacity-60"></div>
-        <div className="relative container mx-auto px-6">
-          {/*<h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
-            Tu ferretería tiene <span
-              className="bg-clip-text text-transparent"
-              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
-            >dinero escondido</span>.
-            <br />
-            Te ayudamos a encontrarlo.
-          </h1>*/}
-          <h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
-            Aumenta la rentabilidad de tu Ferretería
-            <span
-              className="bg-clip-text text-transparent ml-3"
-              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
-            >
-              desde la próxima compra
-            </span>.
-          </h1>
-          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
-          </p>*/}
-          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
-          </p>
-          
-          {/* --- RENDERIZADO CONDICIONAL DE BOTONES --- */}
-          {showActionButtons ? (
-            <div className="flex flex-col-2 sm:flex-row gap-4 justify-center animate-fade-in">
-                <button onClick={onLoginClick} className="px-6 py-3 font-bold bg-gray-700 hover:bg-gray-600 rounded-lg">Iniciar Sesión</button>
-                {/*<button onClick={onRegisterClick} className="px-6 py-3 font-bold bg-gray-700 hover:bg-gray-600 rounded-lg">Registrarse</button>*/}
-                <button onClick={onStartSession} className="px-6 py-3 font-bold bg-purple-600 hover:bg-purple-700 rounded-lg">Probar Demo Anónimo</button>
-            </div>
-          ) : (
-            <>
-              <WaitlistForm buttonText="Obtener Acceso" />
-              <SlidingAvatars />
-              {/*<p className="text-sm text-gray-500 mt-4">Join 100+ SaaS teams creating marketing pages.</p>*/}
-            </>
-          )}
-        </div>
-      </section>
+        <section 
+          className="relative min-h-[calc(100vh-83px)] flex items-center text-center bg-cover bg-center" 
+          style={{ backgroundImage: "url('/background-hero-h.png')" }}
+        >
+          <div className="absolute inset-0 bg-black bg-opacity-80"></div>
+          <div className="relative container mx-auto px-6">
+            {/*<h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
+              Tu ferretería tiene <span
+                className="bg-clip-text text-transparent"
+                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+              >dinero escondido</span>.
+              <br />
+              Te ayudamos a encontrarlo.
+            </h1>*/}
+            <AnimateOnScroll delay={ 200 }>
+              <h1 className="text-3xl max-w-4xl py-2 md:text-6xl justify-center mx-auto font-black mb-4 leading-tight">
+                Analiza los números de tu Ferretería y decide mejor en minutos,
+                <span
+                  className="bg-clip-text text-transparent ml-3"
+                  style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
+                >
+                  no en horas
+                </span>.
+              </h1>
+            </AnimateOnScroll>
+            {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+              Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
+            </p>*/}
+            <AnimateOnScroll delay={ 600 }>
+            <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+              Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
+            </p>
+            </AnimateOnScroll>
+            {/* --- RENDERIZADO CONDICIONAL DE BOTONES --- */}
+            {showActionButtons ? (
+              <div className="flex flex-col-2 sm:flex-row gap-4 justify-center animate-fade-in">
+                  <button onClick={onLoginClick} className="px-6 py-3 font-bold bg-gray-700 hover:bg-gray-600 rounded-lg">Iniciar Sesión</button>
+                  {/*<button onClick={onRegisterClick} className="px-6 py-3 font-bold bg-gray-700 hover:bg-gray-600 rounded-lg">Registrarse</button>*/}
+                  <button onClick={onStartSession} className="px-6 py-3 font-bold bg-purple-600 hover:bg-purple-700 rounded-lg">Probar Demo Anónimo</button>
+              </div>
+            ) : (
+              <>
+                <AnimateOnScroll delay={ 900 }>
+                  {/*<WaitlistForm  ref={heroRef} />*/}
+                  <WaitlistForm ref={heroRef} buttonText="QUIERO ACCEDER A LA BETA PRIVADA" />
+                </AnimateOnScroll>
+                <AnimateOnScroll delay={ 1000 }>
+                  <SlidingAvatars />
+                </AnimateOnScroll>
+                <AnimateOnScroll delay={ 1100 }>
+                  <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>
+                  <DynamicSocialProofText />
+                </AnimateOnScroll>
+              </>
+            )}
+          </div>
+        </section>
 
       {/* Sección 2: El Problema (con UX/UI mejorada) */}
       <section className="py-20 bg-black bg-opacity-40">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold mb-6">¿Tu almacén está lleno pero sientes que el dinero no alcanza?</h2>
-          <p className="text-lg text-purple-400 mb-6">
-            <b>Cada producto que no rota y cada compra en exceso es capital que no trabaja.</b><br/>La intuición te ayuda a vender, pero los datos te ayudan decidir con precisión.
-          </p>
+          <AnimateOnScroll delay={ 500 }>
+            <h2 className="text-3xl md:text-4xl font-bold mb-6">¿Tu almacén está lleno pero sientes que el dinero no alcanza?</h2>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={ 600 }>
+            <p className="text-lg text-purple-400 mb-6">
+              <b>Cada producto que no rota y cada compra en exceso es capital que no trabaja.</b><br/>La intuición te ayuda a vender, pero los datos te ayudan decidir con precisión.
+            </p>
+          </AnimateOnScroll>
           <div className="max-w-2xl mx-auto text-left space-y-6">
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
-              <FiCheckCircle className="text-purple-400 text-2xl mt-1 flex-shrink-0" />
-              <p className="font-semibold">¿Estás seguro de que tu producto más vendido es también el más rentable?</p>
-            </div>
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
-              <FiCheckCircle className="text-purple-400 text-2xl mt-1 flex-shrink-0" />
-              <p className="font-semibold">¿Sientes que trabajas más, vendes más, pero no necesariamente ganas más?</p>
-            </div>
-            <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
-              <FiCheckCircle className="text-purple-400 text-2xl mt-1 flex-shrink-0" />
-              <p className="font-semibold">¿Tus Compras son en base a la demanda real o al catálogo del proveedor?</p>
-            </div>
-            
+            <AnimateOnScroll delay={ 700 }>
+              <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
+                <FiCheckCircle className="text-purple-400 text-2xl mt-1 flex-shrink-0" />
+                <p className="font-semibold">¿Estás seguro de que tu producto más vendido es también el más rentable?</p>
+              </div>
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={ 800 }>
+              <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
+                <FiCheckCircle className="text-purple-400 text-2xl mt-1 flex-shrink-0" />
+                <p className="font-semibold">¿Sientes que trabajas más, vendes más, pero no necesariamente ganas más?</p>
+              </div>
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={ 900 }>
+              <div className="bg-gray-800 p-6 rounded-lg border border-gray-700 flex items-start gap-4">
+                <FiCheckCircle className="text-purple-400 text-2xl mt-1 flex-shrink-0" />
+                <p className="font-semibold">¿Tus Compras son en base a la demanda real o al catálogo del proveedor?</p>
+              </div>
+            </AnimateOnScroll>
           </div>
         </div>
       </section>
@@ -383,69 +611,44 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       {/* Sección 1: Beneficios Clave */}
       <section className="py-20 bg-black bg-opacity-20">
         <div className="container mx-auto px-6 text-center">
-          <h2 className="text-4xl md:text-4xl font-bold mb-4">Solo Tenemos una Lealtad:  
-            <span
-              className="bg-clip-text text-transparent ml-2"
-              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
-            >
-              Tu Rentabilidad
-            </span>.
-          </h2>
-          <p className="text-lg font-semibold text-purple-400 mb-6">
-            No somos otro software de gestión. <b>Somos tu departamento de inteligencia.</b><br/>Nuestra plataforma se rige por tres principios inquebrantables.
-          </p>
-          {/*<p className="text-gray-300 max-w-3xl mx-auto text-center mb-6">
-            Somos una plataforma 100% independiente. No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestro único objetivo y nuestra única lealtad es con la rentabilidad del ferretero independiente. Tus datos son tuyos, son confidenciales, y solo se usan para darte a ti el poder de decisión.
-          </p>*/}
+          <AnimateOnScroll delay={ 500 }>
+            <h2 className="text-4xl md:text-4xl font-bold mb-4">Solo Tenemos una Lealtad:  
+              <span
+                className="bg-clip-text font-extrabold text-transparent ml-2"
+                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+              >
+                Tu Rentabilidad
+              </span>.
+            </h2>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={ 600 }>
+            <p className="text-lg font-semibold text-purple-400 mb-6">
+              No somos otro software de gestión. <b>Somos tu departamento de inteligencia.</b>
+            </p>
+          </AnimateOnScroll>
           <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
-              <div className="text-4xl text-purple-400 mb-4">🛡️👑</div>
-              <h3 className="text-xl font-bold mb-2">Independencia y Confianza</h3>
-              <p className="text-gray-400">No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus decisiones valen más cuando se basan en datos. Los datos son tuyos y son 100% confidenciales. Siempre.</p>
-              {/*<p className="text-gray-400">No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus datos son tuyos y son 100% confidenciales, Úsalos para tomar mejores decisiones.No te conformes con menos.</p>*/}
-            </div>
-            <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
-              <div className="text-4xl text-purple-400 mb-4">💰📈</div>
-              <h3 className="text-xl font-bold mb-2">Obsesión por la Rentabilidad</h3>
-              <p className="text-gray-400">No te diremos cómo vender más, <b>te ayudaremos a Ganar Más</b>. Nos obsesiona el margen, el flujo de caja y el capital de trabajo. Descubre dónde está el dinero real en tu negocio, no las métricas de vanidad que no pagan las facturas.</p>
-            </div>
-            <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
-              <div className="text-4xl text-purple-400 mb-4">💡🎯</div>
-              <h3 className="text-xl font-bold mb-2">Simplicidad Radical</h3>
-              <p className="text-gray-400">Convierte la complejidad de miles de transacciones en un <b>Plan de Acción claro y directo</b>. No necesitas un MBA para gestionar tu ferretería a un nivel de élite y tomar decisiones como hacen las grandes cadenas ferreteras.</p>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Sección 4: Beneficios Clave */}
-      <section className="py-20 bg-black bg-opacity-30">
-        <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
-            Tu Experiencia + Nuestro Análisis
-            <span
-              className="bg-clip-text text-transparent ml-2"
-              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
-            >
-              = Tu Arma Secreta
-            </span>.
-          </h2>
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
-              <div className="text-4xl text-purple-400 mb-4">💰</div>
-              <h3 className="text-xl font-bold mb-2">Descubre tu Capital Oculto</h3>
-              <p className="text-gray-400">Identifica cuánto dinero tienes inmovilizado en productos de baja rotación para que puedas liberarlo y reinvertirlo inteligentemente.</p>
-            </div>
-            <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
-              <div className="text-4xl text-purple-400 mb-4">📦</div>
-              <h3 className="text-xl font-bold mb-2">Optimiza tu Inventario</h3>
-              <p className="text-gray-400">Recibe recomendaciones claras sobre qué, cuándo y cuánto comprar. Evita el sobre-stock y los quiebres de stock que te hacen perder ventas.</p>
-            </div>
-            <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
-              <div className="text-4xl text-purple-400 mb-4">📈</div>
-              <h3 className="text-xl font-bold mb-2">Maximiza tu Rentabilidad</h3>
-              <p className="text-gray-400">Enfócate en los productos y marcas que realmente hacen crecer tu margen de ganancia. Toma decisiones con la confianza que solo los datos pueden dar.</p>
-            </div>
+            <AnimateOnScroll delay={ 700 }>
+              <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
+                <div className="text-4xl text-purple-400 mb-4">🛡️👑</div>
+                <h3 className="text-xl font-bold mb-2">Independencia y Confianza</h3>
+                <p className="text-gray-400">No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus decisiones valen más cuando se basan en datos. Los datos son tuyos y son 100% confidenciales. Siempre.</p>
+                {/*<p className="text-gray-400">No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus datos son tuyos y son 100% confidenciales, Úsalos para tomar mejores decisiones.No te conformes con menos.</p>*/}
+              </div>
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={ 900 }>
+              <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
+                <div className="text-4xl text-purple-400 mb-4">💰📈</div>
+                <h3 className="text-xl font-bold mb-2">Obsesión por la Rentabilidad</h3>
+                <p className="text-gray-400">No te diremos cómo vender más, <b>te ayudaremos a Ganar Más</b>. Nos obsesiona el margen, el flujo de caja y el capital de trabajo. Descubre dónde está el dinero real en tu negocio, no las métricas de vanidad que no pagan las facturas.</p>
+              </div>
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={ 1100 }>
+              <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
+                <div className="text-4xl text-purple-400 mb-4">💡🎯</div>
+                <h3 className="text-xl font-bold mb-2">Simplicidad Radical</h3>
+                <p className="text-gray-400">Convierte la complejidad de miles de transacciones en un <b>Plan de Acción claro y directo</b>. No necesitas un MBA para gestionar tu ferretería a un nivel de élite y tomar decisiones como hacen las grandes cadenas ferreteras.</p>
+              </div>
+            </AnimateOnScroll>
           </div>
         </div>
       </section>
@@ -453,30 +656,77 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       {/* Sección 3: La Solución */}
       <section className="py-20 text-center">
         <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Deja de adivinar. Toma el control con 
-            <span
-              className="bg-clip-text text-transparent ml-2"
-              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
-            >
-              Ferretero.IA
-            </span>.
-          </h2>
-          <p className="mt-6 text-lg font-semibold text-purple-400">
-            Sin tecnicismos. Sin reportes complicados.<br/><b>Solo respuestas claras para que tomes acciones inmediatas.</b>
-          </p>
+          <AnimateOnScroll delay={ 500 }>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Deja de adivinar. Toma el control con 
+              <span
+                className="bg-clip-text font-extrabold text-transparent ml-2"
+                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+              >
+                Ferretero.IA
+              </span>.
+            </h2>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={ 600 }>
+            <p className="mt-6 text-lg font-semibold text-purple-400">
+              Sin tecnicismos. Sin reportes complicados.<br/><b>Solo respuestas claras para que tomes acciones inmediatas.</b>
+            </p>
+          </AnimateOnScroll>
+        </div>
+      </section>
+
+      {/* Sección 4: Beneficios Clave */}
+      <section className="py-20 bg-black bg-opacity-30">
+        <div className="container mx-auto px-6">
+          <AnimateOnScroll delay={ 500 }>
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
+              Tu Experiencia + Nuestro Análisis
+              <span
+                className="bg-clip-text font-extrabold text-transparent ml-2"
+                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+              >
+                = Tu Arma Secreta
+              </span>.
+            </h2>
+          </AnimateOnScroll>
+          <div className="grid md:grid-cols-3 gap-8">
+            <AnimateOnScroll delay={ 600 }>
+              <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
+                <div className="text-4xl text-purple-400 mb-4">💰</div>
+                <h3 className="text-xl font-bold mb-2">Descubre tu Capital Oculto</h3>
+                <p className="text-gray-400">Identifica cuánto dinero tienes inmovilizado en productos de baja rotación para que puedas liberarlo y reinvertirlo inteligentemente.</p>
+              </div>
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={ 800 }>
+              <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
+                <div className="text-4xl text-purple-400 mb-4">📦</div>
+                <h3 className="text-xl font-bold mb-2">Optimiza tu Inventario</h3>
+                <p className="text-gray-400">Recibe recomendaciones claras sobre qué, cuándo y cuánto comprar. Evita el sobre-stock y los quiebres de stock que te hacen perder ventas.</p>
+              </div>
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={ 900 }>
+              <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
+                <div className="text-4xl text-purple-400 mb-4">📈</div>
+                <h3 className="text-xl font-bold mb-2">Maximiza tu Rentabilidad</h3>
+                <p className="text-gray-400">Enfócate en los productos y marcas que realmente hacen crecer tu margen de ganancia. Toma decisiones con la confianza que solo los datos pueden dar.</p>
+              </div>
+            </AnimateOnScroll>
+          </div>
         </div>
       </section>
 
       {/* Sección 5: Llamada a la Acción Final */}
       <section className="py-20 bg-black bg-opacity-20 text-center">
-        <div className="container mx-auto px-6">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Sé el Piloto, <b>no el Pasajero.</b></h2>
-          <p className="text-gray-300 max-w-3xl mx-auto mb-8">
-            La Operación está a punto de despegar. Estamos formando un grupo exclusivo de ferreteros visionarios que serán los primeros en usar esta herramienta para transformar sus negocios. Este no es un lanzamiento masivo, es una invitación.
-          </p>
-          <WaitlistForm buttonText="QUIERO ACCESO PRIORITARIO" />
-          <p className="text-sm text-gray-500 mt-4">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>
-        </div>
+        <AnimateOnScroll delay={ 400 }>
+          <div className="container mx-auto px-6">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4"><b>Sé el Piloto,</b> no el Pasajero.</h2>
+            <p className="text-gray-300 max-w-3xl mx-auto mb-8">
+              Un grupo reducido de ferreteros probará antes que nadie una herramienta pensada para transformar su negocio. Esto no es para todos, es una invitación.
+            </p>
+            {/*<WaitlistForm />*/}
+            <WaitlistForm buttonText="QUIERO ACCESO PRIORITARIO" />
+            <p className="text-sm text-gray-500 mt-4 max-w-md mx-auto">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>
+          </div>
+        </AnimateOnScroll>
       </section>
 
       {/* Footer */}
@@ -485,5 +735,6 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
         <FerreterosLogo/>
       </footer>
     </div>
+  </>
   );
 }
