@@ -11,7 +11,12 @@ import ReactGA from "react-ga4";
 
 // Función para inicializar Google Analytics. Se llama una sola vez.
 export const initGA = () => {
+  const IS_PRODUCTION = process.env.NODE_ENV === 'production'
   // En un proyecto real, es mejor guardar este ID en una variable de entorno.
+  if (!IS_PRODUCTION) {
+    console.log("GA Init: Modo desarrollo, no se inicializará Google Analytics.");
+    return;
+  }
   const measurementId = "G-6TBQVG5P7V"; // <-- REEMPLAZA ESTO con tu ID de Medición de GA4
   ReactGA.initialize(measurementId);
 };

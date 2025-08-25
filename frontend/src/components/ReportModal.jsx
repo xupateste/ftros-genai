@@ -477,6 +477,7 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
   };
 
   const handleOpenPDF = () => {
+    const isAnonymous = context.type === 'anonymous';
     const dataToUse = filteredData;
     if (!dataToUse || dataToUse.length === 0) {
       alert("No hay datos para generar el PDF.");
@@ -560,35 +561,39 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
 
 
     // --- NUEVA SECCIÓN: "ANUNCIO DE VALOR" EN EL PDF ---
-    // const finalY = doc.autoTable.previous.finalY; // Obtenemos la posición final de la tabla
-    doc.addPage();
-    const adY = 15; // Añadimos un espacio
+    if (isAnonymous) {
+      // const finalY = doc.autoTable.previous.finalY; // Obtenemos la posición final de la tabla
+      doc.addPage();
+      const adY = 15; // Añadimos un espacio
 
-    // Dibujamos el cuadro de fondo
-    doc.setFillColor(243, 244, 246); // Un gris claro (bg-gray-100)
-    doc.rect(14, adY, doc.internal.pageSize.getWidth() - 28, 32, 'F');
+      // Dibujamos el cuadro de fondo
+      doc.setFillColor(243, 244, 246); // Un gris claro (bg-gray-100)
+      doc.rect(14, adY, doc.internal.pageSize.getWidth() - 28, 45, 'F');
 
-    // Añadimos el icono (estrella)
-    doc.setFontSize(20);
-    doc.setTextColor(251, 191, 36); // Color amarillo (text-yellow-500)
-    doc.text("⭐", 20, adY + 12);
+      // Añadimos el icono (estrella)
+      doc.setFontSize(20);
+      doc.setTextColor(251, 191, 36); // Color amarillo (text-yellow-500)
+      doc.text("⭐", 20, adY + 12);
 
-    // Añadimos el texto
-    doc.setFontSize(10);
-    doc.setTextColor(17, 24, 39); // Color de texto oscuro (text-gray-900)
-    doc.setFont("helvetica", "bold");
-    doc.text("Potencia tu Análisis", 30, adY + 8);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(9);
-    const adText = "Este reporte tiene una versión visual. Conviértete en un Ferretero Estratega para desbloquear gráficos interactivos que te ayudarán a identificar tendencias al instante y presentar tus resultados de forma más impactante.";
-    const splitText = doc.splitTextToSize(adText, doc.internal.pageSize.getWidth() - 60);
-    doc.text(splitText, 30, adY + 14);
+      // Añadimos el texto
+      doc.setFontSize(12);
+      doc.setTextColor(17, 24, 39); // Color de texto oscuro (text-gray-900)
+      doc.setFont("helvetica", "bold");
+      doc.text("Este reporte muestra solo una vista previa (hasta 15 registros).", 30, adY + 8);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      const adText = "Para acceder a todo el analisis disponible y obtener una visión más completa de tu negocio, te invitamos a registrarte gratuitamente. Al hacerlo, desbloquearás el informe completo y recibirás un bono de bienvenida de 50 créditos para seguir explorando y mejorando herramientas diseñadas para ferreteros como tu.";
+      const splitText = doc.splitTextToSize(adText, doc.internal.pageSize.getWidth() - 60);
+      doc.text(splitText, 30, adY + 14);
 
-    doc.setFontSize(8);
-    doc.setTextColor(107, 114, 128);
-    doc.text("Visita Ferretero.IA para mejorar tu plan y acceder a esta y otras herramientas Pro.", 30, adY + 28);
-    
+      doc.setFontSize(9);
+      doc.setTextColor(107, 114, 128);
+      const adText2 = "Tu participación es muy valiosa: al formar parte de esta versión beta, no solo accedes antes que nadie, sino que también tienes la oportunidad de influir directamente en cómo mejoramos esta herramienta. Cada respuesta, cada clic, nos ayuda a construir una solución más útil y más ajustada a la realidad de tu ferretería.";
+      const splitText2 = doc.splitTextToSize(adText2, doc.internal.pageSize.getWidth() - 60);
+      doc.text(splitText2, 30, adY + 28);
+      // doc.text("Tu participación es muy valiosa: al formar parte de esta versión beta, no solo accedes antes que nadie, sino que también tienes la oportunidad de influir directamente en cómo mejoramos esta herramienta. Cada respuesta, cada clic, nos ayuda a construir una solución más útil y más ajustada a la realidad de tu ferretería.", 30, adY + 28);
+    }  
     
     // 5. Abrimos el PDF en una nueva pestaña
     doc.output('bloburl', { filename: `FerreteroIA_${reportConfig.key}_Accionable.pdf` });
@@ -601,6 +606,7 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
   }
 
   const handleDownloadExcel = async () => {
+    const isAnonymous = context.type === 'anonymous';
     const dataToUse = filteredData;
     if (!dataToUse || dataToUse.length === 0) {
       alert("No hay datos para descargar.");
@@ -671,6 +677,16 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
 
     // 4. Añadimos los datos
     worksheet.addRows(dataToUse);
+    
+    if (isAnonymous) {
+      const newRow = worksheet.addRow(["Este reporte muestra solo una vista previa (hasta 15 registros)."]);
+      newRow.height = 25;
+      const newRow2 = worksheet.addRow(["Para acceder a todo el analisis disponible y obtener una visión más completa de tu negocio, te invitamos a registrarte gratuitamente. Al hacerlo, desbloquearás el informe completo y recibirás un bono de bienvenida de 50 créditos para seguir explorando y mejorando herramientas diseñadas para ferreteros como tu."]);
+      newRow2.height = 25;
+      const newRow3 = worksheet.addRow(["Tu participación es muy valiosa: al formar parte de esta versión beta, no solo accedes antes que nadie, sino que también tienes la oportunidad de influir directamente en cómo mejoramos esta herramienta. Cada respuesta, cada clic, nos ayuda a construir una solución más útil y más ajustada a la realidad de tu ferretería."]);
+      newRow3.height = 25;
+    }
+
 
     // 5. Generamos el buffer del archivo y disparamos la descarga
     const buffer = await workbook.xlsx.writeBuffer();

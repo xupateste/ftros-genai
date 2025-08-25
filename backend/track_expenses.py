@@ -2344,7 +2344,7 @@ def process_csv_lista_basica_reposicion_historico(
     else: # Por defecto, 'Importancia'
         df_resultado = df_resultado.sort_values(by='Importancia_Dinamica', ascending=False)
     
-    print(f"df_resultado.columns 2 {df_resultado.columns}")
+    # print(f"df_resultado.columns 2 {df_resultado.columns}")
 
 
     # --- INICIO DE LA NUEVA LÓGICA DE RESUMEN ---
