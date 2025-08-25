@@ -11,6 +11,7 @@ import { Dashboard } from './components/Dashboard';
 import { LoadingScreen } from './components/LoadingScreen'; // Asumiendo que creas este componente
 import { AnalysisWorkspace } from './components/AnalysisWorkspace'; // Asumiendo que creas este componente
 import { AdminRechargePage } from './pages/AdminRechargePage'; // <-- Importa la nueva página
+import * as analytics from './utils/analytics';
 
 // Este componente hijo contiene la lógica para evitar problemas con el contexto
 function AppContent() {
@@ -19,6 +20,11 @@ function AppContent() {
 
   const { fetchWorkspaces, clearWorkspaceContext, activeWorkspace, setActiveWorkspace } = useWorkspace();
   const { loadStrategy } = useStrategy();
+
+  useEffect(() => {
+    // Inicializa Google Analytics cuando la aplicación se carga por primera vez.
+    analytics.initGA();
+  }, []);
 
   // "Checklist de Bienvenida": se ejecuta al cargar la app o al cambiar el token
   useEffect(() => {

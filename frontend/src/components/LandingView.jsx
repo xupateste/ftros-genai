@@ -69,6 +69,7 @@ import { FiLogIn, FiCheckCircle, FiArrowRight, FiPlus, FiX } from 'react-icons/f
 import { FerreterosLogo } from './FerreterosLogo'
 import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 import api from '../utils/api'; // Usamos nuestro cliente API centralizado
+import * as analytics from '../utils/analytics';
 
 const AnimationStyles = () => (
   <style>
@@ -484,7 +485,9 @@ const OnboardingModal = ({ isOpen, onClose }) => {
     const [isLoading, setIsLoading] = useState(false);
 
     const handleNext = () => {
+        analytics.trackOnboardingStepComplete(step);
         if (step === 1 && formData.perfil === 'otro') {
+            analytics.trackViewAlternateEnd();
             setStep('alternate_end');
         } else {
             setStep(s => s + 1);
@@ -515,6 +518,7 @@ const OnboardingModal = ({ isOpen, onClose }) => {
 
     const handleSubmit = async (e) => {
       e.preventDefault();
+      analytics.trackGenerateLead(formData.perfil);
       setIsLoading(true);
       try {
           // Llamada real a la API
@@ -569,7 +573,7 @@ const OnboardingModal = ({ isOpen, onClose }) => {
             <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg transform transition-all duration-300 scale-95 animate-[scale-up_0.3s_ease-out_forwards]">
                 <style>{`.animate-\\[scale-up_0\\.3s_ease-out_forwards\\] { animation-name: scale-up; } @keyframes scale-up { 0% { transform: scale(0.95); } 100% { transform: scale(1); } }`}</style>
                 <div className="p-6 relative">
-                    <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <button onClick={onClose} className="bg-white pl-2 absolute top-4 right-4 text-gray-400 hover:text-gray-600">
                         <FiX size={24} />
                     </button>
 
@@ -584,11 +588,11 @@ const OnboardingModal = ({ isOpen, onClose }) => {
 
                     {step === 1 && (
                         <div>
-                            <p className="text-gray-600 mb-4">¡Estás a punto de asegurar tu lugar! Para garantizar que este grupo sea de máximo valor para todos, por favor confirma que tu negocio principal es una ferretería minorista.</p>
+                            <p className="text-gray-600 mb-4"><b>¡Estás a punto de asegurar tu lugar en la beta privada!</b><br/>Solo unas pocas ferreterías formarán parte de esta etapa inicial. Por favor, confirma que tu negocio principal es una ferretería minorista.</p>
                             <div className="space-y-3">
                                 <label className={`block p-4 rounded-lg border cursor-pointer ${formData.perfil === 'ferreteria_minorista' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300'}`}>
                                     <input type="radio" name="perfil" value="ferreteria_minorista" onChange={handleChange} className="mr-2"/>
-                                    Sí, es mi negocio principal.
+                                    Sí, mi ferretería es minorista.
                                 </label>
                                 <label className={`block p-4 rounded-lg border cursor-pointer ${formData.perfil === 'otro' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300'}`}>
                                     <input type="radio" name="perfil" value="otro" onChange={handleChange} className="mr-2"/>
@@ -643,11 +647,12 @@ const OnboardingModal = ({ isOpen, onClose }) => {
                         <div className="text-center">
                             <span className="text-6xl">🚀</span>
                             <h2 className="text-2xl font-bold text-gray-800 mt-4">¡Todo listo! Tu lugar está reservado.</h2>
-                            <p className="text-gray-600 mt-2">Gracias por registrarte. Has sido añadido a nuestra lista de acceso prioritario. Nuestro equipo se pondrá en contacto contigo.</p>
+                            <p className="text-gray-600 mt-2">Gracias por registrarte. Has sido añadido a nuestra lista.</p>
                             
                             <div className="mt-4 bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                                <p className="text-gray-700">Para terminar, nos encantaría conocer tu opinión en una breve encuesta. ¡Tus respuestas nos ayudan a mejorar el producto para ti!</p>
-                                <a href={generateGoogleFormUrl()} target="_blank" rel="noopener noreferrer" className="mt-4 inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
+                                <h2 className="text-blue-700 font-bold">Sé de los primeros en probar la herramienta</h2>
+                                <p className="text-gray-600 text-sm">Responde unas breves preguntas y recibe acceso temprano, además podrías opinar directamente sobre nuevas funciones</p>
+                                <a href={generateGoogleFormUrl()} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
                                     Completar Encuesta (1 min)
                                 </a>
                             </div>
@@ -661,9 +666,9 @@ const OnboardingModal = ({ isOpen, onClose }) => {
                         <div className="text-center p-8">
                             <h2 className="text-xl font-bold text-gray-800 mt-4">Gracias por tu interés</h2>
                             <p className="text-gray-600 mt-2">El beneficio de esta app es para aquellos que acrediten tener ferretería(s) con fin de venta al público.</p>
-                            <p className="text-gray-600 mt-4">Si necesitas alguna otra app te invitamos a que veas a otras que tenemos para ti en <a href="https://misotras.app" target="_blank" rel="noopener noreferrer" className="text-indigo-600 font-semibold hover:underline">misotras.app</a>.</p>
+                            <p className="text-gray-600 mt-4">Si necesitas alguna otra app te invitamos a que veas a otras que tenemos para ti en <a href="https://ferreteros.app" target="_self" rel="noopener noreferrer" className="text-indigo-600 font-semibold hover:underline">https://ferreteros.app</a>.</p>
                             <div className="mt-8">
-                                <a href="https://misotras.app" target="_blank" rel="noopener noreferrer" className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg">
+                                <a href="https://ferreteros.app" target="_self" rel="noopener noreferrer" className="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg">
                                     Ver otras apps
                                 </a>
                             </div>
@@ -684,6 +689,12 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
   const [showActionButtons, setShowActionButtons] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false); // Estado para el modal
 
+
+  const openOnboardingModal = () => {
+    analytics.trackBeginOnboarding();
+    setIsModalOpen(true);
+  };
+    
   useEffect(() => {
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -782,10 +793,10 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               <>
                 <AnimateOnScroll delay={ 900 }>
                   {/*<WaitlistForm  ref={heroRef} />*/}
-                  <WaitlistForm ref={heroRef} ctaClick={() => setIsModalOpen(true)} buttonText="QUIERO ACCEDER A LA BETA PRIVADA" />
+                  <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="ANALIZAR MI FERRETERIA (BETA)" />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1000 }>
-                  <SlidingAvatars ctaClick={() => setIsModalOpen(true)} />
+                  <SlidingAvatars ctaClick={() => openOnboardingModal()} />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1100 }>
                   <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>
@@ -834,8 +845,8 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       {/* Sección 1: Beneficios Clave */}
       <section className="py-20 bg-black bg-opacity-20">
         <div className="container mx-auto px-6 text-center">
-          <AnimateOnScroll delay={ 500 }>
-            <h2 className="text-4xl md:text-4xl font-bold mb-4">Solo Tenemos una Lealtad:  
+          <AnimateOnScroll delay={ 500 } onVisible={analytics.trackViewSectionFeatures}>
+            <h2 className="text-4xl md:text-4xl font-bold mb-4">Nuestra única prioridad:  
               <span
                 className="bg-clip-text font-extrabold text-transparent ml-2"
                 style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
@@ -946,7 +957,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               Un grupo reducido de ferreteros probará antes que nadie una herramienta pensada para transformar su negocio. Esto no es para todos, es una invitación.
             </p>
             {/*<WaitlistForm />*/}
-            <WaitlistForm ctaClick={() => setIsModalOpen(true)} buttonText="QUIERO ACCESO PRIORITARIO" />
+            <WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="QUIERO ACCESO PRIORITARIO" />
             <p className="text-sm text-gray-500 mt-4 max-w-md mx-auto">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>
           </div>
         </AnimateOnScroll>

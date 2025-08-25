@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 
-export function AnimateOnScroll({ children, delay = 0, threshold = 0.1 }) {
+export function AnimateOnScroll({ children, onVisible, delay = 0, threshold = 0.1 }) {
   const [isVisible, setIsVisible] = useState(false);
   const ref = useRef(null);
 
@@ -12,6 +12,9 @@ export function AnimateOnScroll({ children, delay = 0, threshold = 0.1 }) {
         // Si el elemento es visible, actualizamos el estado
         if (entry.isIntersecting) {
           setIsVisible(true);
+          if (onVisible) {
+              onVisible();
+          }
           // Desconectamos el observador después de la primera vez para que la animación no se repita
           observer.unobserve(entry.target);
         }
@@ -31,7 +34,7 @@ export function AnimateOnScroll({ children, delay = 0, threshold = 0.1 }) {
         observer.unobserve(ref.current);
       }
     };
-  }, [ref, threshold]);
+  }, [ref, threshold, onVisible]);
 
   return (
     <div
