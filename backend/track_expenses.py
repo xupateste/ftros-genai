@@ -451,6 +451,28 @@ def generar_reporte_maestro_inventario(
     df_ventas[sku_col] = df_ventas[sku_col].astype(str).str.strip()
     df_inventario[sku_col] = df_inventario[sku_col].astype(str).str.strip()
 
+
+
+    resultado_abc = process_csv_abc(
+        df_ventas.copy(), 
+        df_inventario.copy(), 
+        criterio_abc=criterio_abc, 
+        periodo_abc=periodo_abc, 
+        score_ingreso=score_ingreso,
+        score_margen=score_margen,
+        score_ventas=score_ventas
+    )
+    # print(f"pesos_combinado {pesos_combinado}")
+    # print(f"resultado_abc {resultado_abc}")
+    df_importancia = resultado_abc.get("data")
+    columna_criterio_abc = [col for col in df_importancia.columns if '(S/.)' in col or '(Und)' in col or 'Ponderado' in col][0]
+    df_importancia_subset = df_importancia[['SKU / Código de producto', 'Clasificación ABC', columna_criterio_abc]].copy()
+    # df_importancia = process_csv_abc(df_ventas.copy(), df_inventario.copy(), criterio_abc, periodo_abc, pesos_combinado)
+    # columna_criterio_abc = df_importancia.columns[4] if len(df_importancia.columns) > 4 else None
+    # df_importancia_subset = df_importancia[['SKU / Código de producto', 'Clasificación ABC']].copy()
+
+
+
     if filtro_skus:
         print(f"Ejecutando reporte en modo contextual para {len(filtro_skus)} SKUs.")
         df_inventario = df_inventario[df_inventario[sku_col].isin(filtro_skus)]
@@ -467,7 +489,6 @@ def generar_reporte_maestro_inventario(
     )
     df_salud = resultado_salud.get("data")
 
-
     # --- PASO 2: Ejecutar Análisis de Importancia (ABC) ---
     print("Paso 2/5: Ejecutando análisis de importancia (ABC)...")
     pesos_combinado = {
@@ -475,20 +496,6 @@ def generar_reporte_maestro_inventario(
         "margen": score_margen,
         "unidades": score_ventas
     }
-    resultado_abc = process_csv_abc(
-        df_ventas.copy(), 
-        df_inventario.copy(), 
-        criterio_abc, 
-        periodo_abc, 
-        pesos_combinado=pesos_combinado
-    )
-    df_importancia = resultado_abc.get("data")
-    columna_criterio_abc = [col for col in df_importancia.columns if '(S/.)' in col or '(Und)' in col or 'Ponderado' in col][0]
-    df_importancia_subset = df_importancia[['SKU / Código de producto', 'Clasificación ABC', columna_criterio_abc]].copy()
-    # df_importancia = process_csv_abc(df_ventas.copy(), df_inventario.copy(), criterio_abc, periodo_abc, pesos_combinado)
-    # columna_criterio_abc = df_importancia.columns[4] if len(df_importancia.columns) > 4 else None
-    # df_importancia_subset = df_importancia[['SKU / Código de producto', 'Clasificación ABC']].copy()
-
 
     # --- PASO 3: Combinar y Enriquecer los Datos ---
     print("Paso 3/5: Combinando y enriqueciendo los datos...")

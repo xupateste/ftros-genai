@@ -2009,8 +2009,8 @@ async def upload_csvs_abc_analysis(
     score_ingreso: Optional[int] = Form(None),
     score_margen: Optional[int] = Form(None),
     incluir_solo_categorias: str = Form("", description="String de categorías separadas por comas."),
-    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas.")
-
+    incluir_solo_marcas: str = Form("", description="String de marcas separadas por comas."),
+    filtro_skus_json: Optional[str] = Form(None)
 ):
     user_id = None
     
@@ -2048,7 +2048,13 @@ async def upload_csvs_abc_analysis(
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Formato de filtros (categorías/marcas) inválido. Se esperaba un string JSON.")
 
+    try:
+        filtro_skus = json.loads(filtro_skus_json) if filtro_skus_json else None
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Formato de filtro de SKUs inválido.")
+
     processing_params = {
+        "filtro_skus": filtro_skus,
         "criterio_abc": criterio_abc.lower(),
         "periodo_abc": periodo_abc,
         # "pesos_combinado": pesos_combinado_dict,
