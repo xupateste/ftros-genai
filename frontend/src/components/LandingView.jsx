@@ -725,7 +725,8 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             </p>*/}
             <AnimateOnScroll delay={ 600 }>
             <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-              Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
+              {/*Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>*/}
+              Reinventa tu estrategia con tecnología de privacidad sin fricciones.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
             </p>
             </AnimateOnScroll>
             {/* --- RENDERIZADO CONDICIONAL DE BOTONES --- */}
