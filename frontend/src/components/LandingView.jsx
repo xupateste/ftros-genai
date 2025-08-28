@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiLogIn, FiCheckCircle, FiArrowRight, FiPlus, FiX } from 'react-icons/fi';
 import { FerreterosLogo } from './FerreterosLogo'
+import { PrivacyPolicyModal } from './PrivacyPolicyModal'
 import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 import api from '../utils/api'; // Usamos nuestro cliente API centralizado
 import * as analytics from '../utils/analytics';
@@ -626,6 +627,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
   const [showActionButtons, setShowActionButtons] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false); // Estado para el modal
   const [isLoginBetaModalOpen, setIsLoginBetaModalOpen] = useState(false);
+  const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false); // <-- Nuevo estado
 
   const openOnboardingModal = () => {
     analytics.trackBeginOnboarding();
@@ -675,6 +677,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
     <OnboardingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     <LoginModalBeta isOpen={isLoginBetaModalOpen} onClose={() => setIsLoginBetaModalOpen(false)} />
     <ToastManager isHeroVisible={isHeroVisible} />
+    <PrivacyPolicyModal isOpen={isPrivacyModalOpen} onClose={() => setIsPrivacyModalOpen(false)} /> {/* <-- Nuevo Modal */}
     <div className="w-full bg-gray-900 text-white animate-fade-in">
       {/* Navbar Simple */}
       <nav className="p-4 flex bg-black justify-between items-center">
@@ -1012,7 +1015,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
                               <h3 className="text-xl font-bold text-white">Desbloquea tus Insights</h3>
                           </div>
                           <p className="text-gray-300 mb-4">
-                              Nuestra inteligencia artificial analiza tus ventas y te muestra de forma visual e intuitiva:
+                              Nuestra inteligencia asistida analiza tus ventas y te muestra de forma visual e intuitiva:
                           </p>
                           <ul className="space-y-3 text-gray-300">
                               <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Qué productos te dejan más ganancia.</li>
@@ -1193,6 +1196,10 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       {/* Footer */}
       <footer className="text-center py-8 bg-black bg-opacity-60 border-t border-gray-800">
         <p className="text-gray-500">&copy; 2025 Ferretero.IA - Todos los derechos reservados.</p>
+
+        <p onClick={() => setIsPrivacyModalOpen(true)} className="text-gray-500 hover:text-gray-50 cursor-pointer hover:underline transition-colors">
+            Política de Privacidad
+        </p>
         <FerreterosLogo/>
       </footer>
     </div>
