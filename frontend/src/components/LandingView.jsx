@@ -726,7 +726,8 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             <AnimateOnScroll delay={ 600 }>
             <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
               {/*Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>*/}
-              Aumenta tu rentabilidad con tecnología que protege tu privacidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
+              Aumenta tu rentabilidad con tecnología que protege tu privacidad.
+              {/*<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>*/}
             </p>
             </AnimateOnScroll>
             {/* --- RENDERIZADO CONDICIONAL DE BOTONES --- */}
@@ -740,7 +741,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               <>
                 <AnimateOnScroll delay={ 900 }>
                   {/*<WaitlistForm  ref={heroRef} />*/}
-                  <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="QUIERO EL ACCESO (BETA)" />
+                  <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1000 }>
                   <SlidingAvatars ctaClick={() => openOnboardingModal()} />
