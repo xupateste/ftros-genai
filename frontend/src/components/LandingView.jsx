@@ -726,7 +726,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             <AnimateOnScroll delay={ 600 }>
             <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
               {/*Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>*/}
-              Reinventa tu estrategia con tecnología de privacidad sin fricciones.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
+              Aumenta tu rentabilidad con tecnología que protege tu privacidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
             </p>
             </AnimateOnScroll>
             {/* --- RENDERIZADO CONDICIONAL DE BOTONES --- */}
@@ -740,7 +740,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               <>
                 <AnimateOnScroll delay={ 900 }>
                   {/*<WaitlistForm  ref={heroRef} />*/}
-                  <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="ANALIZAR MI FERRETERIA (BETA)" />
+                  <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="QUIERO TENER ACCESO (BETA)" />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1000 }>
                   <SlidingAvatars ctaClick={() => openOnboardingModal()} />
@@ -753,6 +753,108 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             )}
           </div>
         </section>
+
+      {/* Sección 0: DATA PRIVACY */}
+      <section className="py-20 bg-black bg-opacity-30">
+        <div className="container mx-auto px-6">
+          <AnimateOnScroll delay={ 500 }>
+            <img
+              src="/lock.svg"
+              alt="La Oportunidad de Crecer"
+              className="w-15 h-15 mb-3 mx-auto"
+            />
+            <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold text-center mb-4">
+              Desbloquea tus datos, Protege tu privacidad.
+              <span
+                className="bg-clip-text font-extrabold text-transparent ml-2"
+                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+              >
+                Impulsa tu Rentabilidad
+              </span>.
+            </h2>
+            <p className="text-gray-400 text-center mb-6 max-w-2xl mx-auto">Nuestra plataforma de inteligencia de negocio se conecta de forma simple y segura a tu sistema de ventas actual. No reemplazamos nada, potenciamos lo que ya tienes. Extrae el máximo valor de la información que generas cada día para aumentar tu rentabilidad, fortalecer tu negocio y mitigar los riesgos de seguridad.</p>
+          </AnimateOnScroll>
+          <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
+            {/* Bloque 1 */}
+            <div className="flex flex-col items-start text-white bg-purple-900 p-4">
+              <div className="flex items-end">
+                <div className="relative w-44 h-44">
+                  <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 183.525 183.524">
+                    <circle
+                      cx="91.76"
+                      cy="91.76"
+                      r="84.26"
+                      stroke="#c3c4f1"
+                      strokeWidth="15"
+                      fill="none"
+                    />
+                    <circle
+                      cx="91.76"
+                      cy="91.76"
+                      r="84.26"
+                      stroke="#54b8a8"
+                      strokeWidth="15"
+                      fill="none"
+                      strokeDasharray="529"
+                      strokeDashoffset="127"
+                      transform="rotate(-90 91.76 91.76)"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-4xl sm:text-5xl font-bold">
+                    +25<span className="text-2xl ml-1">%</span>
+                  </div>
+                </div>
+                <div className="mt-6 flex flex-col text-left px-4">
+                  <span className="text-4xl text-left mb-2">📈</span>
+                  <p className="text-xl md:text-2xl font-semibold mb-2 text-left text-green-200">Oportunidad de crecimiento</p>
+                </div>
+              </div>
+              <p className="text-base text-center leading-relaxed">
+                Las pymes que utilizan sus datos para tomar decisiones aumentan su rentabilidad en más de un 25% en promedio. La inteligencia de negocio ya no es solo para las grandes cadenas.
+              </p>
+            </div>
+            {/* Bloque 2 */}
+            <div className="flex flex-col items-start text-white bg-purple-900 p-4">
+              <div className="flex items-end">
+                <div className="relative w-44 h-44">
+                  <svg className="absolute top-0 left-0 w-full h-full" viewBox="0 0 183.525 183.524">
+                    <circle
+                      cx="91.76"
+                      cy="91.76"
+                      r="84.26"
+                      stroke="#c3c4f1"
+                      strokeWidth="15"
+                      fill="none"
+                    />
+                    <circle
+                      cx="91.76"
+                      cy="91.76"
+                      r="84.26"
+                      stroke="#54b8a8"
+                      strokeWidth="15"
+                      fill="none"
+                      strokeDasharray="529"
+                      strokeDashoffset="0"
+                      transform="rotate(-90 91.76 91.76)"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center text-4xl sm:text-5xl font-bold text-center">
+                    2x
+                  </div>
+                </div>
+                <div className="mt-6 flex flex-col text-left px-4">
+                  <span className="text-4xl text-left mb-2">🏆</span>
+                  <p className="text-xl md:text-2xl font-semibold mb-2 text-left text-red-200">Doblemente Exitosos</p>
+                </div>
+              </div>
+              <p className="text-base text-center leading-relaxed">
+                Las empresas que basan sus decisiones en análisis de datos tienen el doble de probabilidades de superar sus metas de negocio que las que se basan solo en la intuición o la experiencia.
+              </p>
+            </div>
+          </div>
+          <p className="text-gray-600 mx-auto text-center my-4">Fuente: Deloitte, "2024 Enterprise Tech Trends"</p>
+        </div>
+      </section>
 
       {/* Sección 2: El Problema (con UX/UI mejorada) */}
       <section className="py-20 bg-black bg-opacity-40">
