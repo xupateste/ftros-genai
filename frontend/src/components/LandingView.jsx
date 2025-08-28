@@ -740,7 +740,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               <>
                 <AnimateOnScroll delay={ 900 }>
                   {/*<WaitlistForm  ref={heroRef} />*/}
-                  <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="QUIERO TENER ACCESO (BETA)" />
+                  <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="QUIERO EL ACCESO (BETA)" />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1000 }>
                   <SlidingAvatars ctaClick={() => openOnboardingModal()} />
@@ -776,6 +776,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
           </AnimateOnScroll>
           <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
             {/* Bloque 1 */}
+          <AnimateOnScroll delay={ 500 }>
             <div className="flex flex-col items-start text-white bg-purple-900 p-4">
               <div className="flex items-end">
                 <div className="relative w-44 h-44">
@@ -796,7 +797,18 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
                       strokeWidth="15"
                       fill="none"
                       strokeDasharray="529"
-                      strokeDashoffset="127"
+                      strokeDashoffset="170"
+                      transform="rotate(-90 91.76 91.76)"
+                    />
+                    <circle
+                      cx="91.76"
+                      cy="91.76"
+                      r="84.26"
+                      stroke="#292888"
+                      strokeWidth="15"
+                      fill="none"
+                      strokeDasharray="529"
+                      strokeDashoffset="270"
                       transform="rotate(-90 91.76 91.76)"
                     />
                   </svg>
@@ -813,6 +825,8 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
                 Las pymes que utilizan sus datos para tomar decisiones aumentan su rentabilidad en más de un 25% en promedio. La inteligencia de negocio ya no es solo para las grandes cadenas.
               </p>
             </div>
+          </AnimateOnScroll>            
+          <AnimateOnScroll delay={ 700 }>
             {/* Bloque 2 */}
             <div className="flex flex-col items-start text-white bg-purple-900 p-4">
               <div className="flex items-end">
@@ -851,13 +865,181 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
                 Las empresas que basan sus decisiones en análisis de datos tienen el doble de probabilidades de superar sus metas de negocio que las que se basan solo en la intuición o la experiencia.
               </p>
             </div>
+          </AnimateOnScroll>
           </div>
+          <AnimateOnScroll delay={ 900 }>
           <p className="text-gray-600 mx-auto text-center my-4">Fuente: Deloitte, "2024 Enterprise Tech Trends"</p>
+          </AnimateOnScroll>
         </div>
       </section>
 
+      {/* Sección 0: confianza */}
+      <section className="py-20 text-center">
+        <div className="container mx-auto px-6">
+          <AnimateOnScroll delay={ 500 }>
+            <img
+              src="/hand-you.svg"
+              alt="La Oportunidad de Crecer"
+              className="w-36 h-36 mb-3 mx-auto"
+            />
+            <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold mb-4">Nuestra Única Alianza 
+              <span
+                className="bg-clip-text font-extrabold text-transparent ml-2"
+                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+              >
+                es Contigo
+              </span>.
+            </h2>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={ 600 }>
+            <p className="mt-6 max-w-3xl mx-auto text-lg font-medium text-purple-400">
+              Somos 100% independientes. Sin acuerdos con marcas o proveedores. Solo trabajamos para una parte: <b>Para tu Ferretería</b>. Cada recomendación busca una sola cosa: <b>Tu Rentabilidad.</b>
+            </p>
+          </AnimateOnScroll>
+        </div>
+      </section>
+
+      {/* --- NUEVA SECCIÓN DE COMPARACIÓN (RESTILIZADA) --- */}
+      <section className="py-20 px-4 bg-black bg-opacity-20">
+          <div className="container mx-auto max-w-5xl">
+              <AnimateOnScroll onVisible={analytics.trackViewSectionComparison}>
+                  <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold text-center mb-8 text-gray-200">
+                      ¿Cómo cambia tu negocio con
+                      <span
+                        className="bg-clip-text font-extrabold text-transparent ml-2"
+                        style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+                      >
+                        Nuestra Plataforma
+                      </span>?
+                  </h2>
+              </AnimateOnScroll>
+              <div className="grid md:grid-cols-2 gap-8">
+                  {/* Columna "Antes" */}
+                  <AnimateOnScroll>
+                      <div className="bg-gray-100 p-8 rounded-xl shadow-lg h-full border border-gray-200">
+                          <div className="text-lg font-bold text-red-600 bg-red-200 rounded-full px-4 py-2 inline-block mb-6">
+                              El Día a Día Manual
+                          </div>
+                          <ul className="space-y-6 text-gray-600">
+                              <li className="flex items-start">
+                                  <span className="text-red-500 mr-4 mt-1">❌</span>
+                                  <div>
+                                      <strong className="text-gray-800">Compras basadas en intuición:</strong> Adivinar qué productos reponer, arriesgando capital en stock de baja rotación.
+                                  </div>
+                              </li>
+                              <li className="flex items-start">
+                                  <span className="text-red-500 mr-4 mt-1">❌</span>
+                                  <div>
+                                      <strong className="text-gray-800">Horas perdidas en tareas repetitivas:</strong> Actualizar precios manualmente, conciliar ventas y revisar facturas una por una.
+                                  </div>
+                              </li>
+                              <li className="flex items-start">
+                                  <span className="text-red-500 mr-4 mt-1">❌</span>
+                                  <div>
+                                      <strong className="text-gray-800">Falta de visibilidad:</strong> No tener una idea clara de la rentabilidad diaria o de las oportunidades de venta perdidas.
+                                  </div>
+                              </li>
+                          </ul>
+                      </div>
+                  </AnimateOnScroll>
+
+                  {/* Columna "Después" */}
+                  <AnimateOnScroll delay="delay-200">
+                      <div className="bg-gray-100 p-8 rounded-xl shadow-lg h-full border border-gray-200">
+                          <div className="text-lg font-bold text-teal-600 bg-teal-200 rounded-full px-4 py-2 inline-block mb-6">
+                              El Futuro con Nuestra Plataforma
+                          </div>
+                          <ul className="space-y-6 text-gray-600">
+                              <li className="flex items-start">
+                                  <span className="text-green-500 mr-4 mt-1">✅</span>
+                                  <div>
+                                      <strong className="text-gray-800">Decisiones basadas en datos:</strong> Identifica tus productos más rentables y optimiza tu inventario para maximizar cada venta.
+                                  </div>
+                              </li>
+                              <li className="flex items-start">
+                                  <span className="text-green-500 mr-4 mt-1">✅</span>
+                                  <div>
+                                      <strong className="text-gray-800">Procesos automatizados:</strong> Ahorra hasta un 70% en costos de procesamiento y libera a tu equipo para que se enfoque en tareas estratégicas.
+                                  </div>
+                              </li>
+                              <li className="flex items-start">
+                                  <span className="text-green-500 mr-4 mt-1">✅</span>
+                                  <div>
+                                      <strong className="text-gray-800">Control y visibilidad en tiempo real:</strong> Accede a reportes claros desde cualquier dispositivo y ten el control total de tu flujo de caja y rendimiento.
+                                  </div>
+                              </li>
+                          </ul>
+                      </div>
+                  </AnimateOnScroll>
+              </div>
+          </div>
+      </section>
+
+      {/* --- NUEVA SECCIÓN "EN SOLO 3 PASOS" --- */}
+      <section className="py-20 px-4 bg-black bg-opacity-40">
+          <div className="container mx-auto max-w-6xl">
+              <AnimateOnScroll onVisible={analytics.trackViewSectionSteps}>
+                  <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold text-center mb-16 text-white">
+                      En solo 3 pasos, transformas datos en 
+                      <span
+                        className="bg-clip-text font-extrabold text-transparent ml-2"
+                        style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+                      >
+                        decisiones rentables
+                      </span>:
+                  </h2>
+              </AnimateOnScroll>
+              <div className="grid md:grid-cols-3 gap-8 lg:gap-12">
+                  {/* Paso 1 */}
+                  <AnimateOnScroll>
+                      <div className="p-6 bg-gray-800 ">
+                          <div className="flex items-center mb-4">
+                              <div className="text-4xl font-extrabold text-purple-400 mr-4">01</div>
+                              <h3 className="text-xl font-bold text-white">Conecta de Forma Segura</h3>
+                          </div>
+                          <p className="text-gray-300">
+                              Vincula tu sistema de punto de venta actual a nuestra plataforma en minutos. Usamos encriptación de nivel bancario para garantizar que tu información viaje 100% segura.
+                          </p>
+                      </div>
+                  </AnimateOnScroll>
+
+                  {/* Paso 2 */}
+                  <AnimateOnScroll delay="delay-200">
+                      <div className="p-6 bg-gray-800 ">
+                          <div className="flex items-center mb-4">
+                              <div className="text-4xl font-extrabold text-purple-400 mr-4">02</div>
+                              <h3 className="text-xl font-bold text-white">Desbloquea tus Insights</h3>
+                          </div>
+                          <p className="text-gray-300 mb-4">
+                              Nuestra inteligencia artificial analiza tus ventas y te muestra de forma visual e intuitiva:
+                          </p>
+                          <ul className="space-y-3 text-gray-300">
+                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Qué productos te dejan más ganancia.</li>
+                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Qué artículos se venden juntos para crear ofertas inteligentes.</li>
+                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Cuándo es el momento exacto para reponer stock.</li>
+                              <li className="flex items-start"><span className="text-green-500 mr-3">✅</span> Y muchos más.</li>
+                          </ul>
+                      </div>
+                  </AnimateOnScroll>
+
+                  {/* Paso 3 */}
+                  <AnimateOnScroll delay="delay-400">
+                      <div className="p-6 bg-gray-800 ">
+                          <div className="flex items-center mb-4">
+                              <div className="text-4xl font-extrabold text-purple-400 mr-4">03</div>
+                              <h3 className="text-xl font-bold text-white">Decide y Crece</h3>
+                          </div>
+                          <p className="text-gray-300">
+                              Usa estos informes claros y precisos para tomar decisiones basadas en evidencia, no en intuición. Compra mejor, vende más inteligentemente y observa cómo crece tu rentabilidad.
+                          </p>
+                      </div>
+                  </AnimateOnScroll>
+              </div>
+          </div>
+      </section>
+
       {/* Sección 2: El Problema (con UX/UI mejorada) */}
-      <section className="py-20 bg-black bg-opacity-40">
+      {/*<section className="py-20 bg-black bg-opacity-40">
         <div className="container mx-auto px-6 text-center">
           <AnimateOnScroll delay={ 500 }>
             <h2 className="text-3xl md:text-4xl font-bold mb-6">¿Tu almacén está lleno pero sientes que el dinero no alcanza?</h2>
@@ -888,13 +1070,12 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             </AnimateOnScroll>
           </div>
         </div>
-      </section>
+      </section>*/}
 
 
       {/* Sección 1: Beneficios Clave */}
-      <section className="py-20 bg-black bg-opacity-20">
+      {/*<section className="py-20 bg-black bg-opacity-20">
         <div className="container mx-auto px-6 text-center">
-          <AnimateOnScroll delay={ 500 } onVisible={analytics.trackViewSectionFeatures}>
             <h2 className="text-4xl md:text-4xl font-bold mb-4">Nuestra única prioridad:  
               <span
                 className="bg-clip-text font-extrabold text-transparent ml-2"
@@ -903,62 +1084,58 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
                 Tu Rentabilidad
               </span>.
             </h2>
-          </AnimateOnScroll>
-          <AnimateOnScroll delay={ 600 }>
             <p className="text-lg font-semibold text-purple-400 mb-6">
               No somos otro software de gestión. <b>Somos tu departamento de inteligencia.</b>
             </p>
-          </AnimateOnScroll>
           <div className="grid md:grid-cols-3 gap-8">
-            <AnimateOnScroll delay={ 700 }>
               <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
                 <div className="text-4xl text-purple-400 mb-4">🛡️👑</div>
                 <h3 className="text-xl font-bold mb-2">Independencia y Confianza</h3>
                 <p className="text-gray-400">No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus decisiones valen más cuando se basan en datos. Los datos son tuyos y son 100% confidenciales. Siempre.</p>
                 {/*<p className="text-gray-400">No estamos afiliados a ninguna marca, distribuidor o cadena. Nuestra única lealtad es con la <b>Rentabilidad de tu Ferretería.</b> Tus datos son tuyos y son 100% confidenciales, Úsalos para tomar mejores decisiones.No te conformes con menos.</p>*/}
-              </div>
-            </AnimateOnScroll>
-            <AnimateOnScroll delay={ 900 }>
+              {/*</div>
               <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
                 <div className="text-4xl text-purple-400 mb-4">💰📈</div>
                 <h3 className="text-xl font-bold mb-2">Obsesión por la Rentabilidad</h3>
                 <p className="text-gray-400">No te diremos cómo vender más, <b>te ayudaremos a Ganar Más</b>. Nos obsesiona el margen, el flujo de caja y el capital de trabajo. Descubre dónde está el dinero real en tu negocio, no las métricas de vanidad que no pagan las facturas.</p>
               </div>
-            </AnimateOnScroll>
-            <AnimateOnScroll delay={ 1100 }>
               <div className="bg-gray-800 p-8 rounded-lg border border-gray-700 text-center">
                 <div className="text-4xl text-purple-400 mb-4">💡🎯</div>
                 <h3 className="text-xl font-bold mb-2">Simplicidad Radical</h3>
                 <p className="text-gray-400">Convierte la complejidad de miles de transacciones en un <b>Plan de Acción claro y directo</b>. No necesitas un MBA para gestionar tu ferretería a un nivel de élite y tomar decisiones como hacen las grandes cadenas ferreteras.</p>
               </div>
-            </AnimateOnScroll>
           </div>
         </div>
-      </section>
+      </section>*/}
 
       {/* Sección 3: La Solución */}
       <section className="py-20 text-center">
         <div className="container mx-auto px-6">
           <AnimateOnScroll delay={ 500 }>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Deja de adivinar. Toma el control con 
+            <h2 className="text-3xl md:text-4xl font-bold mb-4"><b>Deja de adivinar. Toma el control con </b>
               <span
                 className="bg-clip-text font-extrabold text-transparent ml-2"
                 style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
               >
-                Ferretero.IA
+                <b>Ferretero.IA</b>
               </span>.
             </h2>
           </AnimateOnScroll>
           <AnimateOnScroll delay={ 600 }>
-            <p className="mt-6 text-lg font-semibold text-purple-400">
-              Sin tecnicismos. Sin reportes complicados.<br/><b>Solo respuestas claras para que tomes acciones inmediatas.</b>
+            <p className="mt-6 text-lg font-semibold max-w-3xl mx-auto text-purple-400">
+              Estás a un paso de descubrir el potencial de rentabilidad que se esconde en tus ventas. Apúntate a nuestro programa beta privada y sin compromiso te mostraremos un análisis preliminar de lo que tus datos pueden hacer por ti.
             </p>
+            <p className="text-gray-600 mx-auto text-center my-4">Verás resultados en menos de 20 minutos</p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={ 600 }>
+            <WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="QUIERO ACCESO PRIORITARIO" />
+            <p className="text-sm text-gray-500 mt-4 max-w-md mx-auto">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>
           </AnimateOnScroll>
         </div>
       </section>
 
       {/* Sección 4: Beneficios Clave */}
-      <section className="py-20 bg-black bg-opacity-30">
+      {/*<section className="py-20 bg-black bg-opacity-30">
         <div className="container mx-auto px-6">
           <AnimateOnScroll delay={ 500 }>
             <h2 className="text-3xl md:text-4xl font-bold text-center mb-12">
@@ -995,10 +1172,10 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             </AnimateOnScroll>
           </div>
         </div>
-      </section>
+      </section>*/}
 
       {/* Sección 5: Llamada a la Acción Final */}
-      <section className="py-20 bg-black bg-opacity-20 text-center">
+      {/*<section className="py-20 bg-black bg-opacity-20 text-center">
         <AnimateOnScroll delay={ 400 }>
           <div className="container mx-auto px-6">
             <h2 className="text-3xl md:text-4xl font-bold mb-4"><b>Sé el Piloto,</b> no el Pasajero.</h2>
@@ -1006,14 +1183,14 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               Un grupo reducido de ferreteros probará antes que nadie una herramienta pensada para transformar su negocio. Esto no es para todos, es una invitación.
             </p>
             {/*<WaitlistForm />*/}
-            <WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="QUIERO ACCESO PRIORITARIO" />
+            {/*<WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="QUIERO ACCESO PRIORITARIO" />
             <p className="text-sm text-gray-500 mt-4 max-w-md mx-auto">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>
           </div>
         </AnimateOnScroll>
-      </section>
+      </section>*/}
 
       {/* Footer */}
-      <footer className="text-center py-8 border-t border-gray-800">
+      <footer className="text-center py-8 bg-black bg-opacity-60 border-t border-gray-800">
         <p className="text-gray-500">&copy; 2025 Ferretero.IA - Todos los derechos reservados.</p>
         <FerreterosLogo/>
       </footer>

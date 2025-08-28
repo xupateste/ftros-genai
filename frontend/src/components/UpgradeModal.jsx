@@ -56,8 +56,8 @@ export function UpgradeModal({ context, reportItem, onAction, onClose, onBecomeS
       title: "Accede al Siguiente Nivel",
       benefits: [
           "Desbloquea reportes de Inteligencia de Mercado.",
-          "Compara tu rendimiento con el de otros ferreteros.",
-          "Obtén una ventaja competitiva con datos exclusivos."
+          "Compara tu rendimiento con el de otros miembros verificados.",
+          "Obtén una ventaja competitiva con datos 100% reales y anonimos de otros miembros verificados."
       ],
       ctaText: "Afiliarme",
       action: 'verify'

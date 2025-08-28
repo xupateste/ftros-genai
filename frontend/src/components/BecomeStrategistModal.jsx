@@ -2,7 +2,7 @@
 import React from 'react';
 // import { FiAward, FiX, FiExternalLink} from 'react-icons/fi';
 import { useWorkspace } from '../context/WorkspaceProvider'; // Importamos el hook para obtener el usuario
-import { FiAward, FiX, FiExternalLink, FiBarChart2, FiGlobe, FiZap } from 'react-icons/fi';
+import { FiAward, FiX, FiExternalLink, FiBarChart2, FiPackage, FiGlobe, FiZap } from 'react-icons/fi';
 
 // --- FUNCIÓN AUXILIAR PARA ABRIR EL FORMULARIO ---
 // Puedes mover esta función a un archivo de utils si la usas en más lugares.
@@ -27,12 +27,12 @@ const openVerificationForm = (userEmail) => {
 
 // --- Sub-componente para cada Beneficio ---
 const BenefitItem = ({ icon, title, description }) => (
-    <div className="flex items-start gap-4 text-left">
-        <div className="text-yellow-500 bg-yellow-100 p-2 rounded-full mt-1">
+    <div className="flex items-center gap-4 text-left">
+        <div className="text-yellow-500 bg-yellow-100 p-2 rounded-full">
             {icon}
         </div>
         <div>
-            <h4 className="font-semibold text-gray-800">{title}</h4>
+            <h4 className="font-semibold text-gray-800 leading-tight">{title}</h4>
             <p className="text-sm text-gray-600">{description}</p>
         </div>
     </div>
@@ -58,14 +58,37 @@ export function BecomeStrategistModal({ onClose }) {
         </div>
         
         <div className="overflow-y-auto p-6 text-gray-700">
-            <div className="text-center mb-6">
-                <p className="text-gray-600">
-                    Únete a nuestra red de negocios verificados para desbloquear la suite completa de herramientas de **Inteligencia de Mercado** y obtener una ventaja competitiva real.
+            <div className="text-center mb-6 gap-4">
+                <p className="text-gray-600 mb-4">
+                    Como usuario, ya tienes acceso a potentes reportes sobre tus ventas, márgenes e inventario.
+                </p>
+                <p className="text-gray-600 bg-yellow-100 p-2 font-medium">
+                Pero al unirte a <b>nuestra comunidad de negocios verificados</b>, accedes a la Inteligencia de Comunidad: una red anónima de datos reales, actualizados y validados por cientos de empresas como la tuya.<br/><b>Esto te permitirá:</b>
                 </p>
             </div>
 
             <div className="space-y-4">
                 <BenefitItem 
+                    icon={<FiGlobe size={20}/>}
+                    title="Comparar tu rendimiento frente a promedios reales del mercado."
+                    description=""
+                />
+                <BenefitItem 
+                    icon={<FiZap size={20}/>}
+                    title="Detectar oportunidades invisibles en tus categorías."
+                    description=""
+                />
+                <BenefitItem 
+                    icon={<FiBarChart2 size={20}/>}
+                    title="Identificar tendencias antes que el resto."
+                    description=""
+                />
+                <BenefitItem 
+                    icon={<FiPackage size={20}/>}
+                    title="Participar en compras e importaciones grupales, accediendo a mejores precios, condiciones y eficiencia logística."
+                    description=""
+                />
+                {/*<BenefitItem 
                     icon={<FiGlobe size={20}/>}
                     title="Radar de Mercado Local"
                     description="Descubre qué productos 'Clase A' no tienes en tu catálogo pero que son top sellers para otros ferreteros estrategas en tu misma zona geográfica."
@@ -79,7 +102,7 @@ export function BecomeStrategistModal({ onClose }) {
                     icon={<FiZap size={20}/>}
                     title="Conexiones Automáticas (Próximamente)"
                     description="Sincroniza tu sistema POS o ERP para automatizar la carga de datos, ahorrando horas de trabajo y asegurando análisis siempre actualizados."
-                />
+                />*/}
             </div>
         </div>
 
