@@ -399,7 +399,7 @@ const WaitlistForm = React.forwardRef((props, ref) => {
         <button 
           type="submit" 
           onClick={props.ctaClick}
-          className="text-white flex items-center gap-2 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-lg text-md px-5 py-2.5 text-center mx-2 mb-2"
+          className="text-white flex items-center gap-2 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-2xl text-md px-5 py-2.5 text-center mx-2 mb-2"
         >
           {props.buttonText}
           <FiArrowRight />
@@ -1018,10 +1018,11 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
                               Nuestra inteligencia asistida analiza tus ventas y te muestra de forma visual e intuitiva:
                           </p>
                           <ul className="space-y-3 text-gray-300">
-                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Qué productos te dejan más ganancia.</li>
-                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Qué artículos se venden juntos para crear ofertas inteligentes.</li>
-                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Cuándo es el momento exacto para reponer stock.</li>
-                              <li className="flex items-start"><span className="text-green-500 mr-3">✅</span> Y muchos más.</li>
+                              {/*<li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Identifica riesgos de quiebres de stock en tus productos estrellas.</li>*/}
+                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Cuándo es el momento exacto para reponer stock de cada producto.</li>
+                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Cuáles son tus productos con aceleración en ventas.</li>
+                              <li className="flex items-start"><span className="text-green-500 mr-3 mt-1">✅</span> Qué productos estan con riesgo de quiebre de stock, exceso de stock y cuáles ya son stock muerto.</li>
+                              <li className="flex items-start"><span className="text-green-500 mr-3">✅</span> Y muchos análisis más...</li>
                           </ul>
                       </div>
                   </AnimateOnScroll>
@@ -1116,24 +1117,23 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
       <section className="py-20 text-center">
         <div className="container mx-auto px-6">
           <AnimateOnScroll delay={ 500 }>
-            <h2 className="text-3xl md:text-4xl font-bold mb-4"><b>Deja de adivinar. Toma el control con </b>
-              <span
-                className="bg-clip-text font-extrabold text-transparent ml-2"
-                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
-              >
-                <b>Ferretero.IA</b>
-              </span>.
+            <h2 className="text-3xl md:text-4xl font-bold mb-4"><b>Potencia el trabajo que ya haces a diario.</b>
             </h2>
           </AnimateOnScroll>
           <AnimateOnScroll delay={ 600 }>
-            <p className="mt-6 text-lg font-semibold max-w-3xl mx-auto text-purple-400">
-              Estás a un paso de descubrir el potencial de rentabilidad que se esconde en tus ventas. Apúntate a nuestro programa beta privada y sin compromiso te mostraremos un análisis preliminar de lo que tus datos pueden hacer por ti.
+            <p className="mt-6 text-lg font-semibold max-w-3xl mx-auto text-purple-400 max-w-xl">
+              Toma decisiones inteligentes que impulsan tus ganancias. Deja de adivinar y empieza a rentabilizar más.
             </p>
-            <p className="text-gray-600 mx-auto text-center my-4">Verás resultados en menos de 20 minutos</p>
           </AnimateOnScroll>
           <AnimateOnScroll delay={ 600 }>
-            <WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="QUIERO ACCESO PRIORITARIO" />
-            <p className="text-sm text-gray-500 mt-4 max-w-md mx-auto">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>
+            <div className="grid md:grid-cols-2 max-w-xl mx-auto gap-2 mt-6">
+              <WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="Analiza ahora tu Ferretería" />
+              <a href="https://calendly.com/soy-christian-barreto/30min" target="_blank" rel="noopener noreferrer" className="text-purple-800 mx-auto flex justify-center max-w-sm items-center gap-2 bg-purple-300 focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-2xl text-md px-5 py-2.5 text-center mx-2 mb-2">
+                  Chatea con el Fundador <FiArrowRight />
+              </a>
+            </div>
+            <p className="text-gray-600 mx-auto text-center my-4">Verás resultados en menos de 20 minutos</p>
+            {/*<p className="text-sm text-gray-500 mt-4 max-w-md mx-auto">Los miembros de la lista de espera recibirán una invitación exclusiva a nuestra beta privada y un descuento especial de fundador.</p>*/}
           </AnimateOnScroll>
         </div>
       </section>
