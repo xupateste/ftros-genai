@@ -719,7 +719,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
                   className="bg-clip-text font-extrabold text-transparent ml-3"
                   style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
                 >
-                  no en horas
+                  <b>no en horas</b>
                 </span>.
               </h1>
             </AnimateOnScroll>
