@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { FiLogIn, FiCheckCircle, FiArrowRight, FiPlus, FiX } from 'react-icons/fi';
 import { FerreterosLogo } from './FerreterosLogo'
+import { FAQSection } from './FAQSection'
 import { PrivacyPolicyModal } from './PrivacyPolicyModal'
 import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 import api from '../utils/api'; // Usamos nuestro cliente API centralizado
@@ -861,7 +862,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
                   </div>
                 </div>
                 <div className="mt-6 flex flex-col text-left px-4">
-                  <span className="text-4xl text-left mb-2">🏆</span>
+                  <span className="text-4xl text-left mb-2">🏆🏆</span>
                   <p className="text-xl md:text-2xl font-semibold mb-2 text-left text-red-200">Doblemente Exitosos</p>
                 </div>
               </div>
@@ -1112,6 +1113,18 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
           </div>
         </div>
       </section>*/}
+
+      {/* --- NUEVA SECCIÓN DE FAQ --- */}
+      <section className="py-20 px-4 bg-black bg-opacity-70">
+          <div className="container mx-auto max-w-4xl">
+              <AnimateOnScroll onVisible={analytics.trackViewSectionFAQ}>
+                  <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-white">
+                      Preguntas Frecuentes (FAQ)
+                  </h2>
+                  <FAQSection />
+              </AnimateOnScroll>
+          </div>
+      </section>
 
       {/* Sección 3: La Solución */}
       <section className="py-20 text-center">
