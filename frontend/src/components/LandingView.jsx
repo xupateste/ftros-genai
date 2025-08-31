@@ -745,13 +745,14 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               <>
                 <AnimateOnScroll delay={ 900 }>
                   {/*<WaitlistForm  ref={heroRef} />*/}
+                  <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Asegura tu lugar en nuestra beta privada</p>
                   <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1000 }>
                   <SlidingAvatars ctaClick={() => openOnboardingModal()} />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1100 }>
-                  <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>
+                  {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>*/}
                   <DynamicSocialProofText />
                 </AnimateOnScroll>
               </>
