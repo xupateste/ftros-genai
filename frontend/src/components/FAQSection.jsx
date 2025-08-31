@@ -7,7 +7,7 @@
 */
 
 import React, { useState } from 'react';
-import { FiChevronDown, FiChevronLeft } from 'react-icons/fi';
+import { FiChevronDown } from 'react-icons/fi';
 
 const faqData = [
     {
@@ -72,7 +72,7 @@ export function FAQSection () {
     const mobileAnswerContent = openIndex !== null ? faqData[openIndex].answer : null;
 
     return (
-        <div className="bg-gray-900 shadow-2xl overflow-hidden md:grid md:grid-cols-3 md:gap-8 p-4 md:p-8">
+        <div className="shadow-2xl overflow-hidden md:gap-8 p-4 md:p-8">
             {/* Columna de Preguntas */}
             <div className="md:col-span-1 space-y-2">
                 {faqData.map((item, index) => (
@@ -82,7 +82,7 @@ export function FAQSection () {
                             className={`w-full text-left p-4 rounded-2xl transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 ${
                                 openIndex === index
                                     ? 'bg-purple-700 text-white shadow-2xl'
-                                    : 'antialiased text-gray-300 hover:bg-slate-800 hover:text-white'
+                                    : 'antialiased text-gray-300 hover:bg-purple-800 hover:text-white'
                             }`}
                         >
                             <div className={`flex justify-between items-center ${
@@ -91,12 +91,12 @@ export function FAQSection () {
                                     : ''
                             }`}>
                                 <span>{item.question}</span>
-                                <FiChevronDown className={`w-5 h-5 transition-transform duration-0 md:hidden ${openIndex === index ? 'transform rotate-180' : ''}`} />
+                                <FiChevronDown className={`w-5 h-5 text-purple-500 transition-transform duration-100 ${openIndex === index ? 'transform rotate-180' : ''}`} />
                             </div>
                         {/* Contenido para móvil (acordeón) */}
                         <div className={`grid md:hidden transition-all duration-500 ease-in-out ${openIndex === index ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                             <div className="overflow-hidden">
-                                <div className="antialiased text-white p-4 mt-2 bg-slate-800 rounded-2xl max-w-none">
+                                <div className="antialiased text-white p-4 mt-2 bg-purple-800 rounded-2xl max-w-none">
                                     {item.answer}
                                 </div>
                             </div>

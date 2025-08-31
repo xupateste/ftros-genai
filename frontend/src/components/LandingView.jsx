@@ -1117,7 +1117,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
 
       {/* --- NUEVA SECCIÓN DE FAQ --- */}
       <section className="py-20 px-4 bg-black bg-opacity-70">
-          <div className="container mx-auto max-w-4xl">
+          <div className="container mx-auto max-w-4xl w-full">
               <AnimateOnScroll onVisible={analytics.trackViewSectionFAQ}>
                   <h2 className="text-3xl md:text-4xl font-bold text-center mb-12 text-white">
                       Preguntas Frecuentes (FAQ)
