@@ -91,7 +91,7 @@ TOOLTIPS_GLOSSARY = {
 KPI_TOOLTIPS_GLOSSARY = {
     # --- NUEVA SUITE DE KPIs ESTRATÉGICOS ---
     "Capital en Riesgo (S/.)": "La suma del valor de costo de tu 'Stock Muerto' y tu 'Exceso de Stock'. Es el capital total que podrías liberar y reinvertir en productos más rentables.",
-    "Venta Perdida Potencial (S/.)": "Una estimación del ingreso que podrías perder este mes por no tener stock de tus productos 'Clase A' más importantes.",
+    "Venta Perdida Potencial (S/.)": "Una estimación del ingreso que podrías perder este mes por no tener stock de tus productos '🌟 Estrellas' más importantes.",
     "Eficiencia de Margen (%)": "Mide qué tan cerca estuvo tu ganancia real de tu ganancia potencial máxima. Un puntaje del 95% significa que, por cada S/ 100 que debiste ganar, solo ganaste S/ 95, indicando una 'fuga de rentabilidad' del 5%.",
     "Rotación Anual Estimada": "Una estimación de cuántas veces vendes y reemplazas tu inventario completo en un año. Un número más alto indica una mayor eficiencia.",
     

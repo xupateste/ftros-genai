@@ -43,7 +43,7 @@ export function ErrorModal ({ isOpen, onClose, onRetry, errorContext }) {
                 {/* Vista del Paso 1: Diagnóstico y Opciones */}
                 {step === 1 && (
                     <div className="p-8 text-center">
-                        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-yellow-100 mb-4">
+                        <div className="mx-auto flex items-center justify-center h-24 w-24 text-6xl rounded-full bg-yellow-100 mb-4">
                             ⚠️
                         </div>
                         <h3 className="text-2xl font-bold text-gray-800">Hubo un problema</h3>
@@ -67,7 +67,7 @@ export function ErrorModal ({ isOpen, onClose, onRetry, errorContext }) {
                                 Solicitar Asistencia
                             </button>
                         </div>
-                        <button onClick={onClose} className="mt-4 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
+                        <button onClick={onClose} className="mt-6 text-sm text-gray-500 hover:text-gray-700">Cancelar</button>
                     </div>
                 )}
 

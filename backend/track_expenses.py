@@ -3704,12 +3704,12 @@ def generar_auditoria_inventario(
             col for col in preview_df.columns 
             if col not in ['SKU / Código de producto', 'Nombre del producto']
         ]
-        
+        # print(f"alerta1_df {alerta1_df.columns}")
         if alerta1_df['Precio Venta (S/.)'].dtype == 'object':
             precios_limpios = alerta1_df['Precio Venta (S/.)'].astype(str).str.replace(r'[S/.,]', '', regex=True)
             alerta1_df['Precio Venta (S/.)'] = pd.to_numeric(precios_limpios, errors='coerce')
 
-        venta_perdida_estimada = (alerta1_df['PDA_Demanda_Estrategica'] * alerta1_df['Precio Venta (S/.)'] * 25).sum()
+        venta_perdida_estimada = (alerta1_df['PDA_Demanda_Estrategica'] * alerta1_df['Precio Venta (S/.)'] * 20).sum()
         tasks.append({
             "id": "task_quiebre_stock_a", "type": "error",
             "title": f"Tienes {len(alerta1_df)} productos '🌟 Estrella' en riesgo de quiebre de stock.",
