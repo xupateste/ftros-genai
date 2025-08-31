@@ -521,13 +521,13 @@ const OnboardingModal = ({ isOpen, onClose }) => {
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
                                 <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                             </div>
-                            <h2 className="text-xl font-bold text-gray-800 mb-2">Paso {step} de 3: {step === 1 ? "Verificación" : step === 2 ? "Tu Mayor Desafío" : "Asegura tu Puesto"}</h2>
+                            <h2 className="text-xl font-bold text-gray-800 mb-2">Paso {step} de 3: {step === 1 ? "Verificación" : step === 2 ? "Tu Mayor Desafío" : "Solicita tu acceso"}</h2>
                         </>
                     )}
 
                     {step === 1 && (
                         <div>
-                            <p className="text-gray-600 mb-4"><b>¡Estás a punto de asegurar tu lugar en la beta privada!</b><br/>Solo unas pocas ferreterías formarán parte de esta etapa inicial. Por favor, confirma que tu negocio principal es una ferretería minorista.</p>
+                            <p className="text-gray-600 mb-4"><b>¡Estás a punto de asegurar tu lugar!</b><br/>Solo unas pocas ferreterías formarán parte de esta etapa inicial. Por favor, confirma que tu negocio principal es una ferretería minorista.</p>
                             <div className="space-y-3">
                                 <label className={`block p-4 rounded-lg border cursor-pointer ${formData.perfil === 'ferreteria_minorista' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300'}`}>
                                     <input type="radio" name="perfil" value="ferreteria_minorista" onChange={handleChange} className="mr-2"/>
@@ -565,19 +565,19 @@ const OnboardingModal = ({ isOpen, onClose }) => {
                     )}
                     {step === 3 && (
                         <form onSubmit={handleSubmit}>
-                            <p className="text-gray-600 mb-4">Perfecto. Estás en la lista. Déjanos tus datos para enviarte la invitación formal y el acceso prioritario.</p>
+                            <p className="text-gray-600 mb-4">¡Perfecto! Estás en la lista. Déjanos tus datos para enviarte una propuesta de acceso y todos los detalles para que decidas si quieres sumarte.</p>
                             <div className="space-y-1">
                                 <input type="text" name="nombre" placeholder="Nombre y Apellido" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
                                 <input type="email" name="email" placeholder="Correo Electrónico Principal" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
                                 <input type="tel" name="whatsapp" placeholder="WhatsApp" value={formData.whatsapp} onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
-                                <input type="text" name="nombre_negocio" placeholder="Nombre de tu Ferretería" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                                {/*<input type="text" name="nombre_negocio" placeholder="Nombre de tu Ferretería" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />*/}
                                 <input type="text" name="ciudad_pais" placeholder="Ciudad, País" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
                             </div>
                             <div className="mt-6 flex justify-between items-center">
                                 <button type="button" onClick={handleBack} className="px-6 py-2 text-gray-600 font-semibold rounded-lg">← Atrás</button>
                                 <button type="submit" disabled={isLoading} className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-300 flex items-center">
                                     {isLoading && <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                                    {isLoading ? 'Enviando...' : '¡Quiero ser Piloto!'}
+                                    {isLoading ? 'Enviando...' : 'Solicitar acceso'}
                                 </button>
                             </div>
                         </form>
@@ -585,12 +585,13 @@ const OnboardingModal = ({ isOpen, onClose }) => {
                     {step === 'success' && (
                         <div className="text-center">
                             <span className="text-6xl">🚀</span>
-                            <h2 className="text-2xl font-bold text-gray-800 mt-4">¡Todo listo! Tu lugar está reservado.</h2>
-                            <p className="text-gray-600 mt-2">Gracias por registrarte. Has sido añadido a nuestra lista.</p>
+                            <h2 className="text-2xl font-bold text-gray-800 mt-4">¡Listo! Ya estás adentro.</h2>
+                            <p className="text-gray-600 mt-2">Gracias por la solicitud. Tu lugar ya está reservado y estamos preparando tu propuesta. Te vamos a avisar apenas esté lista.</p>
                             
                             <div className="mt-4 bg-indigo-50 p-4 rounded-lg border border-indigo-200">
-                                <h2 className="text-blue-700 font-bold">Sé de los primeros en probar la herramienta</h2>
-                                <p className="text-gray-600 text-sm">Responde unas breves preguntas y recibe acceso temprano, además podrías opinar directamente sobre nuevas funciones</p>
+                                <p className="text-gray-600 text-sm">Mientras tanto,</p>
+                                <h2 className="text-blue-700 font-bold">Queremos conocerte un poco más</h2>
+                                <p className="text-gray-600 text-sm">Cuentanos en 1 minuto qué estás buscando y cómo piensas usar la herramienta. Eso nos va a ayudar a ofrecerte algo que realmente te sirva desde el arranque.</p>
                                 <a href={generateGoogleFormUrl()} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition-colors">
                                     Completar Encuesta (1 min)
                                 </a>
@@ -745,7 +746,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
               <>
                 <AnimateOnScroll delay={ 900 }>
                   {/*<WaitlistForm  ref={heroRef} />*/}
-                  <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Asegura tu lugar en nuestra beta privada</p>
+                  <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>
                   <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
                 </AnimateOnScroll>
                 <AnimateOnScroll delay={ 1000 }>

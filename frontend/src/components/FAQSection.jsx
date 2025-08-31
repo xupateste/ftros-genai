@@ -54,7 +54,7 @@ const faqData = [
         question: "¿Qué pasa después de la prueba? ¿Hay contratos o costos ocultos?",
         answer: (
             <>
-                <strong>Cero contratos y cero costos ocultos.</strong> La prueba beta te da 7 días de acceso ilimitado y una sesión de onboarding con nosotros para que veas el valor real con tus propios datos. Después de eso, la plataforma funciona con un <strong>sistema de créditos recargables</strong>, sin suscripciones mensuales obligatorias. Tú decides cuándo recargar y cuánto usar. Tienes el control total.
+                <strong>Cero contratos y cero costos ocultos.</strong> La prueba te da 7 días de acceso ilimitado y una sesión de onboarding con nosotros para que veas el valor real con tus propios datos. Después de eso, la plataforma funciona con un <strong>sistema de créditos recargables</strong>, sin suscripciones mensuales obligatorias. Tú decides cuándo recargar y cuánto usar. Tienes el control total.
             </>
         )
     }
