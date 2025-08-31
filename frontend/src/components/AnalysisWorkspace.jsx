@@ -9,6 +9,7 @@ import { useConfig } from '../context/ConfigProvider';
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
 import { DateRangeFilter } from './DateRangeFilter'; // <-- Importamos el nuevo componente
+import { ErrorModal } from './ErrorModal'; // <-- Importamos el nuevo componente
 
 // Importa todos los componentes visuales y de iconos que este workspace necesita
 import { ReportModal } from './ReportModal'; 
@@ -156,8 +157,11 @@ const templateStock = {
 export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogout, onBackToDashboard }) {
   // --- ESTADOS ---
   const { strategy, loadStrategy } = useStrategy();
-  const { workspaces, activeWorkspace, setActiveWorkspace, touchWorkspace } = useWorkspace();
+  const { user, workspaces, activeWorkspace, setActiveWorkspace, touchWorkspace } = useWorkspace();
   const { reportData, tooltips, isLoading: isConfigLoading } = useConfig();
+
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [errorContextData, setErrorContextData] = useState(null);
 
   // 1. ESTADO DE CARGA PRINCIPAL
   const [isLoading, setIsLoading] = useState(true);
@@ -249,6 +253,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         return;
     }
     setIsExecutingAudit(true);
+    setIsErrorModalOpen(false); 
     const formData = new FormData();
     formData.append("ventas_file_id", fileIdsToAudit.ventas);
     formData.append("inventario_file_id", fileIdsToAudit.inventario);
@@ -263,11 +268,26 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       setAuditState({ status: 'up_to_date', data: response.data });
     } catch (error) {
       console.error("Error al ejecutar la nueva auditoría:", error);
+      const now = new Date();
+      // Guardamos el contexto del error para pasarlo al modal
+      setErrorContextData({
+          userName: user.email || 'Usuario',
+          timestamp: now.toLocaleString('es-PE', { dateStyle: 'long', timeStyle: 'short' }),
+          errorId: `ERR-${now.getTime()}` // ID de error simple para seguimiento
+      });
       setAuditState(prev => ({ ...prev, status: 'error' }));
+      setIsErrorModalOpen(true);
     } finally {
       setIsExecutingAudit(false);
     }
   }, [context.type, context.workspace?.id, context.id]); // Dependencias estables
+
+  // --- FUNCIÓN PARA EL BOTÓN "REINTENTAR" DEL MODAL ---
+  const handleRetryAudit = () => {
+      // Cierra el modal y vuelve a ejecutar la auditoría
+      setIsErrorModalOpen(false);
+      handleRunNewAudit(uploadedFileIds);
+  };
 
 
   // --- LÓGICA DE CARGA Y ACTUALIZACIÓN ---
@@ -1068,6 +1088,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           }}
         />
       )}
+
+      <ErrorModal
+        isOpen={isErrorModalOpen}
+        onClose={() => setIsErrorModalOpen(false)}
+        onRetry={handleRetryAudit}
+        errorContext={errorContextData}
+      />
     </div>
   );
 }

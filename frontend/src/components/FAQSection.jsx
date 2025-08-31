@@ -14,7 +14,7 @@ const faqData = [
         question: "¿Necesito ser un experto en tecnología o finanzas para usar esto?",
         answer: (
             <>
-                No. Diseñamos <strong>Ferretero.IA</strong> para <strong>dueños de negocio, no para analistas</strong>. Si sabes cómo descargar los reportes de ventas e inventario que ya usas, tienes todo lo necesario. Nuestra plataforma hace el trabajo complejo: traduce miles de datos desordenados en <strong>Puntajes de Eficiencia</strong> simple y un <strong>Plan de Acción</strong> claro y priorizado. Nosotros te damos la claridad, tú tomas las decisiones.
+                No. Diseñamos <strong>Ferretero.IA</strong> para <strong>dueños de negocio, no para analistas</strong>. Si sabes cómo descargar los reportes de ventas e inventario que ya usas, tienes todo lo necesario. Nuestra plataforma hace el trabajo complejo: traduce miles de datos desordenados en <strong>Puntajes de Eficiencia</strong> simples y un <strong>Plan de Acción</strong> claro y priorizado. Nosotros te damos la claridad, tú tomas las decisiones.
             </>
         )
     },
