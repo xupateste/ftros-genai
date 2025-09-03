@@ -151,8 +151,8 @@ def process_csv(df):
 def process_csv_abc(
     df_ventas: pd.DataFrame,
     df_inventario: pd.DataFrame,
-    criterio_abc: str,
-    periodo_abc: int,
+    criterio_abc: str = 'combinado',
+    periodo_abc: int = 6,
     # --- CAMBIO CLAVE: Recibimos los scores en lugar de los pesos ---
     score_ventas: int = 8,
     score_ingreso: int = 6,

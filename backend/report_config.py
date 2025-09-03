@@ -16,7 +16,7 @@ REPORTS_CONFIG = {
       "label": '💸 Auditoría de Desviación de Margen',
       "endpoint": '/auditoria-margenes',
       "isPro": False, # Es un reporte "Estratega"
-      "costo": 3,
+      "costo": 5,
       "categoria": "📋 Auditorías de Datos",
       "description": "Este reporte es tu \"detector de fugas de rentabilidad\". Su misión es encontrar productos que no se están vendiendo al precio que deberían, ya sea porque te están generando pérdidas directas (margen negativo) o porque estás dejando dinero sobre la mesa (desviación negativa). Es una herramienta fundamental para auditar tu política de precios y la ejecución en el punto de venta.",
       "how_it_works": "La herramienta compara dos márgenes para cada producto: el \"Margen Teórico\" (basado en tu precio de lista) y el \"Margen Real\" (basado en tu historial de ventas). La diferencia entre ambos revela inconsistencias en tu política de precios o en la ejecución en el punto de venta.",
@@ -111,7 +111,7 @@ REPORTS_CONFIG = {
       "label": '🔎 Auditoría de Integridad de Catálogo',
       "endpoint": '/diagnostico-catalogo',
       "isPro": False, # Es un reporte "Estratega"
-      "costo": 3,
+      "costo": 5,
       "categoria": "📋 Auditorías de Datos",
       "description": "Este reporte es el 'mantenimiento preventivo' de tu base de datos. Su misión es encontrar 'ruido' en tu catálogo: productos que existen en tu sistema pero no en la realidad de tu negocio (fantasmas), o productos con información crítica faltante. Un catálogo limpio es la base para que todos los demás análisis sean precisos y fiables.",
       "how_it_works": "La herramienta cruza tu lista de inventario con tu historial de ventas para encontrar discrepancias. Adicionalmente, escanea tu inventario en busca de campos de datos esenciales que estén vacíos o con valores incorrectos (como un precio de compra en cero).",
@@ -201,7 +201,7 @@ REPORTS_CONFIG = {
       "label": '🧹 Auditoría de Calidad de Datos',
       "endpoint": '/auditoria-calidad-datos',
       "isPro": False, # Es un reporte "Estratega"
-      "costo": 3,
+      "costo": 5,
       "categoria": "📋 Auditorías de Datos",
       "description": "Este reporte es el 'mantenimiento preventivo' de tu base de datos. Su misión es encontrar 'ruido' en tu catálogo: productos con información crítica faltante o inconsistente. Un catálogo limpio es la base para que todos los demás análisis sean precisos y fiables.",
       "how_it_works": "La herramienta escanea tu archivo de inventario en busca de problemas comunes como campos vacíos (Marca, Categoría), valores ilógicos (Precio de Compra en Cero), inconsistencias de rentabilidad (Precio de Venta menor al Costo) o registros duplicados.",
@@ -284,10 +284,12 @@ REPORTS_CONFIG = {
   # },
   "ReporteABC": {
     "label": '🥇 Análisis ABC de Productos',
+    "processing_function_name": 'process_csv_abc',
     "endpoint": '/abc',
-    # "key": 'ReporteABC',
+    "key": 'ReporteABC',
     "isPro": False,
-    "costo": 7,
+    "costo": 8,
+    "url_key": "abc-analysis",
     "categoria": "🧠 Análisis Estratégico",
     "description": "Aplica el principio de Pareto (80/20) a tu inventario, clasificando cada producto en Clases (A, B, C) para revelar cuáles son los pocos items vitales que generan la mayor parte de tu valor.",
     "how_it_works": "La herramienta calcula el valor de cada producto según el criterio que elijas (margen, ingresos o unidades). Luego, los ordena y calcula el porcentaje acumulado para asignar la clasificación: el 80% del valor son Clase A, el siguiente 15% son Clase B, y el 5% final son Clase C.",
@@ -370,7 +372,9 @@ REPORTS_CONFIG = {
   "ReporteDiagnosticoStockMuerto": {
     "label": '💸 Diagnóstico de Stock Muerto',
     "endpoint": '/diagnostico-stock-muerto',
-    # "key": 'ReporteStockMuerto',
+    "key": 'ReporteDiagnosticoStockMuerto',
+    "url_key": "dead-stock",
+    "processing_function_name": 'procesar_stock_muerto',
     "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
     "costo": 8,
@@ -475,7 +479,7 @@ REPORTS_CONFIG = {
     # "key": 'ReporteMaestro',
     "categoria": "🧠 Análisis Estratégico",
     "isPro": False,
-    "costo": 7,
+    "costo": 8,
     "description": "Este es tu centro de mando unificado. Combina el análisis de Importancia (ABC) con el de Salud (Diagnóstico) en una única vista poderosa. Su misión es darte una radiografía completa de cada producto en tu inventario para que puedas tomar decisiones complejas que equilibren la rentabilidad, el riesgo y la inversión.",
     "how_it_works": "La herramienta ejecuta internamente los análisis de ABC y de Salud del Stock. Luego, cruza ambos resultados y aplica un modelo de priorización para asignar una \"Prioridad Estratégica\" a cada producto, destacando las oportunidades y los riesgos más críticos.",
     "planes_de_accion": [
@@ -567,12 +571,14 @@ REPORTS_CONFIG = {
   "ReporteAnalisisEstrategicoRotacion": {
     "label": '🔄 Análisis Estratégico de Rotación (BCG)',
     "endpoint": '/rotacion-general-estrategico',
-    # "key": 'ReporteAnalisisEstrategicoRotacion',
+    "key": 'ReporteAnalisisEstrategicoRotacion',
     "categoria": "🧠 Análisis Estratégico",
+    "url_key": "inventory-turnover",
+    "processing_function_name": 'process_csv_analisis_estrategico_rotacion',
     "isPro": False,
     "costo": 8,
     "description": "Este reporte es tu \"velocímetro\" de inventario. Mide la eficiencia y la velocidad con la que tu capital invertido en productos se convierte en ingresos. Responde a la pregunta fundamental: \"¿Qué tan rápido está trabajando mi dinero para mí?\".",
-    "how_it_works": "La herramienta calcula el Índice de Importancia y la Cobertura Actual (Días) para cada producto. Luego, los posiciona en una matriz estratégica para identificar cuatro tipos de productos: \"Estrellas\" (alta importancia, buena rotación), \"Vacas Lecheras\" (alta importancia, riesgo de quiebre), \"Dilemas\" (baja importancia, sobre-stock) y \"Triviales\".",
+    "how_it_works": "La herramienta calcula el Índice de Importancia y la Cobertura Actual (Días) para cada producto. Luego, los posiciona en una matriz estratégica para identificar cuatro tipos de productos: \"Estrellas\" (alta importancia, buena rotación), \"Vacas Lecheras\" (alta importancia, riesgo de quiebre), \"Perros\" (baja importancia, sobre-stock) y \"Dilemas\".",
     "planes_de_accion": [
         {
             "title": "Misión: Identificar a tus \"Vacas Lecheras\"",
@@ -580,19 +586,19 @@ REPORTS_CONFIG = {
             "recipe": "Ejecuta el reporte ordenando por \"Próximos a Agotarse (Cobertura)\". Los primeros productos de la lista que también tengan una \"Clasificación\" de \"Clase A\" son tus \"Vacas Lecheras\". La misión es asegurar que estos productos NUNCA se agoten, ya que son tu fuente de ingresos más constante y fiable."
         },
         {
-            "title": "Misión: Cazar los \"Dilemas\" (Capital Atrapado)",
+            "title": "Misión: Identificar los \"Perros\" (Capital Atrapado)",
             "periodicity": "Cuándo: Mensualmente, para liberar flujo de caja.",
-            "recipe": "Ejecuta el reporte ordenando por \"Mayor Inversión en Stock\". Los productos al principio de la lista que tengan una \"Clasificación\" de \"Clase C\" o \"D\" y una \"Alerta de Stock\" de \"Sobre-stock\" son tus \"Dilemas\". La misión es crear un plan de liquidación agresivo para estos 5-10 primeros items."
+            "recipe": "Ejecuta el reporte ordenando por \"Mayor Inversión en Stock\". Los productos al principio de la lista que tengan una \"Clasificación\" de \"Clase C\" o \"D\" y una \"Alerta de Stock\" de \"Sobre-stock\" son tus \"Perros\". La misión es crear un plan de liquidación agresivo para estos 5-10 primeros items."
         },
         {
             "title": "Misión: Análisis Competitivo por Marca",
             "periodicity": "Cuándo: Antes de una negociación importante con un proveedor",
-            "recipe": "Filtra el reporte por una \"Marca\" específica. Esto te dará un \"radar estratégico\" solo para los productos de ese proveedor. ¿Son mayormente \"Estrellas\" y \"Vacas Lecheras\", o están llenos de \"Dilemas\"? Usa esta información para negociar mejores condiciones de compra, devoluciones o apoyo de marketing."
+            "recipe": "Filtra el reporte por una \"Marca\" específica. Esto te dará un \"radar estratégico\" solo para los productos de ese proveedor. ¿Son mayormente \"Estrellas\" y \"Vacas Lecheras\", o están llenos de \"Perros\"? Usa esta información para negociar mejores condiciones de compra, devoluciones o apoyo de marketing."
         },
         {
             "title": "Misión: Validación de Nuevos Productos",
             "periodicity": "Cuándo: 3 a 6 meses después de lanzar una nueva línea de productos",
-            "recipe": "Filtra el reporte por la \"Categoría\" o \"Marca\" de los nuevos productos. Esto te mostrará objetivamente si están cumpliendo las expectativas. ¿Están convirtiéndose en \"Estrellas\" o están estancándose como \"Dilemas\"? Usa estos datos para decidir si duplicas la inversión en ellos o si es mejor descontinuarlos."
+            "recipe": "Filtra el reporte por la \"Categoría\" o \"Marca\" de los nuevos productos. Esto te mostrará objetivamente si están cumpliendo las expectativas. ¿Están convirtiéndose en \"Estrellas\" o están estancándose como \"Perros\"? Usa estos datos para decidir si duplicas la inversión en ellos o si es mejor descontinuarlos."
         }
     ],
     "basic_parameters": [
@@ -702,7 +708,7 @@ REPORTS_CONFIG = {
     # "key": 'ReportePuntosAlertaStock',
     "categoria": "📦 Planificación de Compras Estratégicas",
     "isPro": False,
-    "costo": 9,
+    "costo": 15,
     "description": "Este reporte es una herramienta de configuración estratégica. Su misión es calcular los Puntos de Alerta de Stock (Mínimo e Ideal) para cada producto, generando un archivo 'maestro' que puedes usar para alimentar tu sistema de punto de venta (POS).",
     "how_it_works": "La herramienta utiliza el Promedio de Venta Diaria (PDA) y el Índice de Importancia de cada producto, junto con los parámetros que defines (tiempo de entrega y días de seguridad), para calcular los niveles de stock óptimos que previenen quiebres sin generar exceso de inventario.",
     "planes_de_accion": [
@@ -796,7 +802,7 @@ REPORTS_CONFIG = {
     # "key": 'ReporteListaBasicaReposicionHistorica',
     "categoria": "📦 Planificación de Compras Estratégicas",
     "isPro": False,
-    "costo": 9,
+    "costo": 15,
     "description": "Este es tu asistente de compras diario o semanal. Toma los parámetros de alerta y los compara con tu stock actual para generar una lista de compra priorizada y cuantificada.",
     "how_it_works": "La herramienta identifica todos los productos cuyo stock actual está por debajo de su punto de alerta. Luego, calcula la cantidad ideal a pedir para cada uno, considerando su velocidad de venta, importancia y los parámetros de cobertura que has definido.",
     "planes_de_accion": [

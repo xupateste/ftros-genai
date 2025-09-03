@@ -409,7 +409,7 @@ const WaitlistForm = React.forwardRef((props, ref) => {
   )});
 
 // --- NUEVO: Modal de Onboarding ---
-const OnboardingModal = ({ isOpen, onClose }) => {
+const OnboardingModal = ({ isOpen, onClose, onRegisterClick }) => {
     const [step, setStep] = useState(1);
     const [formData, setFormData] = useState({
         perfil: '',
@@ -465,7 +465,10 @@ const OnboardingModal = ({ isOpen, onClose }) => {
           // const response = await api.post('/auditoria/run', formData);
           console.log("Registro exitoso:", response.data);
           setIsLoading(false);
-          setStep('success');
+          onRegisterClick();
+          // activate modal
+          onClose();
+          // setStep('success');
       } catch (error) {
           console.error("Error en el registro:", error.response?.data || error.message);
           // Aquí podrías mostrar un mensaje de error al usuario
@@ -521,13 +524,13 @@ const OnboardingModal = ({ isOpen, onClose }) => {
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-4">
                                 <div className="bg-indigo-600 h-2 rounded-full transition-all duration-500" style={{ width: `${progress}%` }}></div>
                             </div>
-                            <h2 className="text-xl font-bold text-gray-800 mb-2">Paso {step} de 3: {step === 1 ? "Verificación" : step === 2 ? "Tu Mayor Desafío" : "Solicita tu acceso"}</h2>
+                            <h2 className="text-xl font-bold text-gray-800 mb-2">Paso {step} de 3: {step === 1 ? "Verificación" : step === 2 ? "Tu Mayor Desafío" : "Regístrate"}</h2>
                         </>
                     )}
 
                     {step === 1 && (
                         <div>
-                            <p className="text-gray-600 mb-4"><b>¡Estás a punto de asegurar tu lugar!</b><br/>Solo unas pocas ferreterías formarán parte de esta etapa inicial. Por favor, confirma que tu negocio principal es una ferretería minorista.</p>
+                            <p className="text-gray-600 mb-4"><b>¡Estás a punto de asegurar tu lugar!</b><br/>Solo unas pocas ferreterías formarán obtendrán un bono de bienvenida inicial. Por favor, confirma que tu negocio principal es una ferretería minorista.</p>
                             <div className="space-y-3">
                                 <label className={`block p-4 rounded-lg border cursor-pointer ${formData.perfil === 'ferreteria_minorista' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300'}`}>
                                     <input type="radio" name="perfil" value="ferreteria_minorista" onChange={handleChange} className="mr-2"/>
@@ -565,19 +568,19 @@ const OnboardingModal = ({ isOpen, onClose }) => {
                     )}
                     {step === 3 && (
                         <form onSubmit={handleSubmit}>
-                            <p className="text-gray-600 mb-4">¡Perfecto! Estás en la lista. Déjanos tus datos para enviarte una propuesta de acceso y todos los detalles para que decidas si quieres sumarte.</p>
+                            <p className="text-gray-600 mb-4">Si te interesa participar en mejoras de la app y recibir algunos premios, déjanos tu contacto (nombre, ciudad o WhatsApp). ¡Nos encantaría tenerte en el grupo!</p>
                             <div className="space-y-1">
-                                <input type="text" name="nombre" placeholder="Nombre y Apellido" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
-                                <input type="email" name="email" placeholder="Correo Electrónico Principal" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
-                                <input type="tel" name="whatsapp" placeholder="WhatsApp" value={formData.whatsapp} onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                                <input type="text" name="nombre" placeholder="Nombres" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                                {/*<input type="email" name="email" placeholder="Correo Electrónico Principal" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />*/}
                                 {/*<input type="text" name="nombre_negocio" placeholder="Nombre de tu Ferretería" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />*/}
                                 <input type="text" name="ciudad_pais" placeholder="Ciudad, País" onChange={handleChange} required className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                                <input type="tel" name="whatsapp" placeholder="WhatsApp (Opcional)" value={formData.whatsapp} onChange={handleChange} className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500" />
                             </div>
                             <div className="mt-6 flex justify-between items-center">
                                 <button type="button" onClick={handleBack} className="px-6 py-2 text-gray-600 font-semibold rounded-lg">← Atrás</button>
-                                <button type="submit" disabled={isLoading} className="px-6 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-300 flex items-center">
+                                <button type="submit" disabled={isLoading} className="px-6 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 disabled:bg-gray-300 flex items-center">
                                     {isLoading && <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>}
-                                    {isLoading ? 'Enviando...' : 'Solicitar acceso'}
+                                    {isLoading ? 'Enviando...' : 'Regístrate Gratis'}
                                 </button>
                             </div>
                         </form>
@@ -622,7 +625,7 @@ const OnboardingModal = ({ isOpen, onClose }) => {
 
 
 
-export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
+export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onLoginSuccess }) {
   const heroRef = useRef(null);
   const [isHeroVisible, setIsHeroVisible] = useState(true);
 
@@ -657,46 +660,45 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
     };
   }, []);
 
-  // --- LÓGICA PARA ACTIVAR BOTONES DESDE LA URL ---
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    // Buscamos un parámetro específico, por ejemplo `?cta=true`
-    if (params.get('beta') === 'true') {
-      setShowActionButtons(true);
-    }
-  }, []);
+  // // --- LÓGICA PARA ACTIVAR BOTONES DESDE LA URL ---
+  // useEffect(() => {
+  //   const params = new URLSearchParams(window.location.search);
+  //   // Buscamos un parámetro específico, por ejemplo `?cta=true`
+  //   if (params.get('beta') === 'true') {
+  //     setShowActionButtons(true);
+  //   }
+  // }, []);
 
   const handleLoginClick = () => {
-    if (showActionButtons)
-      onLoginClick()
-    else {
-      setIsLoginBetaModalOpen(true)
-    }
+    setIsLoginBetaModalOpen(true)
   }
 
   return (
    <> 
-    <OnboardingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
-    <LoginModalBeta isOpen={isLoginBetaModalOpen} onClose={() => setIsLoginBetaModalOpen(false)} />
+    <OnboardingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onRegisterClick={onRegisterClick} />
+    <LoginModalBeta onLoginSuccess={onLoginSuccess} isOpen={isLoginBetaModalOpen} onClose={() => setIsLoginBetaModalOpen(false)} onTryToRegisterClick={() => setIsModalOpen(true)} />
     <ToastManager isHeroVisible={isHeroVisible} />
     <PrivacyPolicyModal isOpen={isPrivacyModalOpen} onClose={() => setIsPrivacyModalOpen(false)} /> {/* <-- Nuevo Modal */}
     <div className="w-full bg-gray-900 text-white animate-fade-in">
       {/* Navbar Simple */}
-      <nav className="p-4 flex bg-black justify-between items-center">
-        <h1 className="text-2xl font-bold gradient-text">
-          <span
-            className="text-3xl bg-clip-text text-transparent"
-            style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+      <nav className="w-full bg-black">
+        <div className="p-4 max-w-5xl mx-auto flex justify-between items-center">
+          {/*<h1 className="text-2xl font-bold gradient-text">
+            <span
+              className="text-3xl bg-clip-text text-transparent"
+              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+            >
+              Ferretero.IA
+            </span>
+          </h1>*/}
+          <img src="/ferreteros-app-standalone.png" className="max-h-8 opacity-90"/>
+          <button 
+            onClick={() => handleLoginClick()} 
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
           >
-            Ferretero.IA
-          </span>
-        </h1>
-        <button 
-          onClick={() => handleLoginClick()} 
-          className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
-        >
-          <FiLogIn /> Iniciar Sesión
-        </button>
+            <FiLogIn /> Iniciar Sesión
+          </button>
+        </div>
       </nav>
 
       {/* Sección 0: Héroe (Ahora con imagen de fondo) */}
@@ -736,28 +738,18 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
             </p>
             </AnimateOnScroll>
             {/* --- RENDERIZADO CONDICIONAL DE BOTONES --- */}
-            {showActionButtons ? (
-              <div className="flex flex-col-2 sm:flex-row gap-4 justify-center animate-fade-in">
-                  <button onClick={onLoginClick} className="px-6 py-3 font-bold bg-gray-700 hover:bg-gray-600 rounded-lg">Iniciar Sesión</button>
-                  {/*<button onClick={onRegisterClick} className="px-6 py-3 font-bold bg-gray-700 hover:bg-gray-600 rounded-lg">Registrarse</button>*/}
-                  <button onClick={onStartSession} className="px-6 py-3 font-bold bg-purple-600 hover:bg-purple-700 rounded-lg">Probar Demo Anónimo</button>
-              </div>
-            ) : (
-              <>
-                <AnimateOnScroll delay={ 900 }>
-                  {/*<WaitlistForm  ref={heroRef} />*/}
-                  <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>
-                  <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
-                </AnimateOnScroll>
-                <AnimateOnScroll delay={ 1000 }>
-                  <SlidingAvatars ctaClick={() => openOnboardingModal()} />
-                </AnimateOnScroll>
-                <AnimateOnScroll delay={ 1100 }>
-                  {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>*/}
-                  <DynamicSocialProofText />
-                </AnimateOnScroll>
-              </>
-            )}
+            <AnimateOnScroll delay={ 900 }>
+              {/*<WaitlistForm  ref={heroRef} />*/}
+              <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>
+              <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={ 1000 }>
+              <SlidingAvatars ctaClick={() => openOnboardingModal()} />
+            </AnimateOnScroll>
+            <AnimateOnScroll delay={ 1100 }>
+              {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>*/}
+              <DynamicSocialProofText />
+            </AnimateOnScroll>
           </div>
         </section>
 
@@ -1210,7 +1202,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick }) {
 
       {/* Footer */}
       <footer className="text-center py-8 bg-black bg-opacity-60 border-t border-gray-800">
-        <p className="text-gray-500">&copy; 2025 Ferretero.IA - Todos los derechos reservados.</p>
+        <p className="text-gray-500">&copy; 2025 Ferreteros.app - Todos los derechos reservados.</p>
 
         <p onClick={() => setIsPrivacyModalOpen(true)} className="text-gray-500 hover:text-gray-50 cursor-pointer hover:underline transition-colors">
             Política de Privacidad

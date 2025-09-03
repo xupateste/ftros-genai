@@ -72,12 +72,12 @@ export default function LandingPage({ onLoginSuccess }) {
       case 'landing':
       default:
         // Por defecto, o si estamos en el landing, muestra la vista de bienvenida
-        return <LandingView onStartSession={() => setActiveModal('onboarding')} onLoginClick={() => setActiveModal('login')} />;
+        return <LandingView onLoginSuccess={onLoginSuccess} onStartSession={() => setActiveModal('onboarding')} onLoginClick={() => setActiveModal('login')} onRegisterClick={() => setActiveModal('register')} />;
     }
   };
   
   return (
-    <div className="min-h-screen bg-neutral-900 flex flex-col items-center justify-center">
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center">
 
       {renderMainView()}
 

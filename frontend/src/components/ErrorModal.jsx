@@ -30,7 +30,7 @@ export function ErrorModal ({ isOpen, onClose, onRetry, errorContext }) {
     const WHATSAPP_NUMBER = "51930240108"; // <-- REEMPLAZA con tu número de WhatsApp de soporte
 
     const generateWhatsAppMessage = () => {
-        const message = `Hola equipo de Ferretero.IA,\nNecesito asistencia. Tuve un error al generar mi auditoría.\n\n- Usuario: ${errorContext?.userName}\n- Fecha y Hora: ${errorContext?.timestamp}\n- ID de Error: ${errorContext?.errorId}\n\n¡Gracias por su ayuda!`;
+        const message = `Hola equipo de Ferreteros.app,\nNecesito asistencia. Tuve un error al generar mi auditoría.\n\n- Usuario: ${errorContext?.userName}\n- Fecha y Hora: ${errorContext?.timestamp}\n- ID de Error: ${errorContext?.errorId}\n\n¡Gracias por su ayuda!`;
         return encodeURIComponent(message);
     };
 
@@ -87,7 +87,7 @@ export function ErrorModal ({ isOpen, onClose, onRetry, errorContext }) {
                         <div className="mt-6 bg-gray-50 p-4 rounded-lg border text-left">
                             <p className="text-sm font-semibold text-gray-700">Mensaje a enviar:</p>
                             <pre className="mt-2 text-xs text-gray-600 whitespace-pre-wrap font-sans">
-                                {`Hola equipo de Ferretero.IA,\nNecesito asistencia. Tuve un error al generar mi auditoría.\n\n- Usuario: ${errorContext?.userName}\n- Fecha y Hora: ${errorContext?.timestamp}\n- ID de Error: ${errorContext?.errorId}\n\n¡Gracias por su ayuda!`}
+                                {`Hola equipo de Ferreteros.app,\nNecesito asistencia. Tuve un error al generar mi auditoría.\n\n- Usuario: ${errorContext?.userName}\n- Fecha y Hora: ${errorContext?.timestamp}\n- ID de Error: ${errorContext?.errorId}\n\n¡Gracias por su ayuda!`}
                             </pre>
                         </div>
                         

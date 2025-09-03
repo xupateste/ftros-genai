@@ -14,7 +14,7 @@ const faqData = [
         question: "¿Necesito ser un experto en tecnología o finanzas para usar esto?",
         answer: (
             <>
-                No. Diseñamos <strong>Ferretero.IA</strong> para <strong>dueños de negocio, no para analistas</strong>. Si sabes cómo descargar los reportes de ventas e inventario que ya usas, tienes todo lo necesario. Nuestra plataforma hace el trabajo complejo: traduce miles de datos desordenados en <strong>Puntajes de Eficiencia</strong> simples y un <strong>Plan de Acción</strong> claro y priorizado. Nosotros te damos la claridad, tú tomas las decisiones.
+                No. Diseñamos <strong>Ferreteros.app</strong> para <strong>dueños de negocio, no para analistas</strong>. Si sabes cómo descargar los reportes de ventas e inventario que ya usas, tienes todo lo necesario. Nuestra plataforma hace el trabajo complejo: traduce miles de datos desordenados en <strong>Puntajes de Eficiencia</strong> simples y un <strong>Plan de Acción</strong> claro y priorizado. Nosotros te damos la claridad, tú tomas las decisiones.
             </>
         )
     },
@@ -22,12 +22,12 @@ const faqData = [
         question: "¿Mis datos comerciales están seguros con ustedes?",
         answer: (
             <>
-                La seguridad y la confidencialidad son nuestra <strong>máxima prioridad</strong>. Usamos encriptación de nivel bancario para proteger tu información. <strong>Ferretero.IA</strong> es una plataforma <strong>100% independiente</strong>; no estamos afiliados a ningún distribuidor, marca o cadena. Tus datos son tuyos, y nuestro modelo de negocio depende enteramente de la confianza que depositas en nosotros para ayudarte a crecer. <strong>Jamás será compartida.</strong>
+                La seguridad y la confidencialidad son nuestra <strong>máxima prioridad</strong>. Usamos encriptación de nivel bancario para proteger tu información. <strong>Ferreteros.app</strong> es una plataforma <strong>100% independiente</strong>; no estamos afiliados a ningún distribuidor, marca o cadena. Tus datos son tuyos, y nuestro modelo de negocio depende enteramente de la confianza que depositas en nosotros para ayudarte a crecer. <strong>Jamás será compartida.</strong>
             </>
         )
     },
     {
-        question: "Llevo 20 años en este negocio, ¿qué me puede decir Ferretero.IA que yo no sepa ya?",
+        question: "Llevo 20 años en este negocio, ¿qué me puede decir Ferreteros.app que yo no sepa ya?",
         answer: (
             <>
                 Tu experiencia es tu activo más valioso. Nuestra plataforma <strong>no busca reemplazarla, busca potenciarla</strong>. Tu intuición te dice qué productos 'se mueven', pero nuestra 'Auditoría de Inventario' te dice con precisión milimétrica el <strong>costo financiero</strong> de los que no se mueven, o la <strong>venta potencial que estás perdiendo</strong> por un quiebre de stock que no habías notado. Te damos la data para cuantificar tu intuición y descubrir oportunidades ocultas que ni el ojo más experto puede ver a simple vista.
@@ -46,7 +46,7 @@ const faqData = [
         question: "¿Esto es solo para ferreterías grandes?",
         answer: (
             <>
-                Al contrario. <strong>Ferretero.IA</strong> fue diseñado específicamente para el <strong>ferretero independiente y la PYME</strong>. Las grandes cadenas tienen ejércitos de analistas y software de millones de dólares para optimizar su inventario. Nosotros somos ese ejército de analistas en una sola herramienta, accesible y fácil de usar, para que puedas competir con la misma inteligencia de negocio que los gigantes del sector.
+                Al contrario. <strong>Ferreteros.app</strong> fue diseñado específicamente para el <strong>ferretero independiente y la PYME</strong>. Las grandes cadenas tienen ejércitos de analistas y software de millones de dólares para optimizar su inventario. Nosotros somos ese ejército de analistas en una sola herramienta, accesible y fácil de usar, para que puedas competir con la misma inteligencia de negocio que los gigantes del sector.
             </>
         )
     },

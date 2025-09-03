@@ -39,122 +39,124 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
 import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
 import { RegisterToUnlockModal } from './RegisterToUnlockModal';
+import templateVentas from '../assets/templateVentas';
+import templateStock from '../assets/templateStock';
 
-// Las plantillas ahora viven aquí, junto a la lógica que las usa
-const templateVentas = {
-        columns: [
-          {
-            name: "Fecha de venta",
-            key: "Fecha de venta",
-            required: true,
-            description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
-            suggested_mappings: ["Fecha de venta"]
-          },
-          {
-            name: "N° de comprobante / boleta",
-            key: "N° de comprobante / boleta",
-            required: true,
-            // description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
-            suggested_mappings: ["N° de comprobante / boleta"]
-          },
-          {
-            name: "SKU / Código de producto",
-            key: "SKU / Código de producto",
-            required: true,
-            suggested_mappings: ["SKU / Código de producto"]
-          },
-          {
-            name: "Nombre del producto",
-            key: "Nombre del producto",
-            required: true,
-            suggested_mappings: ["Nombre del producto"]
-          },
-          {
-            name: "Cantidad vendida",
-            key: "Cantidad vendida",
-            required: true,
-            description: "Sólo valor numérico entero ej:10",
-            suggested_mappings: ["Cantidad vendida"]
-          },
-          {
-            name: "Precio de venta unitario (S/.)",
-            key: "Precio de venta unitario (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de venta unitario (S/.)"]
-          }
-        ]
-      };
+// Las plantillas ahora se importan, tienen esta estructura
+// const templateVentas = {
+//         columns: [
+//           {
+//             name: "Fecha de venta",
+//             key: "Fecha de venta",
+//             required: true,
+//             description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
+//             suggested_mappings: ["Fecha de venta"]
+//           },
+//           {
+//             name: "N° de comprobante / boleta",
+//             key: "N° de comprobante / boleta",
+//             required: true,
+//             // description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
+//             suggested_mappings: ["N° de comprobante / boleta"]
+//           },
+//           {
+//             name: "SKU / Código de producto",
+//             key: "SKU / Código de producto",
+//             required: true,
+//             suggested_mappings: ["SKU / Código de producto"]
+//           },
+//           {
+//             name: "Nombre del producto",
+//             key: "Nombre del producto",
+//             required: true,
+//             suggested_mappings: ["Nombre del producto"]
+//           },
+//           {
+//             name: "Cantidad vendida",
+//             key: "Cantidad vendida",
+//             required: true,
+//             description: "Sólo valor numérico entero ej:10",
+//             suggested_mappings: ["Cantidad vendida"]
+//           },
+//           {
+//             name: "Precio de venta unitario (S/.)",
+//             key: "Precio de venta unitario (S/.)",
+//             required: true,
+//             description: "Sólo valor numérico entero ó decimal ej:10.5",
+//             suggested_mappings: ["Precio de venta unitario (S/.)"]
+//           }
+//         ]
+//       };
 
-const templateStock = {
-        columns: [
-          {
-            name: "SKU / Código de producto",
-            key: "SKU / Código de producto",
-            required: true,
-            suggested_mappings: ["SKU / Código de producto"]
-          },
-          {
-            name: "Nombre del producto",
-            key: "Nombre del producto",
-            required: true,
-            suggested_mappings: ["Nombre del producto"]
-          },
-          {
-            name: "Cantidad en stock actual",
-            key: "Cantidad en stock actual",
-            required: true,
-            description: "Sólo valor numérico entero ej:10",
-            suggested_mappings: ["Cantidad en stock actual"]
-          },
-          {
-            name: "Precio de compra actual (S/.)",
-            key: "Precio de compra actual (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de compra actual (S/.)"]
-          },
-          {
-            name: "Precio de venta actual (S/.)",
-            key: "Precio de venta actual (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de venta actual (S/.)"]
-          },
-          {
-            name: "Marca",
-            key: "Marca",
-            required: true,
-            suggested_mappings: ["Marca"]
-          },
-          {
-            name: "Categoría",
-            key: "Categoría",
-            required: true,
-            suggested_mappings: ["Categoría"]
-          },
-          {
-            name: "Subcategoría",
-            key: "Subcategoría",
-            required: true,
-            suggested_mappings: ["Subcategoría"]
-          },
-          {
-            name: "Rol de categoría",
-            key: "Rol de categoría",
-            required: true,
-            suggested_mappings: ["Rol de categoría"]
-          },
-          {
-            name: "Rol del producto",
-            key: "Rol del producto",
-            required: true,
-            suggested_mappings: ["Rol del producto"]
-          }
-        ]
-      };
+// const templateStock = {
+//         columns: [
+//           {
+//             name: "SKU / Código de producto",
+//             key: "SKU / Código de producto",
+//             required: true,
+//             suggested_mappings: ["SKU / Código de producto"]
+//           },
+//           {
+//             name: "Nombre del producto",
+//             key: "Nombre del producto",
+//             required: true,
+//             suggested_mappings: ["Nombre del producto"]
+//           },
+//           {
+//             name: "Cantidad en stock actual",
+//             key: "Cantidad en stock actual",
+//             required: true,
+//             description: "Sólo valor numérico entero ej:10",
+//             suggested_mappings: ["Cantidad en stock actual"]
+//           },
+//           {
+//             name: "Precio de compra actual (S/.)",
+//             key: "Precio de compra actual (S/.)",
+//             required: true,
+//             description: "Sólo valor numérico entero ó decimal ej:10.5",
+//             suggested_mappings: ["Precio de compra actual (S/.)"]
+//           },
+//           {
+//             name: "Precio de venta actual (S/.)",
+//             key: "Precio de venta actual (S/.)",
+//             required: true,
+//             description: "Sólo valor numérico entero ó decimal ej:10.5",
+//             suggested_mappings: ["Precio de venta actual (S/.)"]
+//           },
+//           {
+//             name: "Marca",
+//             key: "Marca",
+//             required: true,
+//             suggested_mappings: ["Marca"]
+//           },
+//           {
+//             name: "Categoría",
+//             key: "Categoría",
+//             required: true,
+//             suggested_mappings: ["Categoría"]
+//           },
+//           {
+//             name: "Subcategoría",
+//             key: "Subcategoría",
+//             required: true,
+//             suggested_mappings: ["Subcategoría"]
+//           },
+//           {
+//             name: "Rol de categoría",
+//             key: "Rol de categoría",
+//             required: true,
+//             suggested_mappings: ["Rol de categoría"]
+//           },
+//           {
+//             name: "Rol del producto",
+//             key: "Rol del producto",
+//             required: true,
+//             suggested_mappings: ["Rol del producto"]
+//           }
+//         ]
+//       };
 
-export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogout, onBackToDashboard }) {
+export function AnalysisWorkspace({ context, onLoginSuccess, initialData = null, onLogout, onBackToDashboard }) {
   // --- ESTADOS ---
   const { strategy, loadStrategy } = useStrategy();
   const { user, workspaces, activeWorkspace, setActiveWorkspace, touchWorkspace } = useWorkspace();
@@ -179,7 +181,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [dateRangeBounds, setDateRangeBounds] = useState(null); // Nuevo estado para los límites de fecha
   const [isDateModalOpen, setIsDateModalOpen] = useState(false); // Nuevo estado para controlar el modal
   const [activeDateFilter, setActiveDateFilter] = useState(null);
-  // const [uploadersCollapsed, setUploadersCollapsed] = useState(false);
   const [uploaderState, setUploaderState] = useState('visible'); // 'visible', 'fadingOut', 'collapsed'
   const [auditState, setAuditState] = useState({ status: 'idle', data: null }); // idle, loading, outdated, up_to_date, error
   const [isExecutingAudit, setIsExecutingAudit] = useState(false);
@@ -213,39 +214,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   // --- ESTADOS SIMPLIFICADOS ---
   // El estado del modal de reporte ahora es mucho más simple
   const [selectedReport, setSelectedReport] = useState(null); 
+  const [initialResultData, setInitialResultData] = useState(null);
+    
   const [initialParams, setInitialParams] = useState(null);
 
   const [count, setCount] = useState(0)
   const [auditCount, setAuditCount] = useState(0);
   
-  // const handleRunNewAudit = useCallback(async () => {
-  //   // La función ahora toma los fileIds directamente del estado del componente.
-  //   if (!uploadedFileIds.ventas || !uploadedFileIds.inventario) {
-  //       console.error("Intento de ejecutar auditoría sin los fileIds necesarios en el estado.");
-  //       setAuditState({ status: 'error', data: null });
-  //       return;
-  //   }
-  //   setIsExecutingAudit(true);
-  //   const formData = new FormData();
-  //   formData.append("ventas_file_id", uploadedFileIds.ventas);
-  //   formData.append("inventario_file_id", uploadedFileIds.inventario);
-  //   if (context.type === 'user') {
-  //     formData.append("workspace_id", context.workspace.id);
-  //   }
-
-  //   try {
-  //     const response = await api.post('/auditoria/run', formData, {
-  //       headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
-  //     });
-  //     setAuditState({ status: 'up_to_date', data: response.data });
-  //   } catch (error) {
-  //     console.error("Error al ejecutar la nueva auditoría:", error);
-  //     setAuditState(prev => ({ ...prev, status: 'error' }));
-  //   } finally {
-  //     setIsExecutingAudit(false);
-  //   }
-  // }, [uploadedFileIds, context.type, context.workspace?.id, context.id]); // Ahora depende de uploadedFileIds
-
   const handleRunNewAudit = useCallback(async (fileIdsToAudit) => {
     if (!fileIdsToAudit || !fileIdsToAudit.ventas || !fileIdsToAudit.inventario) {
         console.error("Intento de ejecutar auditoría sin los fileIds necesarios.");
@@ -339,15 +314,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           setUploaderState('visible');
         }
 
-        // --- PASO 4: La Decisión Final ---
-        // if (statusResponse?.data.status === 'no_audit_found') {
-        //   // Pasamos los fileIds recién cargados directamente a la función.
-        //   await handleRunNewAudit(newFileIds);
-        // } else {
-        //   setAuditState({ status: 'error', data: null });
-        //   // setAuditState(statusResponse.data);
-        // }
-
         const loadedFiles = newFileIds || { ventas: null, inventario: null };
         setUploadedFileIds(loadedFiles);
         setDateRangeBounds(date_range_bounds || null );
@@ -355,9 +321,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           ventas: loadedFiles.ventas ? 'success' : 'idle',
           inventario: loadedFiles.inventario ? 'success' : 'idle'
         });
-
-        // setTimeout(() => {
-        // }, 100); // Duración del fade-out
         
       } catch (error) {
         console.error("Error al cargar y verificar el contexto:", error);
@@ -368,8 +331,64 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     };
 
     loadAndCheckContext();
-  }, [context.id, context.workspace?.id]);
-  // }, [context.id, context.workspace?.id, handleRunNewAudit, loadStrategy]);
+    // Prevenimos que se ejecute si ya tenemos datos iniciales (flujo anónimo)
+    // if (!initialData) {
+    //   loadAndCheckContext();
+    // } else {
+    //   setIsLoading(false); // Si hay datos iniciales, no necesitamos cargar nada más
+    // }
+
+  }, [context.id, initialData]);
+  // }, [context.id, context.workspace?.id]);
+
+  // --- NUEVO EFECTO PARA MANEJAR EL FLUJO ANÓNIMO ---
+  useEffect(() => {
+      // Creamos una función async dentro del efecto para poder usar await
+      const initializeAnonymousSession = async () => {
+          // Se ejecuta solo si tenemos datos iniciales (del backend) y la config de reportes ya cargó
+          if (initialData && reportData) {
+              
+              // 1. Cargar la estrategia por defecto ANTES de hacer cualquier otra cosa.
+              // Esto asegura que el contexto `strategy` no será `null`.
+              await loadStrategy({ type: 'default' }); 
+
+              // 2. Buscar la configuración del reporte que se ejecutó.
+              const reportKey = initialData.report_key;
+              const reportConfig = Object.values(reportData).flat().find(r => r.key === reportKey);
+
+              if (reportConfig) {
+                  // 3. Establecer el reporte seleccionado para abrir el ReportModal.
+                  setInitialResultData(initialData);
+                  setSelectedReport(reportConfig);
+              } else {
+                  console.error(`Error crítico: No se encontró la configuración para el reporte con clave: ${reportKey}`);
+                  alert("Hubo un error al intentar mostrar el reporte solicitado.");
+              }
+          }
+      };
+
+      initializeAnonymousSession();
+  }, [initialData, reportData, loadStrategy]); // Dependencias del efecto
+
+
+  // // --- NUEVO EFECTO: PARA MANEJAR EL FLUJO ANÓNIMO INICIAL ---
+  // useEffect(() => {
+  //   if (initialData && reportData) {
+  //     console.log("AnalysisWorkspace detectó initialData. Abriendo ReportModal...");
+  //     // 1. Buscar la configuración completa del reporte usando la `report_key`
+  //     const reportKey = initialData.report_key;
+  //     const reportConfig = Object.values(reportData).flat().find(r => r.key === reportKey);
+
+  //     if (reportConfig) {
+  //       // 2. Establecer el reporte seleccionado. Esto es lo que dispara
+  //       //    la renderización del ReportModal.
+  //       setSelectedReport(reportConfig);
+  //     } else {
+  //       console.error(`No se encontró la configuración para el reporte con la clave: ${reportKey}`);
+  //     }
+  //   }
+  // }, [initialData, reportData]); // Se ejecuta si initialData o reportData cambian
+
 
   // --- NUEVA FUNCIÓN: Actualiza solo créditos e historial ---
   const refreshCreditsAndHistory = useCallback(async (context) => {
@@ -411,133 +430,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     setFilesReady(!!uploadedFileIds.ventas && !!uploadedFileIds.inventario);
   }, [uploadedFileIds]);
 
-  // --- FUNCIÓN PARA EJECUTAR LA NUEVA AUDITORÍA ---
-  // const handleRunNewAudit = useCallback(async () => {
-  //   if (uploadedFileIds) {
-  //     setIsExecutingAudit(true);
-  //     const formData = new FormData();
-  //     formData.append("ventas_file_id", uploadedFileIds.ventas);
-  //     formData.append("inventario_file_id", uploadedFileIds.inventario);
-  //     if (context.type === 'user') {
-  //       formData.append("workspace_id", context.workspace.id);
-  //     }
-
-  //     try {
-  //       const response = await api.post('/auditoria/run', formData, {
-  //         headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
-  //       });
-  //       setAuditState({ status: 'up_to_date', data: response.data });
-  //     } catch (error) {
-  //       console.error("Error al ejecutar la nueva auditoría:", error);
-  //       alert("No se pudo completar la nueva auditoría.");
-  //       setAuditState(prev => ({ ...prev, status: 'error' }));
-  //     } finally {
-  //       setIsExecutingAudit(false);
-  //     }
-  //   }
-  // }, [uploadedFileIds, context]);
-
-  // useEffect(() => {
-  //   if (filesReady) {
-  //     const checkAuditStatus = async () => {
-  //       setAuditState({ status: 'loading', data: null });
-  //       try {
-  //         const endpoint = '/auditoria/status';
-  //         const params = context.type === 'user' ? { workspace_id: context.workspace.id } : {};
-  //         const headers = context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {};
-          
-  //         const response = await api.get(endpoint, { params, headers });
-          
-  //         // --- LÓGICA DEL "ANFITRIÓN INTELIGENTE" ---
-  //         if (response.data.status === 'no_audit_found') {
-  //           // Si es la primera vez, ejecutamos la auditoría automáticamente
-  //           console.log(context)
-  //           console.log("Primera ejecución: disparando auditoría automática. desde: ");
-  //           handleRunNewAudit();
-  //         } else {
-  //           // Para visitas posteriores, simplemente guardamos el estado
-  //           setAuditState(response.data);
-  //         }
-          
-  //         setUploaderState('fadingOut'); // Acto 1: Desvanecer
-  //         setTimeout(() => {
-  //           setUploaderState('collapsed'); // Acto 2: Colapsar
-  //         }, 300); // Duración del fade-out
-  //       } catch (error) {
-  //         console.error("Error al verificar el estado de la auditoría:", error);
-  //         setAuditState({ status: 'error', data: null });
-  //       }
-  //     };
-  //     checkAuditStatus();
-  //   }
-  // }, [filesReady, context, handleRunNewAudit]);
-
-  // useEffect(() => {
-  //   const areFilesReady = uploadStatus.ventas === 'success' && uploadStatus.inventario === 'success';
-  //   setFilesReady(areFilesReady);
-
-  //   if (areFilesReady) {
-  //     const checkAuditStatus = async () => {
-  //       setAuditState({ status: 'loading', data: null });
-  //       try {
-  //         const endpoint = '/auditoria/status';
-  //         const params = context.type === 'user' ? { workspace_id: context.workspace.id } : {};
-  //         const headers = context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {};
-          
-  //         const response = await api.get(endpoint, { params, headers });
-  //         setAuditState(response.data);
-  //         // Colapsamos los uploaders una vez que tenemos una respuesta
-  //         // setUploadersCollapsed(true);
-  //         // --- INICIAMOS LA SECUENCIA DE ANIMACIÓN ---
-  //         setUploaderState('fadingOut'); // Acto 1: Desvanecer
-  //         setTimeout(() => {
-  //           setUploaderState('collapsed'); // Acto 2: Colapsar
-  //         }, 300); // Duración del fade-out
-  //       } catch (error) {
-  //         console.error("Error al verificar el estado de la auditoría:", error);
-  //         setAuditState({ status: 'error', data: null });
-  //       }
-  //     };
-  //     checkAuditStatus();
-  //   }
-  // }, [filesReady, context]);
-
-
-
-  // --- RENDERIZADO CONDICIONAL ---
-  // const renderAuditContent = () => {
-  //   if (auditState.status === 'loading' || isExecutingAudit) {
-  //     return <LoadingScreen message={isExecutingAudit ? "Generando nueva auditoría..." : "Verificando estado..."} />;
-  //   }
-
-  //   if (auditState.status === 'outdated') {
-  //     return (
-  //       <div className="text-center p-8 bg-gray-800 rounded-lg">
-  //         <h3 className="text-xl font-bold text-white">Tus archivos de datos han sido actualizados.</h3>
-  //         <p className="text-gray-400 mt-2 mb-6">Genera un nuevo informe para analizar la información más reciente.</p>
-  //         <button onClick={handleRunNewAudit} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
-  //           <FiRefreshCw /> Generar Nueva Auditoría de Eficiencia
-  //         </button>
-  //         {auditState.data && (
-  //           <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto">
-  //             Ver última auditoría del {new Date(auditState.data.fecha).toLocaleDateString()}
-  //           </button>
-  //         )}
-  //       </div>
-  //     );
-  //   }
-
-  //   if (auditState.status === 'up_to_date' && auditState.data) {
-  //     return <AuditDashboard auditResult={auditState.data} onSolveClick={handleSolveClick} />;
-  //   }
-
-  //   return <p className="text-center text-gray-500">Error al cargar la auditoría.</p>;
-  // };
+  
   // --- RENDERIZADO CONDICIONAL DEL CONTENIDO PRINCIPAL ---
   const renderMainContent = () => {
     if (!filesReady) {
       return (
-        <p className="mt-10 text-center text-white p-4 bg-gray-800 rounded-md shadow">
+        <p className="mt-10 text-center max-w-5xl mx-auto text-white p-4 bg-gray-800 rounded-md shadow">
           📂 Sube ambos archivos para activar la Auditoría de Eficiencia.
         </p>
       );
@@ -549,17 +447,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
     if (auditState.status === 'outdated') {
       return (
-        <div className="text-center p-8 bg-gray-800 rounded-lg animate-fade-in">
+        <div className="text-center max-w-5xl mx-auto p-8 bg-gray-800 rounded-lg animate-fade-in">
           <h3 className="text-xl font-bold text-white">Tus archivos de datos han sido actualizados.</h3>
           <p className="text-gray-400 mt-2 mb-6">Genera un nuevo informe para analizar la información más reciente.</p>
           <button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
             <FiRefreshCw /> Generar Nueva Auditoría
           </button>
-          {/*{auditState.data && (
-            <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto underline hover:text-white">
-              Ver última auditoría del {new Date(auditState.data.fecha).toLocaleDateString()}
-            </button>
-          )}*/}
         </div>
       );
     }
@@ -568,7 +461,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       return <AuditDashboard auditResult={auditState.data} onSolveClick={handleSolveClick} />;
     }
 
-    // return <p className="text-center text-gray-500">Error al cargar la auditoría.</p>;
     return (
       <button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
         <FiRefreshCw /> Generar Nueva Auditoría
@@ -584,7 +476,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     const reportConfig = Object.values(reportData).flat().find(r => r.key === target_report);
     // const reportConfig = Object.values(reportData).flat().find(r => r.key === reportKey);
     if (reportConfig) {
-      // setInitialSkuFilter(skus_afectados || []);
       setReportContextInfo({
         title: title,
         skus: skus_afectados || []
@@ -596,9 +487,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   const handleCloseReportModal = () => {
     setSelectedReport(null);
-    // setInitialSkuFilter(null); // Limpiamos el filtro al cerrar
     setReportContextInfo(null);
     setInitialParams(null); // Limpiamos los parámetros al cerrar
+    if (initialResultData) {
+        handleRunNewAudit(uploadedFileIds)
+        setInitialResultData(null);
+    }
+    setAnalysisResult(null);
   };
 
   // Función para limpiar el estado al cambiar de workspace
@@ -614,7 +509,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     setUploadStatus(prev => ({ ...prev, [fileType]: 'uploading' }));
     
     setUploaderState('visible');
-    // setAuditState({ status: 'idle', data: null });
 
     const isUserContext = context.type === 'user' && context.workspace;
     if (!isUserContext && !context.id) {
@@ -666,7 +560,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         console.log("Ambos archivos están listos. Marcando auditoría como desactualizada.");
         // Forzamos el estado a 'outdated' directamente, sin llamar a la API.
         // Mantenemos los datos de la auditoría anterior para el enlace de "ver última".
-        // console.log(auditCount)
         if (auditCount === 0) {
           // Si es la primera vez, ejecutamos la auditoría automáticamente.
           console.log("Primera ejecución detectada: disparando auditoría automática.");
@@ -723,18 +616,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     setSelectedReport(reportItem);
   };
 
-  // const handleGoToRegister = () => {
-  //     // Cerramos cualquier modal que esté abierto y cambiamos a la vista de registro
-  //     setActiveModal(null); 
-  //     // setAppState('registering');
-  // };
-
   const handleUpgradeAction = (action) => {
     // Esta función decide qué hacer cuando el usuario hace clic en el CTA del UpgradeModal
-    // setActiveModal(null); // Cerramos el modal de upgrade
     if (action === 'register') {
       setActiveModal('register')
-      // onSwitchToRegister(); // Llamamos a la función del padre para abrir el modal de registro
     } else if (action === 'verify') {
       alert("La verificación para el plan Estratega estará disponible próximamente.");
     }
@@ -742,7 +627,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   const handleLoginFromModal = (token) => {
     // Cerramos el modal y notificamos al componente App que el login fue exitoso
-    console.log('from AnalysisWorkspace > handleLoginFromModal')
+    // console.log('from AnalysisWorkspace > handleLoginFromModal')
     setActiveModal(null);
     onLoginSuccess(token);
   };
@@ -797,11 +682,12 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   };
 
   return (
-    <div className="min-h-screen w-full max-w-5xl mx-auto md:p-8 text-white animate-fade-in">
-        <div className="flex gap-4 justify-center mt-4">
-          <h1 className="text-3xl md:text-5xl font-bold text-white">
+    <div className="min-h-screen w-full mx-auto md:p-8 text-white animate-fade-in">
+        <div className="flex gap-4 max-w-5xl mx-auto justify-center mt-4">
+          {/*<h1 className="text-3xl md:text-5xl font-bold text-white">
               <span className="bg-clip-text text-transparent" style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}>Ferretero.IA</span>
-          </h1>
+          </h1>*/}
+          <img src="/ferreteros-app-standalone.png" className="max-h-8 opacity-90"/>
           {/* Botón de Login solo para usuarios anónimos */}
           {context.type === 'anonymous'
             ? <button onClick={() => setActiveModal('login')} className="flex items-center gap-2 px-4 py-2 text-sm font-bold bg-purple-600 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiLogIn /> Iniciar Sesión</button>
@@ -813,7 +699,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             <span>Modo: Sesión Anónima <br/> {context.id}</span>
           </p>
         }
-      <div className="flex flex-col w-full justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
+      <div className="flex flex-col max-w-5xl mx-auto justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
          <CreditsPanel 
             used={credits.used} 
             remaining={credits.remaining}
@@ -830,80 +716,66 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         )}
       </div>
 
-      <main className="flex-1 overflow-y-auto pb-4 w-full">
+      <main className="flex-col items-center overflow-y-auto pb-4 w-full">
 
         <div className="flex flex-row w-full justify-center items-center gap-2">
           <button onClick={() => setActiveModal('strategy')} className="flex items-center gap-2 my-4 px-4 py-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors"><FiSettings /> Mi Estrategia</button>
         </div>
 
-        <div className="mx-4 bg-gray-800 bg-opacity-50 rounded-lg border border-gray-700 mb-8 transition-all duration-300 ease-in-out">
-          <div 
-            className="p-3 py-4 flex justify-between items-center cursor-pointer"
-            onClick={() => { uploaderState === 'collapsed' ? setUploaderState('visible') : setUploaderState('collapsed') }}
-          >
-            <div className="flex items-center gap-4 text-sm">
-              <span className={`font-bold transition-colors ${filesReady ? 'text-green-400' : 'text-gray-400'}`}>
-                {filesReady ? '✓ Archivos Cargados' : '1. Prepara tu Análisis'}
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-sm text-purple-400 hover:text-white">
-              <span>{uploaderState === 'collapsed' ? 'Mostrar' : 'Ocultar'}</span>
-              {uploaderState === 'collapsed' ? <FiChevronDown /> : <FiChevronUp />}
-            </div>
-          </div>
-
-          {/* --- Contenido Plegable (El Acordeón) --- */}
-          <div 
-            className={`transition-all duration-500 ease-in-out overflow-hidden ${uploaderState === 'collapsed' ? 'max-h-0' : 'max-h-[40rem]'}`}
-          >
-            <div className="p-4 border-t border-gray-700">
-              <div className="grid gap-4 md:grid-cols-2">
-                <CsvImporterComponent 
-                  fileType="ventas"
-                  title="Historial de Ventas"
-                  template={templateVentas}
-                  onFileProcessed={handleFileProcessed}
-                  uploadStatus={uploadStatus.ventas}
-                  metadata={fileMetadata.ventas}
-                />
-                <CsvImporterComponent 
-                  fileType="inventario"
-                  title="Stock Actual"
-                  template={templateStock}
-                  onFileProcessed={handleFileProcessed}
-                  uploadStatus={uploadStatus.inventario}
-                  metadata={fileMetadata.inventario}
-                />
+        <div className="w-full px-4">
+          <div className="bg-gray-800 mx-auto self-center max-w-5xl bg-opacity-50 rounded-lg border border-gray-700 mb-8 transition-all duration-300 ease-in-out">
+            <div 
+              className="p-3 py-4 flex justify-between cursor-pointer"
+              onClick={() => { uploaderState === 'collapsed' ? setUploaderState('visible') : setUploaderState('collapsed') }}
+            >
+              <div className="flex items-center gap-4 text-sm">
+                <span className={`font-bold transition-colors ${filesReady ? 'text-green-400' : 'text-gray-400'}`}>
+                  {filesReady ? '✓ Archivos Cargados' : '1. Prepara tu Análisis'}
+                </span>
               </div>
-              <div className="flex justify-center items-center gap-4 mt-4 pt-4 border-t border-gray-700">
-                <button onClick={() => setActiveModal('connections')} className="flex items-center gap-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors px-4 py-2">
-                    <FiKey /> Conectar Sistema
-                </button>
+              <div className="flex items-center gap-2 text-sm text-purple-400 hover:text-white">
+                <span>{uploaderState === 'collapsed' ? 'Mostrar' : 'Ocultar'}</span>
+                {uploaderState === 'collapsed' ? <FiChevronDown /> : <FiChevronUp />}
+              </div>
+            </div>
+
+            {/* --- Contenido Plegable (El Acordeón) --- */}
+            <div 
+              className={`transition-all duration-500 ease-in-out overflow-hidden ${uploaderState === 'collapsed' ? 'max-h-0' : 'max-h-[40rem]'}`}
+            >
+              <div className="p-4 border-t border-gray-700">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <CsvImporterComponent 
+                    fileType="ventas"
+                    title="Historial de Ventas"
+                    template={templateVentas}
+                    onFileProcessed={handleFileProcessed}
+                    uploadStatus={uploadStatus.ventas}
+                    metadata={fileMetadata.ventas}
+                  />
+                  <CsvImporterComponent 
+                    fileType="inventario"
+                    title="Stock Actual"
+                    template={templateStock}
+                    onFileProcessed={handleFileProcessed}
+                    uploadStatus={uploadStatus.inventario}
+                    metadata={fileMetadata.inventario}
+                  />
+                </div>
+                <div className="flex justify-center items-center gap-4 mt-4 pt-4 border-t border-gray-700">
+                  <button onClick={() => setActiveModal('connections')} className="flex items-center gap-2 text-sm font-bold bg-gray-700 text-white hover:bg-purple-700 rounded-lg transition-colors px-4 py-2">
+                      <FiKey /> Conectar Sistema
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* --- RENDERIZADO DEL NUEVO FILTRO INTERACTIVO --- */}
-        {/*{uploadStatus.ventas === 'success' && dateRangeBounds && (
-          <div className="my-2 flex justify-center items-center gap-2">
-            <button 
-              onClick={() => setIsDateModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 text-white rounded-lg shadow-md hover:bg-purple-700 transition-colors"
-            >
-              <FiCalendar />
-              <span>{getFilterButtonText()}</span>
-              <FiAward className="text-yellow-400" />
-            </button>
-          </div>
-        )}*/}
-        <button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
-          <FiRefreshCw /> Generar Nueva Auditoría
-        </button>
         {renderMainContent()}
-        
+
         {filesReady && (
-          <div className="text-center">
+          <div className="text-center max-w-5xl mx-auto px-4">
             <h2 className="text-2xl font-bold text-white mt-8 mb-2">
               Profundiza en tus Datos
               <Tooltip text={tooltips['reports_header_tooltip']} />
@@ -911,7 +783,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
             <p className="text-gray-400 max-w-2xl mx-auto">Cada reporte es una herramienta especializada. Úsalas para responder a preguntas clave sobre rentabilidad, compras, estrategia y más.</p>
           </div>
         )}
-        <div id="tools-section" className="w-full space-y-8 px-4 mb-6">
+        <div id="tools-section" className="max-w-5xl mx-auto px-4 space-y-8 px-4 mb-6">
           {filesReady && Object.entries(reportData).map(([categoria, reportes]) => (
               <div key={categoria} className="mb-6">
                 <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
@@ -942,6 +814,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       {selectedReport && (
         <ReportModal 
           reportConfig={selectedReport}
+          initialResult={initialResultData}
+          creditsInfo={credits}
           initialParams={initialParams} // <-- Pasamos la nueva prop
           context={{...context, fileIds: uploadedFileIds}} // Pasamos toda la info necesaria
           initialView={modalInitialView} // <-- Pasamos la vista inicial
@@ -949,11 +823,9 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           contextInfo={reportContextInfo} // <-- Pasamos la nueva prop
           initialSkuFilter={initialSkuFilter} // <-- Pasamos la nueva prop
           onClose={handleCloseReportModal}
-          // onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
           onInsufficientCredits={handleInsufficientCredits} // <-- Pasamos la nueva función
           onAnalysisComplete={handleAnalysisCompletion}
           onLoginSuccess={handleLoginFromModal}
-          // onStateUpdate={setCount} // Pasamos la función para que el modal pueda pedir un refresco
         />
       )}
       
@@ -964,7 +836,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         />
       )}
 
-      {/*{isHistoryModalOpen && ()}*/}
       {activeModal === 'history' && (
         <CreditHistoryModal
           history={creditHistory}
@@ -981,7 +852,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         />
       )}
 
-      {/*{showProModal && proReportClicked && ()}*/}
       {activeModal === 'proOffer' && proReportClicked && (
         <ProOfferModal
           reportName={proReportClicked.label}
@@ -990,7 +860,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         />
       )}
 
-      {/*{showCreditsModal && ()}*/}
       {activeModal === 'creditsOffer' && (
         <InsufficientCreditsModal
           required={creditsInfo.required}
@@ -1072,7 +941,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           onRegister={() => {
               setActiveModal(null);
               setActiveModal('register');
-              // onSwitchToRegister(); // Llama a la función del padre para mostrar el modal de registro real
           }}
           onClose={() => setActiveModal(null)}
         />

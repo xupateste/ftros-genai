@@ -180,11 +180,11 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
   };
 
   return (
-    <div className="w-full space-y-4 p-4">
+    <div className="w-full space-y-4">
       
       {/* --- Pilar 1: El Diagnóstico Impactante --- */}
       <AnimateOnScroll>
-        <section className="text-center"> 
+        <section className="text-center max-w-5xl mx-auto px-4"> 
             <h2 className="text-2xl font-bold text-white mb-4">Diagnóstico de Eficiencia de Inventario
               <Tooltip text={tooltips['audit_header_tooltip']} />
             </h2>
@@ -201,7 +201,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
       {/* Usamos un div contenedor en lugar de la sección para un mejor control del padding */}
       <AnimateOnScroll delay={300}>
         {/* La "Pista de Deslizamiento" */}
-        <div className="flex overflow-x-auto gap-6 py-6 snap-x snap-mandatory scrollbar-hide">
+        <div className="flex overflow-x-auto max-w-5xl mx-auto px-4 gap-6 py-6 snap-x snap-mandatory scrollbar-hide">
           {kpis && Object.entries(kpis).map(([key, data]) => (
             // Cada "Vagón" del carrusel
             <div key={key} className="md:w-1/3 sm:w-4/5 flex-shrink-0 snap-center">
@@ -229,16 +229,16 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
       )}
       
       {/* --- Pilar 2: Las Guías Accionables (con Título Mejorado) --- */}
-       <section>
+       <section className="bg-gray-800 py-8">
          <AnimateOnScroll>
-           <div className="text-center mt-6">
-             <h2 className="text-2xl font-bold text-white mb-2">Acciones Recomendadas
+           <div className="text-center max-w-5xl mx-auto px-4">
+             <h2 className="text-2xl font-bold text-white mb-2">Toma acción con estas sugerencias
                 <Tooltip text={tooltips['action_plan_tooltip']} />
              </h2>
-             <p className="text-gray-400 max-w-2xl mx-auto">Hemos identificado las siguientes áreas, priorizadas por impacto, para aumentar la eficiencia de tu negocio.</p>
+             <p className="text-gray-400 max-w-xl mx-auto">Hemos identificado las siguientes áreas, priorizadas por impacto, para aumentar la eficiencia de tu negocio.</p>
            </div>
          </AnimateOnScroll>
-         <div className="space-y-4 mt-6">
+         <div className="space-y-4 mt-6 max-w-5xl mx-auto px-4">
            {plan_de_accion && plan_de_accion.length > 0 ? (
             // --- CAMBIO CLAVE: Usamos .slice() para mostrar solo las tareas visibles ---
             plan_de_accion.slice(0, visibleTasksCount).map((task, index) => (
@@ -260,7 +260,7 @@ export function AuditDashboard({ auditResult, onSolveClick }) {
         </div>
         {/* --- NUEVO BOTÓN "CARGAR MÁS" CONDICIONAL --- */}
         {plan_de_accion.length > visibleTasksCount && (
-          <div className="text-center mt-4">
+          <div className="text-center mt-6">
               <AnimateOnScroll>
                   <button 
                       onClick={handleLoadMore}

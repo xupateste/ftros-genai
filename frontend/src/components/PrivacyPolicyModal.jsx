@@ -26,7 +26,7 @@ export function PrivacyPolicyModal ({ isOpen, onClose }) {
                     <div className="flex flex-col max-h-[60vh] overflow-y-auto text-gray-600 gap-y-2">
                         <p><strong>Última Actualización: 15 de octubre de 2024</strong></p>
                         <h3 className="mt-6 font-bold">1. Nuestro Compromiso y Responsable de tus Datos</h3>
-                        <p><span>En </span><span>ia.ferreteros.app</span><span>, tu confianza es nuestra prioridad. Esta política explica de forma directa cómo protegemos tu información personal, en estricto cumplimiento de la Ley de Protección de Datos Personales del Perú (Ley N° 29733) y su Reglamento (D.S. N° 016-2024-JUS).&nbsp;</span></p>
+                        <p><span>En </span><span>analisis.ferreteros.app</span><span>, tu confianza es nuestra prioridad. Esta política explica de forma directa cómo protegemos tu información personal, en estricto cumplimiento de la Ley de Protección de Datos Personales del Perú (Ley N° 29733) y su Reglamento (D.S. N° 016-2024-JUS).&nbsp;</span></p>
                         <p><span>El responsable del tratamiento de tus datos es:</span></p>
                         <ul>
                             <li><strong>Razón Social:</strong><span> CHRISTIAN ALCIDES BARRETO VELEZ (FERRISUR)</span></li>

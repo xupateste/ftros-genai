@@ -3,8 +3,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
 import Select from 'react-select';
-// import * as XLSX from 'xlsx';
-// import XLSX from 'xlsx-style';
 import ExcelJS from 'exceljs';
 import { saveAs } from 'file-saver';
 
@@ -15,7 +13,6 @@ import { useWorkspace } from '../context/WorkspaceProvider';
 import api from '../utils/api';
 import { Tooltip } from './Tooltip';
 import { jsPDF } from "jspdf";
-// import "jspdf-autotable";
 import { InsufficientCreditsModal } from './InsufficientCreditsModal';
 import { AppliedParameters } from './AppliedParameters'; // <-- Importamos el nuevo componente
 
@@ -25,7 +22,6 @@ import { ResultListItem } from './ResultListItem';
 
 // --- IMPORTAMOS LOS NUEVOS MODALES ---
 import { TruncatedResultModal } from './TruncatedResultModal';
-// import { RechargeCreditsModal } from './RechargeCreditsModal';
 import { BecomeStrategistModal } from './BecomeStrategistModal';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
 import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
@@ -85,7 +81,7 @@ const ReportInfoPanel = ({ reportItem, onBack, modalView }) => (
 );
 
 
-export function ReportModal({ reportConfig, context, initialParams, contextInfo, initialView = 'parameters', initialSkuFilter, availableFilters, onClose, onAnalysisComplete, onInsufficientCredits, onLoginSuccess }) {
+export function ReportModal({ reportConfig, context, creditsInfo, initialResult = null, initialParams, contextInfo, initialView = 'parameters', initialSkuFilter, availableFilters, onClose, onAnalysisComplete, onInsufficientCredits, onLoginSuccess }) {
   const { strategy } = useStrategy();
   const { tooltips, kpiTooltips } = useConfig();
   const { updateCredits, credits } = useWorkspace()
@@ -108,6 +104,17 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
   const backButtonTimer = useRef(null);
 
   const [activeContext, setActiveContext] = useState(contextInfo);
+
+
+  // --- NUEVO EFECTO: PARA MANEJAR EL RESULTADO INICIAL ---
+  useEffect(() => {
+    if (initialResult) {
+      console.log("ReportModal ha recibido un resultado inicial. Saltando a la vista de resultados.");
+      setAnalysisResult(initialResult);
+      setModalView('results');
+    }
+  }, []); // Se ejecuta solo si initialResult cambia
+
 
   // Efecto para establecer la vista inicial cuando el modal se monta
   useEffect(() => {
@@ -142,19 +149,9 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
         // Si no hay contexto, usamos el valor de la estrategia o el por defecto
         initialValues[param.name] = strategy[param.name] ?? param.defaultValue;
       }   
-      // if (strategy && strategy[param.name] !== undefined) {
-      //   initialParams[param.name] = strategy[param.name];
-      // } else {
-      //   initialParams[param.name] = param.defaultValue;
-      // }
     });
     setModalParams(initialValues);
   }, [reportConfig, strategy, initialParams]);
-
-  // useEffect(() => {
-  //   setVisibleItemsCount(10)
-  //   console.log('ms')
-  // }, [searchTerm])
 
   // --- LÓGICA DE FILTRADO EN TIEMPO REAL ---
   const filteredData = useMemo(() => {
@@ -194,86 +191,6 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
             <input type="text" id={param.name} name={param.name} value={modalParams[param.name] || ''} onChange={e => handleParamChange(param.name, e.target.value)} placeholder={param.placeholder || ''} className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm" />
           </div>
         );
-      
-      // case 'select':
-      //   return (
-      //     <div key={param.name} className="mb-4">
-      //       <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-      //         {param.label}:
-      //         <Tooltip text={tooltips[param.tooltip_key]} />
-      //       </label>
-      //       <select
-      //         id={param.name}
-      //         name={param.name}
-      //         value={modalParams[param.name] || ''}
-      //         onChange={e => handleParamChange(param.name, e.target.value)}
-      //         className="appearance-none mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-      //       >
-      //         {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-      //       </select>
-      //     </div>
-      //   );
-
-      // case 'boolean_select':
-      //  return (
-      //     <div key={param.name} className="mb-4">
-      //       <label htmlFor={param.name} className="block text-sm font-medium text-gray-600 mb-1">
-      //         {param.label}:
-      //         <Tooltip text={tooltips[param.tooltip_key]} />
-      //       </label>
-      //       <select
-      //         id={param.name}
-      //         name={param.name}
-      //         value={modalParams[param.name] || ''}
-      //         onChange={e => handleParamChange(param.name, e.target.value)}
-      //         className="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm focus:outline-none focus:ring-purple-500 focus:border-purple-500 sm:text-sm"
-      //       >
-      //         {param.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
-      //       </select>
-      //     </div>
-      //   );
-
-      // case 'multi-select':
-      //   {
-      //     // --- INICIO DE LA LÓGICA CORREGIDA ---
-      //     let options = [];
-      //     // 1. Verificamos si el parámetro tiene opciones estáticas definidas en la configuración
-      //     if (param.static_options) {
-      //       // Si las tiene, usamos esas. Son la fuente de verdad.
-      //       options = param.static_options;
-      //     } else {
-      //       // Si no, usamos las opciones dinámicas que vienen de los archivos (ej. categorías, marcas)
-      //       options = availableFilters[param.optionsKey]?.map(opt => ({ value: opt, label: opt })) || [];
-      //     }
-      //     // --- FIN DE LA LÓGICA CORREGIDA ---
-
-      //     const value = (modalParams[param.name] || []).map(val => {
-      //         // Buscamos la opción completa (value y label) para que el select la muestre
-      //         return options.find(opt => opt.value === val) || { value: val, label: val };
-      //     });
-
-      //     return (
-      //       <div key={param.name} className="mb-4 text-left">
-      //         <label className="block text-sm font-medium text-gray-600 mb-1">
-      //           {param.label}:
-      //           <Tooltip text={tooltips[param.tooltip_key]} />
-      //         </label>
-      //         <Select
-      //           isMulti
-      //           name={param.name}
-      //           options={options}
-      //           className="mt-1 block w-full basic-multi-select"
-      //           classNamePrefix="select"
-      //           value={value} // <-- Usamos el valor formateado
-      //           placeholder="Selecciona..."
-      //           onChange={(selectedOptions) => {
-      //             const values = selectedOptions ? selectedOptions.map(opt => opt.value) : [];
-      //             handleParamChange(param.name, values);
-      //           }}
-      //         />
-      //       </div>
-      //     );
-      //   }
 
       case 'select':
       case 'boolean_select':
@@ -360,8 +277,6 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
       formData.append('filtro_skus_json', JSON.stringify(activeContext.skus));
     }
 
-    // console.log('modalParams')
-    // console.log(modalParams)
     Object.entries(modalParams).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
         if (Array.isArray(value)) formData.append(key, JSON.stringify(value));
@@ -435,9 +350,10 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
           });
         } else {
           // Para anónimos, ofrecemos registro
+          console.log(creditsInfo)
           setModalInfo({
-            title: "Créditos de Prueba Agotados",
-            message: "Has usado todos tus créditos de esta sesión. Regístrate gratis para obtener un bono de bienvenida y seguir analizando."
+            title: "Créditos de Prueba Insuficientes",
+            message: `Este reporte cuesta ${reportConfig.costo}🪙 y tienes ${creditsInfo?.remaining}🪙. Regístrate gratis y recibe más créditos para poder desbloquear este reporte.`
           });
           setActiveModal('registerToUnlock');
         }
@@ -527,13 +443,6 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
       currentY += 2; // Espacio extra antes de la tabla
     }
 
-    // 4. Dibujamos la tabla de datos
-    // const headers = reportConfig.accionable_columns || [];
-    // const finalHeaders = [...headers];
-    // const body = dataToUse.map(row => {
-    //     const rowData = headers.map(header => row[header] || '');
-    //     return rowData;
-    // });
     const headers = reportConfig.accionable_columns || [];
     const finalHeaders = [...headers];
 
@@ -652,7 +561,6 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
       {state: 'frozen', xSplit: 2, ySplit: 1}
     ];
 
-
     // 3. Aplicamos estilo al encabezado
     worksheet.getRow(1).eachCell((cell) => {
       cell.font = {
@@ -677,14 +585,31 @@ export function ReportModal({ reportConfig, context, initialParams, contextInfo,
 
     // 4. Añadimos los datos
     worksheet.addRows(dataToUse);
+
+    // Logica para ocultar columnas
+    const columnsToHide = new Set([
+        "PDA_Final",
+        "PDA_Demanda_Estrategica",
+        "Ingreso_Total_Reciente",
+        "ventas_diarias_promedio"
+    ]);
+
+    const headers = Object.keys(dataToUse[0]);
+
+    // 4. Itera sobre los encabezados y oculta las columnas correspondientes.
+    headers.forEach((header, index) => {
+        if (columnsToHide.has(header)) {
+            // Las columnas en ExcelJS son 1-indexadas, por eso `index + 1`.
+            const column = worksheet.getColumn(index + 1);
+            column.hidden = true;
+        }
+    });
     
     if (isAnonymous) {
       const newRow = worksheet.addRow(["Este reporte muestra solo una vista previa (hasta 15 registros)."]);
       newRow.height = 25;
-      const newRow2 = worksheet.addRow(["Para acceder a todo el analisis disponible y obtener una visión más completa de tu negocio, te invitamos a registrarte gratuitamente. Al hacerlo, desbloquearás el informe completo y recibirás un bono de bienvenida de 50 créditos para seguir explorando y mejorando herramientas diseñadas para ferreteros como tu."]);
+      const newRow2 = worksheet.addRow(["Para acceder a todo el analisis disponible y obtener una visión más completa de tu negocio, te invitamos a registrarte gratuitamente. Al hacerlo, desbloquearás el informe completo y recibirás un bono de créditos de bienvenida para seguir explorando y mejorando herramientas diseñadas para ferreteros como tu."]);
       newRow2.height = 25;
-      const newRow3 = worksheet.addRow(["Tu participación es muy valiosa: al formar parte de esta versión beta, no solo accedes antes que nadie, sino que también tienes la oportunidad de influir directamente en cómo mejoramos esta herramienta. Cada respuesta, cada clic, nos ayuda a construir una solución más útil y más ajustada a la realidad de tu ferretería."]);
-      newRow3.height = 25;
     }
 
 

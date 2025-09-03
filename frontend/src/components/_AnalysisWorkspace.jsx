@@ -9,6 +9,7 @@ import { useConfig } from '../context/ConfigProvider';
 import * as XLSX from 'xlsx';
 import Select from 'react-select';
 import { DateRangeFilter } from './DateRangeFilter'; // <-- Importamos el nuevo componente
+import { ErrorModal } from './ErrorModal'; // <-- Importamos el nuevo componente
 
 // Importa todos los componentes visuales y de iconos que este workspace necesita
 import { ReportModal } from './ReportModal'; 
@@ -31,7 +32,6 @@ import { DateRangePickerModal } from './DateRangePickerModal'; // <-- Importamos
 import { RechargeCreditsModal } from './RechargeCreditsModal';
 import { BecomeStrategistModal } from './BecomeStrategistModal';
 import { ReportButton } from './ReportButton'; // <-- Importamos el nuevo botón
-import { ReportInfoModal } from './ReportInfoModal'; // <-- Importamos el nuevo modal
 import { AuditDashboard } from './AuditDashboard'; // <-- Importamos el nuevo componente
 import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 
@@ -39,129 +39,135 @@ const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
 import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
 import { RegisterToUnlockModal } from './RegisterToUnlockModal';
+import templateVentas from '../assets/templateVentas';
+import templateStock from '../assets/templateStock';
 
-// Las plantillas ahora viven aquí, junto a la lógica que las usa
-const templateVentas = {
-        columns: [
-          {
-            name: "Fecha de venta",
-            key: "Fecha de venta",
-            required: true,
-            description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
-            suggested_mappings: ["Fecha de venta"]
-          },
-          {
-            name: "N° de comprobante / boleta",
-            key: "N° de comprobante / boleta",
-            required: true,
-            // description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
-            suggested_mappings: ["N° de comprobante / boleta"]
-          },
-          {
-            name: "SKU / Código de producto",
-            key: "SKU / Código de producto",
-            required: true,
-            suggested_mappings: ["SKU / Código de producto"]
-          },
-          {
-            name: "Nombre del producto",
-            key: "Nombre del producto",
-            required: true,
-            suggested_mappings: ["Nombre del producto"]
-          },
-          {
-            name: "Cantidad vendida",
-            key: "Cantidad vendida",
-            required: true,
-            description: "Sólo valor numérico entero ej:10",
-            suggested_mappings: ["Cantidad vendida"]
-          },
-          {
-            name: "Precio de venta unitario (S/.)",
-            key: "Precio de venta unitario (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de venta unitario (S/.)"]
-          }
-        ]
-      };
+// Las plantillas ahora se importan, tienen esta estructura
+// const templateVentas = {
+//         columns: [
+//           {
+//             name: "Fecha de venta",
+//             key: "Fecha de venta",
+//             required: true,
+//             description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
+//             suggested_mappings: ["Fecha de venta"]
+//           },
+//           {
+//             name: "N° de comprobante / boleta",
+//             key: "N° de comprobante / boleta",
+//             required: true,
+//             // description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
+//             suggested_mappings: ["N° de comprobante / boleta"]
+//           },
+//           {
+//             name: "SKU / Código de producto",
+//             key: "SKU / Código de producto",
+//             required: true,
+//             suggested_mappings: ["SKU / Código de producto"]
+//           },
+//           {
+//             name: "Nombre del producto",
+//             key: "Nombre del producto",
+//             required: true,
+//             suggested_mappings: ["Nombre del producto"]
+//           },
+//           {
+//             name: "Cantidad vendida",
+//             key: "Cantidad vendida",
+//             required: true,
+//             description: "Sólo valor numérico entero ej:10",
+//             suggested_mappings: ["Cantidad vendida"]
+//           },
+//           {
+//             name: "Precio de venta unitario (S/.)",
+//             key: "Precio de venta unitario (S/.)",
+//             required: true,
+//             description: "Sólo valor numérico entero ó decimal ej:10.5",
+//             suggested_mappings: ["Precio de venta unitario (S/.)"]
+//           }
+//         ]
+//       };
 
-const templateStock = {
-        columns: [
-          {
-            name: "SKU / Código de producto",
-            key: "SKU / Código de producto",
-            required: true,
-            suggested_mappings: ["SKU / Código de producto"]
-          },
-          {
-            name: "Nombre del producto",
-            key: "Nombre del producto",
-            required: true,
-            suggested_mappings: ["Nombre del producto"]
-          },
-          {
-            name: "Cantidad en stock actual",
-            key: "Cantidad en stock actual",
-            required: true,
-            description: "Sólo valor numérico entero ej:10",
-            suggested_mappings: ["Cantidad en stock actual"]
-          },
-          {
-            name: "Precio de compra actual (S/.)",
-            key: "Precio de compra actual (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de compra actual (S/.)"]
-          },
-          {
-            name: "Precio de venta actual (S/.)",
-            key: "Precio de venta actual (S/.)",
-            required: true,
-            description: "Sólo valor numérico entero ó decimal ej:10.5",
-            suggested_mappings: ["Precio de venta actual (S/.)"]
-          },
-          {
-            name: "Marca",
-            key: "Marca",
-            required: true,
-            suggested_mappings: ["Marca"]
-          },
-          {
-            name: "Categoría",
-            key: "Categoría",
-            required: true,
-            suggested_mappings: ["Categoría"]
-          },
-          {
-            name: "Subcategoría",
-            key: "Subcategoría",
-            required: true,
-            suggested_mappings: ["Subcategoría"]
-          },
-          {
-            name: "Rol de categoría",
-            key: "Rol de categoría",
-            required: true,
-            suggested_mappings: ["Rol de categoría"]
-          },
-          {
-            name: "Rol del producto",
-            key: "Rol del producto",
-            required: true,
-            suggested_mappings: ["Rol del producto"]
-          }
-        ]
-      };
+// const templateStock = {
+//         columns: [
+//           {
+//             name: "SKU / Código de producto",
+//             key: "SKU / Código de producto",
+//             required: true,
+//             suggested_mappings: ["SKU / Código de producto"]
+//           },
+//           {
+//             name: "Nombre del producto",
+//             key: "Nombre del producto",
+//             required: true,
+//             suggested_mappings: ["Nombre del producto"]
+//           },
+//           {
+//             name: "Cantidad en stock actual",
+//             key: "Cantidad en stock actual",
+//             required: true,
+//             description: "Sólo valor numérico entero ej:10",
+//             suggested_mappings: ["Cantidad en stock actual"]
+//           },
+//           {
+//             name: "Precio de compra actual (S/.)",
+//             key: "Precio de compra actual (S/.)",
+//             required: true,
+//             description: "Sólo valor numérico entero ó decimal ej:10.5",
+//             suggested_mappings: ["Precio de compra actual (S/.)"]
+//           },
+//           {
+//             name: "Precio de venta actual (S/.)",
+//             key: "Precio de venta actual (S/.)",
+//             required: true,
+//             description: "Sólo valor numérico entero ó decimal ej:10.5",
+//             suggested_mappings: ["Precio de venta actual (S/.)"]
+//           },
+//           {
+//             name: "Marca",
+//             key: "Marca",
+//             required: true,
+//             suggested_mappings: ["Marca"]
+//           },
+//           {
+//             name: "Categoría",
+//             key: "Categoría",
+//             required: true,
+//             suggested_mappings: ["Categoría"]
+//           },
+//           {
+//             name: "Subcategoría",
+//             key: "Subcategoría",
+//             required: true,
+//             suggested_mappings: ["Subcategoría"]
+//           },
+//           {
+//             name: "Rol de categoría",
+//             key: "Rol de categoría",
+//             required: true,
+//             suggested_mappings: ["Rol de categoría"]
+//           },
+//           {
+//             name: "Rol del producto",
+//             key: "Rol del producto",
+//             required: true,
+//             suggested_mappings: ["Rol del producto"]
+//           }
+//         ]
+//       };
 
 export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogout, onBackToDashboard }) {
   // --- ESTADOS ---
   const { strategy, loadStrategy } = useStrategy();
-  const { workspaces, activeWorkspace, setActiveWorkspace, touchWorkspace } = useWorkspace();
+  const { user, workspaces, activeWorkspace, setActiveWorkspace, touchWorkspace } = useWorkspace();
   const { reportData, tooltips, isLoading: isConfigLoading } = useConfig();
+
+  const [isErrorModalOpen, setIsErrorModalOpen] = useState(false);
+  const [errorContextData, setErrorContextData] = useState(null);
 
   // 1. ESTADO DE CARGA PRINCIPAL
   const [isLoading, setIsLoading] = useState(true);
+  const [initialSkuFilter, setInitialSkuFilter] = useState(null);
 
   // 2. ESTADOS DEL WORKSPACE (con inicialización segura)
   const [uploadedFileIds, setUploadedFileIds] = useState({ ventas: null, inventario: null });
@@ -175,7 +181,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [dateRangeBounds, setDateRangeBounds] = useState(null); // Nuevo estado para los límites de fecha
   const [isDateModalOpen, setIsDateModalOpen] = useState(false); // Nuevo estado para controlar el modal
   const [activeDateFilter, setActiveDateFilter] = useState(null);
-  // const [uploadersCollapsed, setUploadersCollapsed] = useState(false);
   const [uploaderState, setUploaderState] = useState('visible'); // 'visible', 'fadingOut', 'collapsed'
   const [auditState, setAuditState] = useState({ status: 'idle', data: null }); // idle, loading, outdated, up_to_date, error
   const [isExecutingAudit, setIsExecutingAudit] = useState(false);
@@ -194,8 +199,8 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [isCacheValid, setIsCacheValid] = useState(false);
   const [cachedResponse, setCachedResponse] = useState({ key: null, blob: null });
-  const [infoModalReport, setInfoModalReport] = useState(null); // Nuevo estado para el modal de info
   const [modalInitialView, setModalInitialView] = useState('parameters');
+  const [reportContextInfo, setReportContextInfo] = useState(null);
 
   const [isStrategyPanelOpen, setStrategyPanelOpen] = useState(false);
   const [modalInfo, setModalInfo] = useState({ title: '', message: '' });
@@ -209,16 +214,19 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
   // --- ESTADOS SIMPLIFICADOS ---
   // El estado del modal de reporte ahora es mucho más simple
   const [selectedReport, setSelectedReport] = useState(null); 
+  const [initialParams, setInitialParams] = useState(null);
 
   const [count, setCount] = useState(0)
-
+  const [auditCount, setAuditCount] = useState(0);
+  
   const handleRunNewAudit = useCallback(async (fileIdsToAudit) => {
-    if (!fileIdsToAudit.ventas || !fileIdsToAudit.inventario) {
+    if (!fileIdsToAudit || !fileIdsToAudit.ventas || !fileIdsToAudit.inventario) {
         console.error("Intento de ejecutar auditoría sin los fileIds necesarios.");
         setAuditState({ status: 'error', data: null });
         return;
     }
     setIsExecutingAudit(true);
+    setIsErrorModalOpen(false); 
     const formData = new FormData();
     formData.append("ventas_file_id", fileIdsToAudit.ventas);
     formData.append("inventario_file_id", fileIdsToAudit.inventario);
@@ -233,15 +241,26 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       setAuditState({ status: 'up_to_date', data: response.data });
     } catch (error) {
       console.error("Error al ejecutar la nueva auditoría:", error);
+      const now = new Date();
+      // Guardamos el contexto del error para pasarlo al modal
+      setErrorContextData({
+          userName: user.email || 'Usuario',
+          timestamp: now.toLocaleString('es-PE', { dateStyle: 'long', timeStyle: 'short' }),
+          errorId: `ERR-${now.getTime()}` // ID de error simple para seguimiento
+      });
       setAuditState(prev => ({ ...prev, status: 'error' }));
+      setIsErrorModalOpen(true);
     } finally {
       setIsExecutingAudit(false);
     }
-  }, [
-    context.type, 
-    context.workspace?.id, 
-    context.id
-  ]); // <-- Dependencias ahora son estables
+  }, [context.type, context.workspace?.id, context.id]); // Dependencias estables
+
+  // --- FUNCIÓN PARA EL BOTÓN "REINTENTAR" DEL MODAL ---
+  const handleRetryAudit = () => {
+      // Cierra el modal y vuelve a ejecutar la auditoría
+      setIsErrorModalOpen(false);
+      handleRunNewAudit(uploadedFileIds);
+  };
 
 
   // --- LÓGICA DE CARGA Y ACTUALIZACIÓN ---
@@ -269,7 +288,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           loadStrategy(contextToLoad)
         ]);
 
-        const { files: newFileIds, credits, history, available_filters, date_range_bounds, files_metadata } = stateResponse.data || {};
+        const { files: newFileIds, auditorias_ejecutadas ,credits, history, available_filters, date_range_bounds, files_metadata } = stateResponse.data || {};
         
         // Actualizamos el estado. `newFileIds` es una variable local, no un estado aún.
         setUploadedFileIds(newFileIds || { ventas: null, inventario: null });
@@ -280,24 +299,17 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         setAvailableFilters( available_filters
                 ? { categorias: available_filters.categorias, marcas: available_filters.marcas }
                 : { categorias: [], marcas: []});          
-        
-        if (!newFileIds?.ventas || !newFileIds?.inventario) {
-            setAuditState({ status: 'idle', data: null });
-            setIsLoading(false);
-            return;
-        }
+        setAuditCount(auditorias_ejecutadas || 0); // Guardamos el contador
 
-        // --- PASO 3: La "Encrucijada" (Verificación de Auditoría) ---
-        const statusEndpoint = '/auditoria/status';
-        const statusParams = isUserContext ? { workspace_id: identifier } : {};
-        const statusResponse = await api.get(statusEndpoint, { params: statusParams, headers: stateHeaders });
-        
-        // --- PASO 4: La Decisión Final ---
-        if (statusResponse.data.status === 'no_audit_found') {
-          // Pasamos los fileIds recién cargados directamente a la función.
-          await handleRunNewAudit(newFileIds);
-        } else {
+        if (newFileIds?.ventas && newFileIds?.inventario) {
+          setUploaderState('collapsed');
+          const statusEndpoint = '/auditoria/status';
+          const statusParams = isUserContext ? { workspace_id: identifier } : {};
+          const statusResponse = await api.get(statusEndpoint, { params: statusParams, headers: stateHeaders });
           setAuditState(statusResponse.data);
+        } else {
+          setAuditState({ status: 'idle', data: null });
+          setUploaderState('visible');
         }
 
         const loadedFiles = newFileIds || { ventas: null, inventario: null };
@@ -307,10 +319,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           ventas: loadedFiles.ventas ? 'success' : 'idle',
           inventario: loadedFiles.inventario ? 'success' : 'idle'
         });
-
-        setTimeout(() => {
-          setUploaderState('collapsed');
-        }, 300); // Duración del fade-out
         
       } catch (error) {
         console.error("Error al cargar y verificar el contexto:", error);
@@ -321,7 +329,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     };
 
     loadAndCheckContext();
-  }, [context.id, context.workspace?.id, handleRunNewAudit, loadStrategy]);
+  }, [context.id, context.workspace?.id]);
 
   // --- NUEVA FUNCIÓN: Actualiza solo créditos e historial ---
   const refreshCreditsAndHistory = useCallback(async (context) => {
@@ -363,128 +371,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     setFilesReady(!!uploadedFileIds.ventas && !!uploadedFileIds.inventario);
   }, [uploadedFileIds]);
 
-  // --- FUNCIÓN PARA EJECUTAR LA NUEVA AUDITORÍA ---
-  // const handleRunNewAudit = useCallback(async () => {
-  //   if (uploadedFileIds) {
-  //     setIsExecutingAudit(true);
-  //     const formData = new FormData();
-  //     formData.append("ventas_file_id", uploadedFileIds.ventas);
-  //     formData.append("inventario_file_id", uploadedFileIds.inventario);
-  //     if (context.type === 'user') {
-  //       formData.append("workspace_id", context.workspace.id);
-  //     }
-
-  //     try {
-  //       const response = await api.post('/auditoria/run', formData, {
-  //         headers: context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {}
-  //       });
-  //       setAuditState({ status: 'up_to_date', data: response.data });
-  //     } catch (error) {
-  //       console.error("Error al ejecutar la nueva auditoría:", error);
-  //       alert("No se pudo completar la nueva auditoría.");
-  //       setAuditState(prev => ({ ...prev, status: 'error' }));
-  //     } finally {
-  //       setIsExecutingAudit(false);
-  //     }
-  //   }
-  // }, [uploadedFileIds, context]);
-
-  // useEffect(() => {
-  //   if (filesReady) {
-  //     const checkAuditStatus = async () => {
-  //       setAuditState({ status: 'loading', data: null });
-  //       try {
-  //         const endpoint = '/auditoria/status';
-  //         const params = context.type === 'user' ? { workspace_id: context.workspace.id } : {};
-  //         const headers = context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {};
-          
-  //         const response = await api.get(endpoint, { params, headers });
-          
-  //         // --- LÓGICA DEL "ANFITRIÓN INTELIGENTE" ---
-  //         if (response.data.status === 'no_audit_found') {
-  //           // Si es la primera vez, ejecutamos la auditoría automáticamente
-  //           console.log(context)
-  //           console.log("Primera ejecución: disparando auditoría automática. desde: ");
-  //           handleRunNewAudit();
-  //         } else {
-  //           // Para visitas posteriores, simplemente guardamos el estado
-  //           setAuditState(response.data);
-  //         }
-          
-  //         setUploaderState('fadingOut'); // Acto 1: Desvanecer
-  //         setTimeout(() => {
-  //           setUploaderState('collapsed'); // Acto 2: Colapsar
-  //         }, 300); // Duración del fade-out
-  //       } catch (error) {
-  //         console.error("Error al verificar el estado de la auditoría:", error);
-  //         setAuditState({ status: 'error', data: null });
-  //       }
-  //     };
-  //     checkAuditStatus();
-  //   }
-  // }, [filesReady, context, handleRunNewAudit]);
-
-  // useEffect(() => {
-  //   const areFilesReady = uploadStatus.ventas === 'success' && uploadStatus.inventario === 'success';
-  //   setFilesReady(areFilesReady);
-
-  //   if (areFilesReady) {
-  //     const checkAuditStatus = async () => {
-  //       setAuditState({ status: 'loading', data: null });
-  //       try {
-  //         const endpoint = '/auditoria/status';
-  //         const params = context.type === 'user' ? { workspace_id: context.workspace.id } : {};
-  //         const headers = context.type === 'anonymous' ? { 'X-Session-ID': context.id } : {};
-          
-  //         const response = await api.get(endpoint, { params, headers });
-  //         setAuditState(response.data);
-  //         // Colapsamos los uploaders una vez que tenemos una respuesta
-  //         // setUploadersCollapsed(true);
-  //         // --- INICIAMOS LA SECUENCIA DE ANIMACIÓN ---
-  //         setUploaderState('fadingOut'); // Acto 1: Desvanecer
-  //         setTimeout(() => {
-  //           setUploaderState('collapsed'); // Acto 2: Colapsar
-  //         }, 300); // Duración del fade-out
-  //       } catch (error) {
-  //         console.error("Error al verificar el estado de la auditoría:", error);
-  //         setAuditState({ status: 'error', data: null });
-  //       }
-  //     };
-  //     checkAuditStatus();
-  //   }
-  // }, [filesReady, context]);
-
-
-
-  // --- RENDERIZADO CONDICIONAL ---
-  // const renderAuditContent = () => {
-  //   if (auditState.status === 'loading' || isExecutingAudit) {
-  //     return <LoadingScreen message={isExecutingAudit ? "Generando nueva auditoría..." : "Verificando estado..."} />;
-  //   }
-
-  //   if (auditState.status === 'outdated') {
-  //     return (
-  //       <div className="text-center p-8 bg-gray-800 rounded-lg">
-  //         <h3 className="text-xl font-bold text-white">Tus archivos de datos han sido actualizados.</h3>
-  //         <p className="text-gray-400 mt-2 mb-6">Genera un nuevo informe para analizar la información más reciente.</p>
-  //         <button onClick={handleRunNewAudit} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
-  //           <FiRefreshCw /> Generar Nueva Auditoría de Eficiencia
-  //         </button>
-  //         {auditState.data && (
-  //           <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto">
-  //             Ver última auditoría del {new Date(auditState.data.fecha).toLocaleDateString()}
-  //           </button>
-  //         )}
-  //       </div>
-  //     );
-  //   }
-
-  //   if (auditState.status === 'up_to_date' && auditState.data) {
-  //     return <AuditDashboard auditResult={auditState.data} onSolveClick={handleSolveClick} />;
-  //   }
-
-  //   return <p className="text-center text-gray-500">Error al cargar la auditoría.</p>;
-  // };
+  
   // --- RENDERIZADO CONDICIONAL DEL CONTENIDO PRINCIPAL ---
   const renderMainContent = () => {
     if (!filesReady) {
@@ -504,14 +391,9 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         <div className="text-center p-8 bg-gray-800 rounded-lg animate-fade-in">
           <h3 className="text-xl font-bold text-white">Tus archivos de datos han sido actualizados.</h3>
           <p className="text-gray-400 mt-2 mb-6">Genera un nuevo informe para analizar la información más reciente.</p>
-          <button onClick={handleRunNewAudit} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
+          <button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
             <FiRefreshCw /> Generar Nueva Auditoría
           </button>
-          {auditState.data && (
-            <button onClick={() => setAuditState(prev => ({...prev, status: 'up_to_date'}))} className="text-sm text-gray-500 mt-4 block mx-auto underline hover:text-white">
-              Ver última auditoría del {new Date(auditState.data.fecha).toLocaleDateString()}
-            </button>
-          )}
         </div>
       );
     }
@@ -520,15 +402,34 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
       return <AuditDashboard auditResult={auditState.data} onSolveClick={handleSolveClick} />;
     }
 
-    return <p className="text-center text-gray-500">Error al cargar la auditoría.</p>;
+    return (
+      <button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
+        <FiRefreshCw /> Generar Nueva Auditoría
+      </button>
+    )
   };
 
-  const handleSolveClick = (reportKey) => {
+  const handleSolveClick = (title, target_report, skus_afectados, context_params) => {
+
+    if (!target_report || !skus_afectados) return;
+
     // Esta función se llama desde una AuditTaskCard
-    const reportConfig = Object.values(reportData).flat().find(r => r.key === reportKey);
+    const reportConfig = Object.values(reportData).flat().find(r => r.key === target_report);
+    // const reportConfig = Object.values(reportData).flat().find(r => r.key === reportKey);
     if (reportConfig) {
+      setReportContextInfo({
+        title: title,
+        skus: skus_afectados || []
+      });
+      setInitialParams(context_params || {});
       setSelectedReport(reportConfig);
     }
+  };
+
+  const handleCloseReportModal = () => {
+    setSelectedReport(null);
+    setReportContextInfo(null);
+    setInitialParams(null); // Limpiamos los parámetros al cerrar
   };
 
   // Función para limpiar el estado al cambiar de workspace
@@ -541,8 +442,9 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
   // --- FUNCIÓN DE CARGA DE ARCHIVOS CONSCIENTE DEL CONTEXTO ---
   const handleFileProcessed = async (file, fileType) => {
+    setUploadStatus(prev => ({ ...prev, [fileType]: 'uploading' }));
+    
     setUploaderState('visible');
-    setAuditState({ status: 'idle', data: null });
 
     const isUserContext = context.type === 'user' && context.workspace;
     if (!isUserContext && !context.id) {
@@ -567,6 +469,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
     try {
       const response = await api.post('/upload-file', formData, { headers });
+      
+      // Actualizamos el estado del archivo que se acaba de subir
+      const newUploadStatus = { ...uploadStatus, [fileType]: 'success' };
+      const newFileIds = { ...uploadedFileIds, [fileType]: response.data.file_id };
+      setUploadStatus(newUploadStatus);
+      setUploadedFileIds(newFileIds);
+
       setUploadedFileIds(prev => ({ ...prev, [fileType]: response.data.file_id }));
       setUploadStatus(prev => ({ ...prev, [fileType]: 'success' }));
       setFileMetadata(prev => ({ ...prev, [fileType]: response.data.metadata || {} }));
@@ -581,6 +490,23 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
 
       if (fileType === 'ventas' && response.data.date_range_bounds) {
         setDateRangeBounds(response.data.date_range_bounds || null);
+      }
+
+      if (newUploadStatus.ventas === 'success' && newUploadStatus.inventario === 'success') {
+        console.log("Ambos archivos están listos. Marcando auditoría como desactualizada.");
+        // Forzamos el estado a 'outdated' directamente, sin llamar a la API.
+        // Mantenemos los datos de la auditoría anterior para el enlace de "ver última".
+        if (auditCount === 0) {
+          // Si es la primera vez, ejecutamos la auditoría automáticamente.
+          console.log("Primera ejecución detectada: disparando auditoría automática.");
+          handleRunNewAudit(newFileIds);
+          setAuditCount(prev => prev + 1)
+        } else {
+          setAuditState(prev => ({
+            status: 'outdated',
+            data: prev.data 
+          }));
+        }
       }
 
     } catch (error) {
@@ -626,18 +552,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
     setSelectedReport(reportItem);
   };
 
-  // const handleGoToRegister = () => {
-  //     // Cerramos cualquier modal que esté abierto y cambiamos a la vista de registro
-  //     setActiveModal(null); 
-  //     // setAppState('registering');
-  // };
-
   const handleUpgradeAction = (action) => {
     // Esta función decide qué hacer cuando el usuario hace clic en el CTA del UpgradeModal
-    // setActiveModal(null); // Cerramos el modal de upgrade
     if (action === 'register') {
       setActiveModal('register')
-      // onSwitchToRegister(); // Llamamos a la función del padre para abrir el modal de registro
     } else if (action === 'verify') {
       alert("La verificación para el plan Estratega estará disponible próximamente.");
     }
@@ -787,33 +705,18 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           </div>
         </div>
 
-        {/* --- RENDERIZADO DEL NUEVO FILTRO INTERACTIVO --- */}
-        {/*{uploadStatus.ventas === 'success' && dateRangeBounds && (
-          <div className="my-2 flex justify-center items-center gap-2">
-            <button 
-              onClick={() => setIsDateModalOpen(true)}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-gray-700 text-white rounded-lg shadow-md hover:bg-purple-700 transition-colors"
-            >
-              <FiCalendar />
-              <span>{getFilterButtonText()}</span>
-              <FiAward className="text-yellow-400" />
-            </button>
-          </div>
-        )}*/}
         {renderMainContent()}
         
         {filesReady && (
-          <div className="text-center mt-12">
-              <h3 className="text-xl font-semibold text-gray-300">¿Necesitas análisis más profundos o personalizados?</h3>
-              <button 
-                  // onClick={() => document.getElementById('tools-section')?.scrollIntoView({ behavior: 'smooth', block: 'start'})}
-                  className="mt-4 text-purple-400 font-bold transition-all duration-300 hover:translate-y-2"
-              >
-                  ↓ Explorar todas las Herramientas de Análisis
-              </button>
+          <div className="text-center">
+            <h2 className="text-2xl font-bold text-white mt-8 mb-2">
+              Profundiza en tus Datos
+              <Tooltip text={tooltips['reports_header_tooltip']} />
+            </h2>
+            <p className="text-gray-400 max-w-2xl mx-auto">Cada reporte es una herramienta especializada. Úsalas para responder a preguntas clave sobre rentabilidad, compras, estrategia y más.</p>
           </div>
         )}
-        <div id="tools-section" className="w-full space-y-8 pt-12 px-4">
+        <div id="tools-section" className="w-full space-y-8 px-4 mb-6">
           {filesReady && Object.entries(reportData).map(([categoria, reportes]) => (
               <div key={categoria} className="mb-6">
                 <h3 className="text-white text-xl font-semibold mb-4 border-b border-purple-400 pb-2 mt-6">
@@ -828,7 +731,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
                         context={context} // <-- Pasa el contexto del usuario
                         onExecute={handleReportView}
                         onInfoClick={handleInfoClick}
-                        // onInfoClick={setInfoModalReport}
                         onProFeatureClick={handleProFeatureClick} // <-- Pasa la nueva función
                       />
                     </AnimateOnScroll>
@@ -840,27 +742,21 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         <FerreterosLogo/>
       </main>
 
-      {/* --- RENDERIZADO DEL NUEVO MODAL DE INFORMACIÓN --- */}
-      {infoModalReport && (
-        <ReportInfoModal 
-          reportItem={infoModalReport} 
-          onClose={() => setInfoModalReport(null)} 
-        />
-      )}
-
       {/* --- RENDERIZADO DEL MODAL DE REPORTE --- */}
       {/* Se renderiza solo si hay un reporte seleccionado */}
       {selectedReport && (
         <ReportModal 
           reportConfig={selectedReport}
+          initialParams={initialParams} // <-- Pasamos la nueva prop
           context={{...context, fileIds: uploadedFileIds}} // Pasamos toda la info necesaria
           initialView={modalInitialView} // <-- Pasamos la vista inicial
           availableFilters={availableFilters}
-          onClose={() => setSelectedReport(null)} // Al cerrar, simplemente limpiamos la selección
+          contextInfo={reportContextInfo} // <-- Pasamos la nueva prop
+          initialSkuFilter={initialSkuFilter} // <-- Pasamos la nueva prop
+          onClose={handleCloseReportModal}
           onInsufficientCredits={handleInsufficientCredits} // <-- Pasamos la nueva función
           onAnalysisComplete={handleAnalysisCompletion}
           onLoginSuccess={handleLoginFromModal}
-          // onStateUpdate={setCount} // Pasamos la función para que el modal pueda pedir un refresco
         />
       )}
       
@@ -871,7 +767,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         />
       )}
 
-      {/*{isHistoryModalOpen && ()}*/}
       {activeModal === 'history' && (
         <CreditHistoryModal
           history={creditHistory}
@@ -888,7 +783,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         />
       )}
 
-      {/*{showProModal && proReportClicked && ()}*/}
       {activeModal === 'proOffer' && proReportClicked && (
         <ProOfferModal
           reportName={proReportClicked.label}
@@ -897,7 +791,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
         />
       )}
 
-      {/*{showCreditsModal && ()}*/}
       {activeModal === 'creditsOffer' && (
         <InsufficientCreditsModal
           required={creditsInfo.required}
@@ -957,6 +850,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           reportItem={proReportClicked}
           onClose={() => setActiveModal(null)}
           onAction={handleUpgradeAction}
+          onBecomeStrategist={() => setActiveModal('becomeStrategist')}
         />
       )}
 
@@ -978,7 +872,6 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           onRegister={() => {
               setActiveModal(null);
               setActiveModal('register');
-              // onSwitchToRegister(); // Llama a la función del padre para mostrar el modal de registro real
           }}
           onClose={() => setActiveModal(null)}
         />
@@ -994,6 +887,13 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData, onLogo
           }}
         />
       )}
+
+      <ErrorModal
+        isOpen={isErrorModalOpen}
+        onClose={() => setIsErrorModalOpen(false)}
+        onRetry={handleRetryAudit}
+        errorContext={errorContextData}
+      />
     </div>
   );
 }
