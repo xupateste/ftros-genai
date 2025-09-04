@@ -10,6 +10,7 @@ export const LandingRotacion = ({ onAnalyze, onLoginClick }) => {
       subtitle="Calcula la rotación de cada producto, detecta excesos o quiebres de stock y toma decisiones basadas en el movimiento real de tu inventario."
       ctaText="Analizar Rotación de Stock"
       reportType="inventory-turnover"
+      action="la Medición"
       onAnalyze={onAnalyze}
       onLoginClick={onLoginClick}
     />

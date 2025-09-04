@@ -48,19 +48,19 @@ const templateStock = {
           {
             name: "Subcategoría",
             key: "Subcategoría",
-            required: true,
+            required: false,
             suggested_mappings: ["Subcategoría"]
           },
           {
             name: "Rol de categoría",
             key: "Rol de categoría",
-            required: true,
+            required: false,
             suggested_mappings: ["Rol de categoría"]
           },
           {
             name: "Rol del producto",
             key: "Rol del producto",
-            required: true,
+            required: false,
             suggested_mappings: ["Rol del producto"]
           }
         ]

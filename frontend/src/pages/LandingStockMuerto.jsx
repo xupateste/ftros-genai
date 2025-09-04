@@ -11,6 +11,7 @@ export const LandingStockMuerto = ({ onAnalyze, onLoginClick, onLimitExceeded })
       subtitle="Detecta productos que no rotan, libera espacio y optimiza tu inventario con decisiones más inteligentes."
       ctaText="Analizar Stock Muerto"
       reportType="dead-stock"
+      action="el Cálculo"
       onAnalyze={onAnalyze}
       onLoginClick={onLoginClick}
       onLimitExceeded={onLimitExceeded}

@@ -22,7 +22,7 @@ export const RechargeProModal = ({ onClose }) => {
 
   // --- NUEVA FUNCIÓN para generar el enlace de WhatsApp ---
   const handleProceedToCorporate = () => {
-    const messageCorporate = `Hola, estoy interesado en conocer más sobre el *Plan Corporativo*. Entiendo que ofrecen paquetes más grandes y personalizados, y me gustaría ver las opciones disponibles para mi empresa.\n\n¿Podrías brindarme más detalles?`;
+    const messageCorporate = `Hola, estoy interesado en conocer más sobre el *Plan Corporativo*. Entiendo que ofrecen paquetes más grandes y personalizados.\n\n¿Puedo contarles mi caso?`;
       const encodedMessageCorporate = encodeURIComponent(messageCorporate);
       const whatsappUrlCorporate = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessageCorporate}`;
       window.open(whatsappUrlCorporate, '_blank');
@@ -74,7 +74,7 @@ export const RechargeProModal = ({ onClose }) => {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xl font-bold text-purple-700">S/ {plan.price.toFixed(2)}</p>
+                    <p className="text-xl font-bold text-purple-700">S/ {plan.price.toFixed(2)} <span className="text-xs font-medium antialiased">/ mes</span></p>
                     {selectedPlanId === plan.id && (
                       <button onClick={handleProceedToPayment} className="px-4 py-1 rounded-xl text-lg font-bold bg-purple-600 hover:bg-purple-700">
                         Comprar

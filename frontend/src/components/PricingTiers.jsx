@@ -38,8 +38,8 @@ export const PricingTiers = ({ onSubscribeClick }) => {
             title="Anonimo"
             description="Análisis anónimos sin necesidad de registrarte"
             features={[
-              '10 Créditos cada 24 horas',
-              'Acceso instantáneo',
+              '1 Análisis Completo',
+              '+10 Créditos cada 24 horas',
             ]}
             ctaText="Gratis"
           />

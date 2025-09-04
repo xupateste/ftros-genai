@@ -86,7 +86,7 @@ const DynamicSocialProofText = () => {
     const displayName = `${name.substring(0, 2)}****${name.substring(name.length - 1)}`;
 
     return (
-        <p className={`text-sm text-gray-400 font-medium transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
+        <p className={`text-sm mt-2 text-gray-400 drop-shadow-lg text-shadow-xl/50 font-medium transition-opacity duration-500 ${isVisible ? 'opacity-100' : 'opacity-0'}`}>
             <span className="font-bold text-gray-400">{displayName}</span> se unió hace <span className="font-bold text-gray-400">{time}</span>.
         </p>
     );
@@ -228,7 +228,7 @@ const SlidingAvatars = ({ctaClick}) => {
             }
           })}
           <div
-            className="w-10 h-10 bg-red-500 rounded-full border-2 border-white transition-opacity duration-500 flex-shrink-0 flex items-center justify-center text-white text-xl hover:bg-red-400 hover:scale-105"
+            className="w-10 h-10 bg-red-500 cursor-pointer rounded-full border-2 border-white transition-opacity duration-500 flex-shrink-0 flex items-center justify-center text-white text-xl hover:bg-red-400 hover:scale-105"
             style={{ zIndex: 90 }}
             onClick={ ctaClick }
           >
@@ -682,7 +682,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
     <div className="w-full bg-gray-900 text-white animate-fade-in">
       {/* Navbar Simple */}
       <nav className="w-full bg-black">
-        <div className="p-4 max-w-5xl mx-auto flex justify-between items-center">
+        <div className="p-4 max-w-6xl mx-auto flex justify-between items-center">
           {/*<h1 className="text-2xl font-bold gradient-text">
             <span
               className="text-3xl bg-clip-text text-transparent"
@@ -701,57 +701,79 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
         </div>
       </nav>
 
+      <section 
+        className="relative min-h-[calc(100vh-83px)] flex items-center text-center bg-cover bg-center" 
+        style={{ backgroundImage: "url('/background-hero-2h.png')" }}
+      >
+        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div className="relative container mx-auto px-6">
+          <AnimateOnScroll delay={ 200 }>
+            <h1 className="text-5xl md:text-7xl drop-shadow-lg text-shadow-xl/50 font-lexend md:leading-relaxed max-w-4xl font-semibold py-2 justify-center mx-auto font-black mb-4">
+              La siguiente generación de {' '}
+              <span
+                className="bg-clip-text font-semibold drop-shadow-lg text-shadow-xl/50 leading-relaxed text-transparent"
+                style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
+              >
+                Ferreterías
+              </span>
+            </h1>
+          </AnimateOnScroll>
+          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+            Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
+          </p>*/}
+          
+          <AnimateOnScroll delay={ 1000 }>
+            <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Únete ahora" />
+            <SlidingAvatars ctaClick={() => openOnboardingModal()} />
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={ 1100 }>
+            {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>*/}
+            <DynamicSocialProofText />
+          </AnimateOnScroll>
+        </div>
+      </section>
+
       {/* Sección 0: Héroe (Ahora con imagen de fondo) */}
-        <section 
-          className="relative min-h-[calc(100vh-83px)] flex items-center text-center bg-cover bg-center" 
-          style={{ backgroundImage: "url('/background-hero-h.png')" }}
-        >
-          <div className="absolute inset-0 bg-black bg-opacity-80"></div>
-          <div className="relative container mx-auto px-6">
-            {/*<h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
-              Tu ferretería tiene <span
-                className="bg-clip-text text-transparent"
-                style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
-              >dinero escondido</span>.
-              <br />
-              Te ayudamos a encontrarlo.
-            </h1>*/}
-            <AnimateOnScroll delay={ 200 }>
-              <h1 className="text-3xl max-w-4xl py-2 md:text-6xl justify-center mx-auto font-black mb-4 leading-tight">
-                Analiza los números de tu Ferretería y decide mejor en minutos,
-                <span
-                  className="bg-clip-text font-extrabold text-transparent ml-3"
-                  style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
-                >
-                  <b>no en horas</b>
-                </span>.
-              </h1>
-            </AnimateOnScroll>
-            {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-              Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
-            </p>*/}
-            <AnimateOnScroll delay={ 600 }>
-            <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-              {/*Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>*/}
-              Aumenta tu rentabilidad con tecnología que protege tu privacidad.
-              {/*<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>*/}
-            </p>
-            </AnimateOnScroll>
-            {/* --- RENDERIZADO CONDICIONAL DE BOTONES --- */}
-            <AnimateOnScroll delay={ 900 }>
-              {/*<WaitlistForm  ref={heroRef} />*/}
-              <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>
-              <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
-            </AnimateOnScroll>
-            <AnimateOnScroll delay={ 1000 }>
-              <SlidingAvatars ctaClick={() => openOnboardingModal()} />
-            </AnimateOnScroll>
-            <AnimateOnScroll delay={ 1100 }>
-              {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>*/}
-              <DynamicSocialProofText />
-            </AnimateOnScroll>
-          </div>
-        </section>
+      <section 
+        className="relative flex items-center text-center bg-black bg-opacity-40 bg-center py-10" 
+      >
+        <div className="relative container mx-auto px-6">
+          {/*<h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
+            Tu ferretería tiene <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+            >dinero escondido</span>.
+            <br />
+            Te ayudamos a encontrarlo.
+          </h1>*/}
+          <AnimateOnScroll delay={ 200 }>
+            <h1 className="text-3xl max-w-4xl py-2 md:text-4xl justify-center mx-auto font-black mb-4 leading-tight">
+              Analiza los números de tu Ferretería y decide mejor en minutos,{' '}
+              <span
+                className="bg-clip-text font-extrabold text-transparent"
+                style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
+              >
+                <b>no en horas</b>
+              </span>.
+            </h1>
+          </AnimateOnScroll>
+          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+            Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
+          </p>*/}
+          <AnimateOnScroll delay={ 600 }>
+          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+            {/*Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>*/}
+            Aumenta tu rentabilidad con tecnología que protege tu privacidad.
+            <br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
+          </p>
+          </AnimateOnScroll>
+          <AnimateOnScroll delay={ 900 }>
+            {/*<WaitlistForm  ref={heroRef} />*/}
+            <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>
+            <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
+          </AnimateOnScroll>
+        </div>
+      </section>
 
       {/* Sección 0: DATA PRIVACY */}
       <section className="py-20 bg-black bg-opacity-30">
@@ -763,9 +785,9 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
               className="w-15 h-15 mb-3 mx-auto"
             />
             <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold text-center mb-4">
-              Desbloquea tus datos, Protege tu privacidad.
+              Desbloquea tus datos, Protege tu privacidad.{' '}
               <span
-                className="bg-clip-text font-extrabold text-transparent ml-2"
+                className="bg-clip-text font-extrabold text-transparent"
                 style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
               >
                 Impulsa tu Rentabilidad
@@ -881,9 +903,9 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
               alt="La Oportunidad de Crecer"
               className="w-36 h-36 mb-3 mx-auto"
             />
-            <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold mb-4">Nuestra Única Alianza 
+            <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold mb-4">Nuestra Única Alianza{' '}
               <span
-                className="bg-clip-text font-extrabold text-transparent ml-2"
+                className="bg-clip-text font-extrabold text-transparent"
                 style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
               >
                 es Contigo
@@ -903,9 +925,9 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
           <div className="container mx-auto max-w-5xl">
               <AnimateOnScroll onVisible={analytics.trackViewSectionComparison}>
                   <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold text-center mb-8 text-gray-200">
-                      ¿Cómo cambia tu negocio con
+                      ¿Cómo cambia tu negocio con{' '}
                       <span
-                        className="bg-clip-text font-extrabold text-transparent ml-2"
+                        className="bg-clip-text font-extrabold text-transparent"
                         style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
                       >
                         Nuestra Plataforma
@@ -979,13 +1001,13 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
           <div className="container mx-auto max-w-6xl">
               <AnimateOnScroll onVisible={analytics.trackViewSectionSteps}>
                   <h2 className="text-3xl md:text-4xl max-w-3xl mx-auto font-bold text-center mb-16 text-white">
-                      En solo 3 pasos, transformas datos en 
+                      En solo 3 pasos, transformas datos en{' '}
                       <span
-                        className="bg-clip-text font-extrabold text-transparent ml-2"
+                        className="bg-clip-text font-extrabold text-transparent"
                         style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
                       >
                         decisiones rentables
-                      </span>:
+                      </span>
                   </h2>
               </AnimateOnScroll>
               <div className="grid md:grid-cols-3 gap-8 lg:gap-12">

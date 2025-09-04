@@ -11,7 +11,6 @@ const templateVentas = {
             name: "N° de comprobante / boleta",
             key: "N° de comprobante / boleta",
             required: true,
-            // description: "Fecha en formato dd/mm/aaaa ej:23/05/2025",
             suggested_mappings: ["N° de comprobante / boleta"]
           },
           {

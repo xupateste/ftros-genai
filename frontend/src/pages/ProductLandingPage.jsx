@@ -69,7 +69,7 @@ const FeedbackPanel = ({ type, message, onReset, onWhatsApp }) => {
 };
 
 
-export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAnalyze, onLoginClick, onLimitExceeded }) => {
+export const ProductLandingPage = ({ title, subtitle, action, ctaText, reportType, onAnalyze, onLoginClick, onLimitExceeded }) => {
   const [ventasFile, setVentasFile] = useState(null);
   const [inventarioFile, setInventarioFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -253,13 +253,13 @@ export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAna
       </div>
       <div className="pt-12 pb-16 text-center bg-gradient-to-b from-black to-gray-900">
         <div className="container mx-auto px-4">
-          <h1 className="antialiased text-3xl md:text-4xl mx-auto max-w-5xl text-left font-bold mb-4">
+          <h1 className="antialiased text-2xl md:text-4xl mx-auto max-w-5xl text-left font-bold mb-4">
             {title}
           </h1>
           <p className="antialiased text-lg md:text-xl text-gray-300 max-w-5xl text-left mx-auto mb-8">
             {subtitle}
           </p>
-          <div className="max-w-5xl min-h-80 mx-auto flex flex-col justify-center items-center bg-gray-800/50 p-6 rounded-xl shadow-2xl">
+          <div className="max-w-5xl min-h-64 mx-auto flex flex-col justify-center items-center bg-gray-800/50 p-6 rounded-xl shadow-2xl">
             { isStarted ? 
               <>
                 <div className='grid md:grid-cols-2 gap-6 mb-6 w-full'>
@@ -319,7 +319,7 @@ export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAna
               </>
               :
               <button className="min-w-60 max-w-96 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-10 mx-10 rounded-lg text-xl min-h-16 transition duration-300 ease-in-out" onClick={() => setIsStarted(true)}>
-                Click para iniciar el Análisis!
+                Click para iniciar {action}!
               </button>
             }
           </div>

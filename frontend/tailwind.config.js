@@ -20,7 +20,10 @@ export default {
         'background': '#470891',
       }, 
       fontFamily: {
-        default: ['Poppins', 'sans-serif'],
+        default: ['Inter', 'sans-serif'],
+        poppins: ['Poppins', 'sans-serif'],
+        outfit: ['Outfit', 'sans-serif'],
+        lexend: ['Lexend Deca', 'sans-serif'],
       },
       animation: {
         "loop-scroll": "120s linear 0s infinite normal none running loop-scroll",

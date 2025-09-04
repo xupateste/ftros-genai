@@ -10,6 +10,7 @@ export const LandingABC = ({ onAnalyze, onLoginClick }) => {
       subtitle="Identifica los productos que generan más valor, ordena tu inventario y maximiza tus recursos."
       ctaText="Realizar Análisis ABC"
       reportType="abc-analysis"
+      action="el Análisis"
       onAnalyze={onAnalyze}
       onLoginClick={onLoginClick}
     />
