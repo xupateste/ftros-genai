@@ -6,8 +6,8 @@ import { ProductLandingPage } from './ProductLandingPage';
 export const LandingABC = ({ onAnalyze, onLoginClick }) => {
   return (
     <ProductLandingPage
-      title="Realiza un Análisis ABC de tu Catálogo"
-      subtitle="Clasifica tus productos para saber cuáles generan la mayor parte de tus ingresos. Enfoca tus esfuerzos en lo que realmente importa."
+      title={<>La app más confiable para el <strong>Análisis ABC</strong> de tu inventario</>}
+      subtitle="Identifica los productos que generan más valor, ordena tu inventario y maximiza tus recursos."
       ctaText="Realizar Análisis ABC"
       reportType="abc-analysis"
       onAnalyze={onAnalyze}
