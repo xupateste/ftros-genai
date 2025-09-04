@@ -1,7 +1,9 @@
 // src/pages/ProductLandingPage.jsx
 
 import React, { useState } from 'react';
-import { FiLogIn } from 'react-icons/fi';
+import { FiLogIn, FiInfo, FiRefreshCw, FiMessageCircle, FiLoader } from 'react-icons/fi';
+import { FaWhatsapp } from 'react-icons/fa'
+import axios from 'axios';
 
 // Asumiendo que estos componentes existen y están estilizados
 import CsvImporterComponent from '../assets/CsvImporterComponent';
@@ -18,10 +20,62 @@ import { PrivacyPolicyModal } from '../components/PrivacyPolicyModal'
 // import { Footer } from '../components/Footer'; // Placeholder
 import { RechargeProModal } from '../components/RechargeProModal';
 
-export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAnalyze, onLoginClick }) => {
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
+const FeedbackPanel = ({ type, message, onReset, onWhatsApp }) => {
+    if (type === 'idle' || type === 'loading') return null;
+
+    const baseClasses = "text-center p-4 mb-6 rounded-lg border max-w-xl mx-auto animate-fade-in";
+    const config = {
+        'success_empty': {
+            icon: <FiInfo className="text-green-500 text-5xl mx-auto mb-2" />,
+            classes: "bg-green-50 border-green-200 text-green-800",
+            buttonText: "Cargar otros archivos",
+            buttonAction: onReset,
+            buttonIcon: <FiRefreshCw />
+        },
+        'error': {
+            icon: <FiInfo className="text-blue-500 text-5xl mx-auto mb-2" />,
+            classes: "bg-blue-50 border-blue-200 text-blue-800",
+            buttonText: "Cargar otros archivos",
+            buttonAction: onReset,
+            buttonIcon: <FiRefreshCw />
+        },
+        'error_support': {
+            icon: <FiMessageCircle className="text-red-500 text-5xl mx-auto mb-2" />,
+            classes: "bg-red-50 border-red-200 text-red-800",
+            buttonText: "Hablar con un especialista",
+            buttonAction: onWhatsApp,
+            buttonIcon: <FaWhatsapp />
+        }
+    };
+
+    const currentConfig = config[type];
+    if (!currentConfig) return null;
+
+    return (
+        <div className={`${baseClasses} ${currentConfig.classes}`}>
+            {currentConfig.icon}
+            <p className="font-semibold mb-4 whitespace-pre-wrap">{message}</p>
+            <button
+                onClick={currentConfig.buttonAction}
+                className="bg-white text-gray-700 font-bold py-2 px-4 mx-auto rounded-lg shadow border hover:bg-gray-50 flex items-center justify-center gap-2"
+            >
+                {currentConfig.buttonIcon}
+                {currentConfig.buttonText}
+            </button>
+        </div>
+    );
+};
+
+
+export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAnalyze, onLoginClick, onLimitExceeded }) => {
   const [ventasFile, setVentasFile] = useState(null);
   const [inventarioFile, setInventarioFile] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [feedback, setFeedback] = useState({ type: 'idle', message: '' });
+  const [errorCount, setErrorCount] = useState(0);
+
   const [isStarted, setIsStarted] = useState(false);;
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false); // <-- Nuevo estado
   const [errorState, setErrorState] = useState(false);
@@ -32,6 +86,7 @@ export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAna
   const [inventarioStatus, setInventarioStatus] = useState({ status: 'idle', metadata: null });
 
   const handleFileProcessed = (file, fileType) => {
+    handleReset(); 
     if (fileType === 'ventas') {
       setVentasFile(file);
       // Aquí podrías procesar metadata si el backend la devolviera tras un pre-análisis
@@ -43,13 +98,24 @@ export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAna
   };
 
   const handleReset = () => {
-    setVentasFile(null);
-    setInventarioFile(null);
-    setVentasStatus({ status: 'idle', metadata: null });
-    setInventarioStatus({ status: 'idle', metadata: null });
-    setErrorState(false);
-    setIsLoading(false);
+    // setVentasFile(null);
+    // setInventarioFile(null);
+    // setVentasStatus({ status: 'idle', metadata: null });
+    // setInventarioStatus({ status: 'idle', metadata: null });
+    // setErrorState(false);
+    // setIsLoading(false);
+    setFeedback({ type: 'idle', message: '' });
   };
+
+  const handleWhatsAppContact = () => {
+    // Reutiliza la lógica del modal de recarga para abrir WhatsApp
+    const WHATSAPP_NUMBER = '51930240108'; // Reemplaza con tu número
+    const message = `Hola, estoy intentando analizar mis archivos para el reporte de '${ctaText}' y necesito ayuda con el formato.`;
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+  };
+
 
   // const handleAnalyzeClick = () => {
   //   if (ventasFile && inventarioFile) {
@@ -91,6 +157,79 @@ export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAna
     } finally {
       // Esto se ejecuta siempre, tanto en éxito como en error.
       // Es importante para detener el spinner si hay un fallo.
+      setIsLoading(false);
+    }
+  };
+
+  const handleValidationClick = async () => {
+    if (!ventasFile || !inventarioFile) {
+      alert("Por favor, carga ambos archivos para continuar.");
+      return;
+    }
+
+    setIsLoading(true);
+    setFeedback({ type: 'loading', message: 'Validando archivos...' });
+
+    const formData = new FormData();
+    formData.append("ventas_file", ventasFile);
+    formData.append("inventario_file", inventarioFile);
+    formData.append("report_type", reportType);
+
+    try {
+      const response = await axios.post(`${API_URL}/api/v1/anonymous-validate`, formData);
+      const { status, message } = response.data;
+      
+      switch (status) {
+        case 'VALIDATION_SUCCESS':
+          setErrorCount(0);
+          setFeedback({ type: 'success', message: '¡Validación exitosa! Generando tu análisis completo...' });
+          // Llamamos a la función de ejecución final que nos pasaron desde App.jsx
+          await onAnalyze({ reportType, ventasFile, inventarioFile });
+          break;
+        
+        case 'EMPTY_RESULT':
+        case 'VALIDATION_ERROR':
+          const newErrorCount = errorCount + 1;
+          setErrorCount(newErrorCount);
+
+          if (newErrorCount >= 2) {
+            setFeedback({
+              type: 'error_support',
+              message: "No pudimos obtener un resultado con esos archivos. ¿Podrías revisarlos e intentarlo de nuevo?"
+            });
+          } else {
+            const type = status === 'EMPTY_RESULT' ? 'success_empty' : 'error';
+            const defaultMessage = "No pudimos obtener un resultado con esos archivos. ¿Podrías revisarlos e intentarlo de nuevo?";
+            setFeedback({ type, message: message || defaultMessage });
+          }
+          break;
+        
+        default:
+          throw new Error("Respuesta desconocida del servidor");
+      }
+    } catch (error) {
+      console.error("Error en el pre-flight check:", error);
+      
+      if (error.response?.status === 429) {
+        onLimitExceeded();
+      } else {
+        // --- LÓGICA DE DOS TIEMPOS AÑADIDA AQUÍ ---
+        const newErrorCount = errorCount + 1;
+        setErrorCount(newErrorCount);
+
+        if (newErrorCount >= 2) {
+            setFeedback({
+                type: 'error_support',
+                message: "Sabemos que puede ser frustrante. ¿Te gustaría que un especialista revise tus archivos contigo? Estamos para ayudarte."
+            });
+        } else {
+            setFeedback({
+                type: 'error',
+                message: "No pudimos obtener un resultado con esos archivos. ¿Podrías revisarlos e intentarlo de nuevo?"
+            });
+        }
+      }
+    } finally {
       setIsLoading(false);
     }
   };
@@ -141,7 +280,7 @@ export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAna
                     metadata={ventasStatus.ventas}
                   />
                 </div>
-                {errorState ? (
+                {/*{errorState ? (
                   <button
                     onClick={handleReset}
                     className="w-full md:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-3 px-12 rounded-lg text-lg transition duration-300"
@@ -156,7 +295,27 @@ export const ProductLandingPage = ({ title, subtitle, ctaText, reportType, onAna
                   >
                     {isLoading ? 'Procesando...' : ctaText}
                   </button>
-                )}
+                )}*/}
+                <FeedbackPanel 
+                  type={feedback.type} 
+                  message={feedback.message}
+                  onReset={handleReset}
+                  onWhatsApp={handleWhatsAppContact}
+                />
+                <button
+                  onClick={handleValidationClick}
+                  disabled={!ventasFile || !inventarioFile || isLoading}
+                  className="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-12 rounded-lg text-lg ... disabled:bg-gray-500"
+                >
+                  {isLoading ? (
+                    <div className="flex items-center justify-center gap-2">
+                      <FiLoader className="animate-spin" />
+                      <span>{feedback.message}</span>
+                    </div>
+                  ) : (
+                    ctaText
+                  )}
+                </button>
               </>
               :
               <button className="min-w-60 max-w-96 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-10 mx-10 rounded-lg text-xl min-h-16 transition duration-300 ease-in-out" onClick={() => setIsStarted(true)}>

@@ -36,6 +36,7 @@ import { AuditDashboard } from './AuditDashboard'; // <-- Importamos el nuevo co
 import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+
 import {LoginModal} from './LoginModal'; // Asumimos que LoginModal vive en su propio archivo
 import {RegisterModal} from './RegisterModal'; // Asumimos que RegisterModal vive en su propio archivo
 import { RegisterToUnlockModal } from './RegisterToUnlockModal';
@@ -699,21 +700,23 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData = null,
             <span>Modo: Sesión Anónima <br/> {context.id}</span>
           </p>
         }
-      <div className="flex flex-col max-w-5xl mx-auto justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
-         <CreditsPanel 
-            used={credits.used} 
-            remaining={credits.remaining}
-            onHistoryClick={() => setActiveModal('history')}
-         />
-        {context.type === 'user' && (
-          <WorkspaceSelector
-            workspaces={workspaces}
-            activeWorkspace={activeWorkspace}
-            onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
-            onCreateNew={() => setIsCreateModalOpen(true)}
-            onBackToDashboard={ onBackToDashboard }
-          />
-        )}
+      <div className="w-full justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
+        <div className="flex flex-col  max-w-5xl mx-auto">
+           <CreditsPanel 
+              used={credits.used} 
+              remaining={credits.remaining}
+              onHistoryClick={() => setActiveModal('history')}
+           />
+          {context.type === 'user' && (
+            <WorkspaceSelector
+              workspaces={workspaces}
+              activeWorkspace={activeWorkspace}
+              onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
+              onCreateNew={() => setIsCreateModalOpen(true)}
+              onBackToDashboard={ onBackToDashboard }
+            />
+          )}
+        </div>
       </div>
 
       <main className="flex-col items-center overflow-y-auto pb-4 w-full">

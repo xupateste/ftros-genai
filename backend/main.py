@@ -3137,6 +3137,81 @@ async def register_for_beta(payload: BetaRegistrationPayload, request: Request):
 # ===================================================================================
 # --- ENDPOINT PARA ANONIMOS NO LIMITADOS ---
 # ===================================================================================
+@app.post("/api/v1/anonymous-validate", summary="Valida archivos y chequea si el análisis anónimo tendrá resultados", tags=["Análisis Anónimo"])
+async def validate_anonymous_analysis(
+    request: Request,
+    ventas_file: UploadFile = File(...),
+    inventario_file: UploadFile = File(...),
+    report_type: str = Form(...)
+):
+    """
+    Realiza un 'pre-flight check'. Valida los archivos y ejecuta un 'dry run' 
+    del análisis para ver si producirá resultados, sin crear una sesión 
+    ni guardar los archivos permanentemente.
+    """
+    # --- 1. Chequeo de Límite de Uso por IP (24h) ---
+    client_ip = request.client.host
+    now = datetime.now(timezone.utc)
+    usage_logs_ref = db.collection('anonymous_usage_logs').document(client_ip)
+    usage_doc = usage_logs_ref.get()
+    
+    if usage_doc.exists:
+        last_usage_time = usage_doc.to_dict().get("timestamp")
+        if now - last_usage_time < timedelta(hours=24):
+            return JSONResponse(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                content={ "status": "SESSION_LIMIT_EXCEEDED" }
+            )
+
+    # --- 2. Lectura y Validación Básica de Archivos ---
+    try:
+        ventas_contents = await ventas_file.read()
+        inventario_contents = await inventario_file.read()
+        
+        df_ventas = pd.read_csv(io.BytesIO(ventas_contents))
+        df_inventario = pd.read_csv(io.BytesIO(inventario_contents))
+
+        # Validación simple de columnas (puedes expandir esto)
+        required_sales_cols = ["Fecha de venta", "SKU / Código de producto", "Cantidad vendida"]
+        required_inventory_cols = ["SKU / Código de producto", "Cantidad en stock actual"]
+
+        if not all(col in df_ventas.columns for col in required_sales_cols):
+            return JSONResponse(status_code=400, content={ "status": "VALIDATION_ERROR", "message": "Tu archivo de ventas no contiene todas las columnas requeridas (Fecha de venta, SKU, Cantidad vendida)." })
+        if not all(col in df_inventario.columns for col in required_inventory_cols):
+            return JSONResponse(status_code=400, content={ "status": "VALIDATION_ERROR", "message": "Tu archivo de inventario no contiene todas las columnas requeridas (SKU, Cantidad en stock actual)." })
+
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=400, content={ "status": "VALIDATION_ERROR", "message": f"No se pudo leer uno de tus archivos. Asegúrate de que sea un CSV válido. ({e})" })
+
+    # --- 3. "Dry Run" del Análisis ---
+    try:
+        report_config_found = next((v for k, v in REPORTS_CONFIG.items() if v.get("url_key") == report_type), None)
+        if not report_config_found:
+            raise ValueError(f"El tipo de reporte '{report_type}' no es válido.")
+
+        processing_function = globals()[report_config_found['processing_function_name']]
+        
+        # Ejecutamos el análisis con parámetros por defecto
+        analysis_result = processing_function(
+            df_ventas=df_ventas, 
+            df_inventario=df_inventario,
+            **report_config_found.get("default_params", {})
+        )
+        
+        result_df = analysis_result.get("data")
+        
+        # --- 4. Devolver Respuesta Inteligente ---
+        if result_df.empty:
+            return JSONResponse(status_code=200, content={ "status": "EMPTY_RESULT" })
+        else:
+            return JSONResponse(status_code=200, content={ "status": "VALIDATION_SUCCESS", "preview": { "rowCount": len(result_df) } })
+
+    except Exception as e:
+        traceback.print_exc()
+        return JSONResponse(status_code=500, content={ "status": "SERVER_ERROR", "message": f"Ocurrió un error interno al procesar el análisis: {e}" })
+
+
 @app.post("/api/v1/anonymous-analysis", summary="Ejecuta un análisis para un usuario anónimo", tags=["Análisis Anónimo"])
 async def run_anonymous_analysis(
     request: Request,

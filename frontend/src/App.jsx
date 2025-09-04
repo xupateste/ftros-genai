@@ -126,16 +126,23 @@ function AppContent() {
       setCurrentView('anonymous-workspace');
 
     } catch (error) {
+      console.error("Error en la ejecución final:", error);
+      alert("Ocurrió un error al generar tu reporte final. Por favor, intenta de nuevo.");
       // Límite Excedido: Abrimos el modal de registro
-      if (error.response?.status === 429) {
-        console.log("Límite de sesión excedido, mostrando modal de registro.");
-        // setActiveModal('register');
-        setActiveModal('limitExceeded'); 
-      } else {
-        // Otro tipo de error
-        alert(error.response?.data?.detail || "Ocurrió un error inesperado al procesar tu solicitud.");
-      }
+      // if (error.response?.status === 429) {
+      //   console.log("Límite de sesión excedido, mostrando modal de registro.");
+      //   // setActiveModal('register');
+      //   setActiveModal('limitExceeded'); 
+      // } else {
+      //   // Otro tipo de error
+      //   alert(error.response?.data?.detail || "Ocurrió un error inesperado al procesar tu solicitud.");
+      // }
     }
+  };
+
+  const handleLimitExceeded = () => {
+    console.log("Límite de sesión excedido, mostrando modal de contexto.");
+    setActiveModal('limitExceeded');
   };
 
   const currentPath = window.location.pathname;
@@ -176,7 +183,7 @@ function AppContent() {
   if (currentPath === '/stock-muerto') {
     return (
       <>
-        <LandingStockMuerto onAnalyze={handleAnonymousAnalyze} onLoginClick={() => setActiveModal('login')} />;
+        <LandingStockMuerto onAnalyze={handleAnonymousAnalyze} onLimitExceeded={handleLimitExceeded} onLoginClick={() => setActiveModal('login')} />;
         {activeModal === 'login' && <LoginModal onLoginSuccess={handleLoginSuccess} onSwitchToRegister={() => setActiveModal('register')} onClose={() => setActiveModal(null)} />}
         {activeModal === 'register' && <RegisterModal onRegisterSuccess={() => setActiveModal('login')} onSwitchToLogin={() => setActiveModal('login')} onClose={() => setActiveModal(null)} />}
         {activeModal === 'limitExceeded' && (
@@ -192,7 +199,7 @@ function AppContent() {
   if (currentPath === '/rotacion-de-stock') {
     return (
       <>
-        <LandingRotacion onAnalyze={handleAnonymousAnalyze} onLoginClick={() => setActiveModal('login')} />;
+        <LandingRotacion onAnalyze={handleAnonymousAnalyze} onLimitExceeded={handleLimitExceeded} onLoginClick={() => setActiveModal('login')} />;
         {activeModal === 'login' && <LoginModal onLoginSuccess={handleLoginSuccess} onSwitchToRegister={() => setActiveModal('register')} onClose={() => setActiveModal(null)} />}
         {activeModal === 'register' && <RegisterModal onRegisterSuccess={() => setActiveModal('login')} onSwitchToLogin={() => setActiveModal('login')} onClose={() => setActiveModal(null)} />}
       </>
@@ -201,7 +208,7 @@ function AppContent() {
   if (currentPath === '/analisis-abc') {
     return (
       <>
-        <LandingABC onAnalyze={handleAnonymousAnalyze} onLoginClick={() => setActiveModal('login')} />;
+        <LandingABC onAnalyze={handleAnonymousAnalyze} onLimitExceeded={handleLimitExceeded} onLoginClick={() => setActiveModal('login')} />;
         {activeModal === 'login' && <LoginModal onLoginSuccess={handleLoginSuccess} onSwitchToRegister={() => setActiveModal('register')} onClose={() => setActiveModal(null)} />}
         {activeModal === 'register' && <RegisterModal onRegisterSuccess={() => setActiveModal('login')} onSwitchToLogin={() => setActiveModal('login')} onClose={() => setActiveModal(null)} />}
       </>

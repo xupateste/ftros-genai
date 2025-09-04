@@ -3,7 +3,7 @@
 import React from 'react';
 import { ProductLandingPage } from './ProductLandingPage';
 
-export const LandingStockMuerto = ({ onAnalyze, onLoginClick }) => {
+export const LandingStockMuerto = ({ onAnalyze, onLoginClick, onLimitExceeded }) => {
   return (
     <ProductLandingPage
       title="La app más confiable para Calcular Stock Muerto"
@@ -12,6 +12,7 @@ export const LandingStockMuerto = ({ onAnalyze, onLoginClick }) => {
       reportType="dead-stock"
       onAnalyze={onAnalyze}
       onLoginClick={onLoginClick}
+      onLimitExceeded={onLimitExceeded}
     />
   );
 };
