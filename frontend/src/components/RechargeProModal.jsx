@@ -107,7 +107,7 @@ export const RechargeProModal = ({ onClose }) => {
               </div>
             </div>
             <p className="text-sm text-gray-500">
-              *Los créditos no son transferibles ni acumulables.
+              *Créditos no acumulables. Se renuevan cada mes.
             </p>
           </div>
         </div>

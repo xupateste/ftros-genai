@@ -7,40 +7,23 @@ import { FaWhatsapp } from 'react-icons/fa';
 import { useWorkspace } from '../context/WorkspaceProvider'; // <-- Usamos el hook correcto
 
 const PLANS = [
-  { credits: 210, price: 20, features: ["Ideal para diagnósticos puntuales", "Acceso a todos los reportes básicos"], id: 'plan_210' },
-  { credits: 410, price: 35, features: ["Perfecto para meses de análisis regular", "Optimiza tus compras semanales"], id: 'plan_410' },
-  { credits: 1020, price: 65, features: ["La mejor opción para análisis trimestrales", "Soporte prioritario por correo"], id: 'plan_1020' },
-  { credits: 3010, price: 101, features: ["Para negocios de alto volumen", "Consultoría de datos incluida"], id: 'plan_3010' },
-  { credits: 7010, price: 201, features: ["Para negocios de alto volumen", "Consultoría de datos incluida"], id: 'plan_7010' },
+  { credits: 50, price: 3, features: ["Ideal para diagnósticos puntuales", "Acceso a todos los reportes básicos"], id: 'plan_50' },
+  { credits: 90, price: 5, features: ["Ideal para diagnósticos puntuales", "Acceso a todos los reportes básicos"], id: 'plan_90' },
+  { credits: 190, price: 10, features: ["Ideal para diagnósticos puntuales", "Acceso a todos los reportes básicos"], id: 'plan_190' },
+  { credits: 400, price: 20, features: ["Ideal para diagnósticos puntuales", "Acceso a todos los reportes básicos"], id: 'plan_400' },
+  { credits: 780, price: 35, features: ["Perfecto para meses de análisis regular", "Optimiza tus compras semanales"], id: 'plan_780' },
+  { credits: 1570, price: 65, features: ["La mejor opción para análisis trimestrales", "Soporte prioritario por correo"], id: 'plan_1570' },
+  { credits: 2640, price: 101, features: ["Para negocios de alto volumen", "Consultoría de datos incluida"], id: 'plan_2640' },
+  { credits: 6040, price: 201, features: ["Para negocios de alto volumen", "Consultoría de datos incluida"], id: 'plan_6040' },
   { credits: 10010, price: 290, features: ["Para negocios de alto volumen", "Consultoría de datos incluida"], id: 'plan_10010' },
   { 
     isStrategist: true, 
     credits: 'CRÉTIDOS ILIMITADOS', 
     price: '+Beneficios', 
-    features: ["Acceso a Inteligencia de Mercado", "Gráficos de Benchmarking", "Funciones avanzadas"], 
+    features: ["Analisis Personalizados", "Gráficos de Benchmarking", "Funciones avanzadas"], 
     id: 'plan_strategist' 
   },
 ];
-
-// const openVerificationForm = (userEmail) => {
-//   // --- ¡CONFIGURACIÓN IMPORTANTE! ---
-//   // Reemplaza estos valores con los de tu propio Google Form.
-//   const GOOGLE_FORM_ID = "1FAIpQLScRhAM5M5_rAnTU9X_giZYH1ZrDBrR0ME_vKp8dcJ9DrrkSww"; // Ej: 1FAIpQLSc...
-//   const EMAIL_FIELD_ID = "entry.1889241237"; // Ej: entry.123456789
-
-//   // Construimos la URL base
-//   const formUrl = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/viewform`;
-  
-//   // Creamos un objeto URL para añadir los parámetros de forma segura
-//   const urlWithParams = new URL(formUrl);
-//   if (userEmail) {
-//     urlWithParams.searchParams.append(EMAIL_FIELD_ID, userEmail);
-//   }
-
-//   // Abrimos la URL final en una nueva pestaña
-//   window.open(urlWithParams.toString(), '_blank');
-// };
-
 
 export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) {
   // const { user } = useAuth(); // Obtenemos el email del usuario del contexto
@@ -106,8 +89,8 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
             <div className="flex gap-4 pb-4 overflow-x-auto">
               {PLANS.map(plan => (
                 <div key={plan.id} className={`flex-shrink-0 w-64 border-2 rounded-lg p-6 flex flex-col ${plan.isStrategist ? 'border-yellow-400' : 'border-gray-200 hover:border-purple-500'}`}>
-                  <div className={`font-bold text-md mb-2 rounded-md py-1 text-center ${plan.isStrategist ? 'border text-yellow-500' : 'bg-purple-100 text-purple-700'}`}>
-                    {plan.isStrategist && <FiAward className="inline mr-2"/> }{plan.credits} {plan.isStrategist ? '' : 'CRÉDITOS'} {!plan.isStrategist && '🪙'}
+                  <div className={`font-bold text-md mb-2 rounded-md py-1 text-center ${plan.isStrategist ? 'border border-yellow-200 text-yellow-500 bg-yellow-100' : 'bg-purple-100 text-purple-700'}`}>
+                    {plan.isStrategist && <FiAward className="inline"/> }{plan.credits} {plan.isStrategist ? '' : 'CRÉDITOS'} {!plan.isStrategist && '🪙'}
                   </div>
                   <p className={`text-4xl font-bold text-gray-800 mb-4 text-center ${plan.isStrategist && 'text-2xl'}`}>{plan.isStrategist ? plan.price : `S/ ${plan.price}`}</p>
                   <ul className="text-sm text-gray-600 space-y-2 mb-6 flex-grow">
@@ -119,7 +102,7 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
                         backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)',
                       }}
                     >
-                      Comprar Plan
+                      Comprar
                     </button>
                   ) : (
                     <button
@@ -135,7 +118,7 @@ export function RechargeCreditsModal({ contexto, onClose, onBecomeStrategist }) 
                 </div>
               ))}
             </div>
-              <p className="text-gray-600 mb-6 text-center text-purple-800 font-bold text-sm">** Los créditos nunca expiran **</p>
+              <p className="text-gray-600 mb-6 text-center text-purple-800 font-bold text-md">** Los créditos nunca expiran **</p>
            <div className="flex flex-col gap-3">
               <button onClick={ onClose } className="flex-1 flex items-center justify-center gap-2 text-gray-700 bg-gray-200 font-bold py-3 px-4 rounded-lg hover:bg-gray-300">
                 <FiArrowLeft /> Regresar

@@ -701,21 +701,23 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData = null,
           </p>
         }
       <div className="w-full justify-center border-b border-gray-700 items-center bg-neutral-900 z-20 gap-3 py-3 px-4 sticky top-0">
-        <div className="flex flex-col  max-w-5xl mx-auto">
+        <div className="flex flex-col max-w-5xl mx-auto">
            <CreditsPanel 
               used={credits.used} 
               remaining={credits.remaining}
               onHistoryClick={() => setActiveModal('history')}
            />
-          {context.type === 'user' && (
-            <WorkspaceSelector
-              workspaces={workspaces}
-              activeWorkspace={activeWorkspace}
-              onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
-              onCreateNew={() => setIsCreateModalOpen(true)}
-              onBackToDashboard={ onBackToDashboard }
-            />
-          )}
+           <div className="mx-auto mt-3">
+            {context.type === 'user' && (
+              <WorkspaceSelector
+                workspaces={workspaces}
+                activeWorkspace={activeWorkspace}
+                onWorkspaceChange={setActiveWorkspace} // Permite cambiar el espacio activo
+                onCreateNew={() => setIsCreateModalOpen(true)}
+                onBackToDashboard={ onBackToDashboard }
+              />
+            )}
+          </div>
         </div>
       </div>
 

@@ -60,32 +60,33 @@ export function BecomeStrategistModal({ onClose }) {
         <div className="overflow-y-auto p-6 text-gray-700">
             <div className="text-center mb-6 gap-4">
                 <p className="text-gray-600 mb-4">
-                    Como usuario, ya tienes acceso a potentes reportes sobre tus ventas, márgenes e inventario.
+                    Como usuario, ya tienes acceso a reportes potentes.
                 </p>
-                <p className="text-gray-600 bg-yellow-100 p-2 font-medium">
-                Pero al unirte a <b>nuestra comunidad de negocios verificados</b>, accedes a la Inteligencia de Comunidad: una red anónima de datos reales, actualizados y validados por cientos de empresas como la tuya.<br/><b>Esto te permitirá:</b>
+                <p className="text-gray-600 bg-yellow-100 p-2 font-medium max-w-md mx-auto">
+                    Al unirte a <b>nuestra red privada de negocios verificados</b>, que comparten de forma anónima sus datos reales, actualizados y validados, <b>podrás:</b>
+                    {/*Pero al unirte a <b>nuestra red privada de negocios verificados</b> que comparten anónimamente sus datos reales, actualizados y validados.<br/><b>Esto te permitirá:</b>*/}
                 </p>
             </div>
 
             <div className="space-y-4">
                 <BenefitItem 
                     icon={<FiGlobe size={20}/>}
-                    title="Comparar tu rendimiento frente a promedios reales del mercado."
+                    title="Compara tu desempeño con promedios reales y validados del mercado."
                     description=""
                 />
                 <BenefitItem 
                     icon={<FiZap size={20}/>}
-                    title="Detectar oportunidades invisibles en tus categorías."
+                    title="Detecta oportunidades ocultas dentro de tus propias categorías."
                     description=""
                 />
                 <BenefitItem 
                     icon={<FiBarChart2 size={20}/>}
-                    title="Identificar tendencias antes que el resto."
+                    title="Anticípate a las tendencias del mercado antes que tu competencia."
                     description=""
                 />
                 <BenefitItem 
                     icon={<FiPackage size={20}/>}
-                    title="Participar en compras e importaciones grupales, accediendo a mejores precios, condiciones y eficiencia logística."
+                    title="Participa en compras e importaciones grupales, accediendo a mejores precios, condiciones y eficiencia logística."
                     description=""
                 />
                 {/*<BenefitItem 
@@ -107,7 +108,7 @@ export function BecomeStrategistModal({ onClose }) {
         </div>
 
         <div className="p-4 border-t bg-gray-50 sticky bottom-0">
-            <p className="text-xs text-center text-gray-500 mb-3">El proceso de verificación es rápido y asegura la calidad de los datos para toda la comunidad.</p>
+            <p className="text-xs max-w-sm mx-auto text-center text-gray-500 mb-3">El proceso de verificación es rápido y asegura la calidad de los datos para toda la comunidad.</p>
             <button 
                 onClick={handleVerifyClick}
                 className="w-full bg-yellow-500 text-black font-bold py-3 px-4 rounded-lg hover:bg-yellow-400 flex items-center justify-center gap-2 text-lg"
