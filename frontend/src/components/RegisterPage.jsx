@@ -61,7 +61,7 @@ export function RegisterPage ({ onRegisterSuccess, onSwitchToLogin, onClose, onB
              <FiX size={24}/>
           </button>
           <h2 className="text-3xl font-bold mb-2">Crea tu Cuenta</h2>
-          <p className="text-gray-400 mb-6">Desbloquea el historial y los reportes Pro.</p>
+          <p className="text-gray-400 mb-6">Desbloquea el poder de tu Ferretería</p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4 text-left">
           <div>

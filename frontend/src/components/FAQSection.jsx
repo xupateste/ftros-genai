@@ -22,7 +22,7 @@ const faqData = [
         question: "¿Mis datos comerciales están seguros con ustedes?",
         answer: (
             <>
-                La seguridad y la confidencialidad son nuestra <strong>máxima prioridad</strong>. Usamos encriptación de nivel bancario para proteger tu información. <strong>Ferreteros.app</strong> es una plataforma <strong>100% independiente</strong>; no estamos afiliados a ningún distribuidor, marca o cadena. Tus datos son tuyos, y nuestro modelo de negocio depende enteramente de la confianza que depositas en nosotros para ayudarte a crecer. <strong>Jamás será compartida.</strong>
+                La seguridad y la confidencialidad son nuestra <strong>máxima prioridad</strong>. Usamos encriptación de nivel bancario para proteger tu información. <strong>Ferreteros.app</strong> es una plataforma <strong>100% independiente</strong>; no estamos afiliados a ningún distribuidor, marca o cadena. Tus datos son tuyos, y nuestro modelo de negocio depende enteramente de la confianza que depositas en nosotros para ayudarte a crecer. <strong>Tu información jamás será compartida.</strong>
             </>
         )
     },

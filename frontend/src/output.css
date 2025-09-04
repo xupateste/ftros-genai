@@ -1039,6 +1039,18 @@ video {
   margin-top: auto;
 }
 
+.-mr-4 {
+  margin-right: -1rem;
+}
+
+.-mr-10 {
+  margin-right: -2.5rem;
+}
+
+.-mr-24 {
+  margin-right: -6rem;
+}
+
 .line-clamp-2 {
   overflow: hidden;
   display: -webkit-box;
@@ -3323,6 +3335,10 @@ video {
   line-height: 1.25;
 }
 
+.leading-10 {
+  line-height: 2.5rem;
+}
+
 .tracking-normal {
   letter-spacing: 0em;
 }
@@ -4510,6 +4526,10 @@ animation: var(--animate-spin);
     max-width: 64rem;
   }
 
+  .md\:max-w-3xl {
+    max-width: 48rem;
+  }
+
   .md\:grid-cols-2 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -4584,6 +4604,11 @@ animation: var(--animate-spin);
   .md\:text-xl {
     font-size: 1.25rem;
     line-height: 1.75rem;
+  }
+
+  .md\:text-8xl {
+    font-size: 6rem;
+    line-height: 1;
   }
 
   .md\:leading-relaxed {

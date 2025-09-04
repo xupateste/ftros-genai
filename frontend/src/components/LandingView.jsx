@@ -705,16 +705,16 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
         className="relative min-h-[calc(100vh-83px)] flex items-center text-center bg-cover bg-center" 
         style={{ backgroundImage: "url('/background-hero-2h.png')" }}
       >
-        <div className="absolute inset-0 bg-black bg-opacity-50"></div>
+        <div className="absolute inset-0 bg-black bg-opacity-80"></div>
         <div className="relative container mx-auto px-6">
           <AnimateOnScroll delay={ 200 }>
-            <h1 className="text-5xl md:text-7xl drop-shadow-lg text-shadow-xl/50 font-lexend md:leading-relaxed max-w-4xl font-semibold py-2 justify-center mx-auto font-black mb-4">
+            <h1 className="text-5xl md:text-7xl drop-shadow-lg text-shadow-xl/50 font-lexend leading-normal md:leading-relaxed max-w-4xl font-semibold py-2 justify-center mx-auto font-black mb-4">
               La siguiente generación de {' '}
               <span
-                className="bg-clip-text font-semibold drop-shadow-lg text-shadow-xl/50 leading-relaxed text-transparent"
+                className="bg-clip-text font-semibold drop-shadow-lg text-shadow-xl/50 text-transparent"
                 style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
               >
-                Ferreterías
+                Ferreteros
               </span>
             </h1>
           </AnimateOnScroll>
@@ -735,7 +735,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
 
       {/* Sección 0: Héroe (Ahora con imagen de fondo) */}
       <section 
-        className="relative flex items-center text-center bg-black bg-opacity-40 bg-center py-10" 
+        className="relative flex items-center text-center bg-black bg-center py-12" 
       >
         <div className="relative container mx-auto px-6">
           {/*<h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
@@ -747,29 +747,28 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
             Te ayudamos a encontrarlo.
           </h1>*/}
           <AnimateOnScroll delay={ 200 }>
-            <h1 className="text-3xl max-w-4xl py-2 md:text-4xl justify-center mx-auto font-black mb-4 leading-tight">
+            <h1 className="text-3xl max-w-3xl py-2 md:text-4xl justify-center mx-auto font-black mb-4 leading-tight">
               Analiza los números de tu Ferretería y decide mejor en minutos,{' '}
               <span
                 className="bg-clip-text font-extrabold text-transparent"
                 style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
               >
                 <b>no en horas</b>
-              </span>.
+              </span>
             </h1>
           </AnimateOnScroll>
           {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
             Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
           </p>*/}
           <AnimateOnScroll delay={ 600 }>
-          <p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            {/*Usa Ferretero.IA y convierte tu ferretería en tu mayor fuente de rentabilidad.<br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>*/}
+          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
             Aumenta tu rentabilidad con tecnología que protege tu privacidad.
             <br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
-          </p>
+          </p>*/}
           </AnimateOnScroll>
           <AnimateOnScroll delay={ 900 }>
             {/*<WaitlistForm  ref={heroRef} />*/}
-            <p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>
+            {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>*/}
             <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
           </AnimateOnScroll>
         </div>
