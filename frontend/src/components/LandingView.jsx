@@ -530,7 +530,7 @@ const OnboardingModal = ({ isOpen, onClose, onRegisterClick }) => {
 
                     {step === 1 && (
                         <div>
-                            <p className="text-gray-600 mb-4"><b>¡Estás a punto de asegurar tu lugar!</b><br/>Solo unas pocas ferreterías formarán obtendrán un bono de bienvenida inicial. Por favor, confirma que tu negocio principal es una ferretería minorista.</p>
+                            <p className="text-gray-600 mb-4"><b>¡Estás a punto de asegurar tu lugar!</b><br/>Solo unas pocas ferreterías obtendrán un bono de bienvenida inicial. Por favor, confirma que tu negocio principal es una ferretería minorista.</p>
                             <div className="space-y-3">
                                 <label className={`block p-4 rounded-lg border cursor-pointer ${formData.perfil === 'ferreteria_minorista' ? 'border-indigo-600 bg-indigo-50' : 'border-gray-300'}`}>
                                     <input type="radio" name="perfil" value="ferreteria_minorista" onChange={handleChange} className="mr-2"/>
