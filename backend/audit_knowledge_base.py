@@ -61,6 +61,14 @@ AUDIT_KNOWLEDGE_BASE = {
             "Considera aumentar el 'Stock de Seguridad' para este producto en el reporte de 'Parámetros para POS' para prevenir futuros quiebres."
         ]
     },
+    "quiebre_stock_clase_b": {
+        "why": "Un producto '🐮 Vaca Lechera' es un pilar fundamental de tu negocio. Genera ventas constantes y predecibles, siendo una de tus fuentes de ingresos más seguras. Un quiebre de stock significa que estás perdiendo ventas garantizadas y, lo que es más crítico, estás defraudando la confianza de tus clientes habituales que esperan encontrar siempre este producto en tu tienda.",
+        "how": [
+            "Ejecuta el 'Plan de Compra Sugerido' para confirmar la cantidad ideal a reponer y prioriza este producto en tu próxima orden de compra.",
+            "Asegura un alto nivel de servicio para tus '🐮 Vacas Lecheras'. Considera ajustar su 'Stock Mínimo' o 'Punto de Alerta' para tener un mayor colchón de seguridad.",
+            "Contacta a tu proveedor. Al ser productos de venta segura, puedes negociar mejores condiciones por compras de mayor volumen o entregas programadas."
+        ]
+    },
     "stock_muerto_perro": {
         "why": "Un producto '🐶 Perro' con stock muerto es capital inmovilizado en un activo de bajo rendimiento. Ocupa espacio y consume recursos sin contribuir significativamente a tu negocio.",
         "how": [
