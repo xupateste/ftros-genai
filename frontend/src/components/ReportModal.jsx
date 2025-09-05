@@ -547,7 +547,7 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
     }  
     
     // 5. Abrimos el PDF en una nueva pestaña
-    doc.output('bloburl', { filename: `FerreteroIA_${reportConfig.key}_Accionable.pdf` });
+    doc.output('bloburl', { filename: `AnalaisisFerretero_${reportConfig.key}_Accionable.pdf` });
     window.open(doc.output('bloburl'), '_blank');
   };
 
@@ -564,7 +564,7 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
       return;
     }
 
-    const filename = `FerreteroIA_${analysisResult.report_key}_Detallado.xlsx`;
+    const filename = `AnalaisisFerretero_${analysisResult.report_key}_Detallado.xlsx`;
     
     // 1. Creamos un nuevo libro de trabajo
     const workbook = new ExcelJS.Workbook();

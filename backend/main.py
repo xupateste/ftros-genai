@@ -2358,10 +2358,10 @@ async def lista_basica_reposicion_historico(
         full_params_for_logging=full_params_for_logging,
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
-        report_key="ReporteListaBasicaReposicionHistorica",
+        report_key="ReportePlanDeCompra",
         processing_function=process_csv_plan_compra_sugerido, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
-        output_filename="ReporteListaBasicaReposicionHistorica.xlsx",
+        output_filename="ReportePlanDeCompra.xlsx",
         user_id=user_id,
         workspace_id=workspace_id,
         session_id=log_session_id

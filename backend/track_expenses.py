@@ -4285,7 +4285,7 @@ def generar_auditoria_inventario(
     if not alerta1_df.empty:
         skus_afectados = alerta1_df['SKU / Código de producto'].tolist()
 
-        target_report_key = "ReporteListaBasicaReposicionHistorica"
+        target_report_key = "ReportePlanDeCompra"
 
         if 'Índice de Urgencia' in alerta1_df.columns:
             alerta1_df.sort_values(by='Índice de Urgencia', ascending=False, inplace=True)
@@ -4404,7 +4404,7 @@ def generar_auditoria_inventario(
         capital_excedente = ((alerta5_df['Stock Actual (Unds)'] - alerta5_df['Stock Ideal Sugerido (Unds)']) * alerta5_df['Precio Compra (S/.)']).sum()
         skus_afectados_5 = alerta5_df['SKU / Código de producto'].tolist()
 
-        target_report_key_5 = "ReporteListaBasicaReposicionHistorica"
+        target_report_key_5 = "ReportePlanDeCompra"
 
         preview_cols_5 = REPORTS_CONFIG.get(target_report_key_5, {}).get('detalle_columns', [])
         preview_df_5 = alerta5_df[[col for col in preview_cols_5 if col in alerta5_df.columns]].head(3)
@@ -4564,7 +4564,7 @@ def generar_auditoria_inventario(
         inversion_ineficiente = (alerta9_df['Pedido Mínimo Sugerido (Unds)'] * alerta9_df['Precio Compra (S/.)']).sum()
         
         skus_afectados_9 = alerta9_df['SKU / Código de producto'].tolist()
-        target_report_key_9 = "ReporteListaBasicaReposicionHistorica"
+        target_report_key_9 = "ReportePlanDeCompra"
 
         if 'Índice de Urgencia' in alerta9_df.columns:
             alerta9_df.sort_values(by='Índice de Urgencia', ascending=False, inplace=True)

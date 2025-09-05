@@ -796,10 +796,10 @@ REPORTS_CONFIG = {
         { "label": "Acción Requerida", "data_key": "¿Pedir Ahora?" }
     ]
   },
-  "ReporteListaBasicaReposicionHistorica": {
+  "ReportePlanDeCompra": {
     "label": '📋 Plan de Compra Sugerido',
     "endpoint": '/lista-basica-reposicion-historico',
-    # "key": 'ReporteListaBasicaReposicionHistorica',
+    # "key": 'ReportePlanDeCompra',
     "categoria": "📦 Planificación de Compras Estratégicas",
     "isPro": False,
     "costo": 15,
