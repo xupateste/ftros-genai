@@ -28,6 +28,19 @@ const trackEvent = (name, params = {}) => {
 
 // --- Eventos Específicos de la Aplicación ---
 
+export const trackPageView = (path) => {
+  if (window.gtag) {
+    window.gtag('event', 'page_view', {
+      page_path: path,
+    });
+  }
+  if (window.fbq) {
+    window.fbq('track', 'PageView');
+  }
+  console.log(`Page View rastreado para: ${path}`);
+};
+
+
 // 1. Interacción en la Landing Page
 export const trackViewSectionFeatures = () => trackEvent("view_section", { section_name: "features" });
 export const trackViewSectionTestimonial = () => trackEvent("view_section", { section_name: "testimonial" });

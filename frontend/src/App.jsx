@@ -6,6 +6,7 @@ import { StrategyProvider, useStrategy } from './context/StrategyProvider';
 import { ConfigProvider } from './context/ConfigProvider'; // <-- Importa el nuevo provider
 
 import axios from 'axios';
+import { HelmetProvider } from 'react-helmet-async';
 
 import { LoginModal } from './components/LoginModal';
 import { RegisterModal } from './components/RegisterModal';
@@ -311,6 +312,7 @@ function AppContent() {
 
 function App() {
   return (
+    <HelmetProvider>
       <StrategyProvider>
         <ConfigProvider>
             <WorkspaceProvider>
@@ -318,6 +320,7 @@ function App() {
             </WorkspaceProvider>
         </ConfigProvider>
       </StrategyProvider>
+    </HelmetProvider>
   );
 }
 

@@ -7,8 +7,11 @@ import { FAQSection } from './FAQSection'
 import { PrivacyPolicyModal } from './PrivacyPolicyModal'
 import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo componente
 import api from '../utils/api'; // Usamos nuestro cliente API centralizado
-import * as analytics from '../utils/analytics';
 import { LoginModalBeta } from './LoginModalBeta'
+
+
+import { Helmet } from 'react-helmet-async';
+import * as analytics from '../utils/analytics';
 
 const AnimationStyles = () => (
   <style>
@@ -634,6 +637,15 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
   const [isLoginBetaModalOpen, setIsLoginBetaModalOpen] = useState(false);
   const [isPrivacyModalOpen, setIsPrivacyModalOpen] = useState(false); // <-- Nuevo estado
 
+  // SEO: Título y descripción generales
+  const pageTitle = "Ferreteros.app | Inteligencia de Negocios para Ferreterías";
+  const pageDescription = "La plataforma de análisis de datos diseñada para dueños de ferreterías. Optimiza tu inventario, mejora tus márgenes y toma decisiones más inteligentes.";
+
+  // SEM: Seguimiento de vista de página
+  useEffect(() => {
+    analytics.trackPageView('/');
+  }, []);
+
   const openOnboardingModal = () => {
     analytics.trackBeginOnboarding();
     setIsModalOpen(true);
@@ -675,6 +687,10 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
 
   return (
    <> 
+    <Helmet>
+      <title>{pageTitle}</title>
+      <meta name="description" content={pageDescription} />
+    </Helmet>
     <OnboardingModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} onRegisterClick={onRegisterClick} />
     <LoginModalBeta onLoginSuccess={onLoginSuccess} isOpen={isLoginBetaModalOpen} onClose={() => setIsLoginBetaModalOpen(false)} onTryToRegisterClick={() => setIsModalOpen(true)} />
     <ToastManager isHeroVisible={isHeroVisible} />
@@ -746,7 +762,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
             <br />
             Te ayudamos a encontrarlo.
           </h1>*/}
-          <AnimateOnScroll delay={ 200 }>
+          <AnimateOnScroll delay={ 300 }>
             <h1 className="text-3xl max-w-3xl py-2 md:text-4xl justify-center mx-auto font-black mb-4 leading-tight">
               Analiza los números de tu Ferretería y decide mejor en minutos,{' '}
               <span
@@ -760,13 +776,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
           {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
             Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
           </p>*/}
-          <AnimateOnScroll delay={ 600 }>
-          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Aumenta tu rentabilidad con tecnología que protege tu privacidad.
-            <br/><b>Obtén el diagnóstico. Define el plan. Toma el control.</b>
-          </p>*/}
-          </AnimateOnScroll>
-          <AnimateOnScroll delay={ 900 }>
+          <AnimateOnScroll delay={ 500 }>
             {/*<WaitlistForm  ref={heroRef} />*/}
             {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>*/}
             <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
