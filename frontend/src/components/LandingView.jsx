@@ -400,7 +400,7 @@ const WaitlistForm = React.forwardRef((props, ref) => {
         <button 
           type="submit" 
           onClick={props.ctaClick}
-          className="text-white flex items-center gap-2 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-2xl text-md px-5 py-2.5 text-center mx-2 mb-2"
+          className="text-white font-lexend flex items-center gap-2 bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 hover:bg-gradient-to-br focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-2xl text-md px-5 py-2.5 text-center mx-2 mb-2"
         >
           {props.buttonText}
           <FiArrowRight />
@@ -708,7 +708,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
         <div className="absolute inset-0 bg-black bg-opacity-80"></div>
         <div className="relative container mx-auto px-6">
           <AnimateOnScroll delay={ 200 }>
-            <h1 className="text-5xl md:text-7xl drop-shadow-lg text-shadow-xl/50 font-lexend leading-normal md:leading-relaxed max-w-4xl font-semibold py-2 justify-center mx-auto font-black mb-4">
+            <h1 className="text-5xl md:text-7xl drop-shadow-lg text-shadow-xl/50 font-lexend leading-tight md:leading-tight max-w-4xl font-semibold py-2 justify-center mx-auto font-black mb-4">
               La siguiente generación de {' '}
               <span
                 className="bg-clip-text font-semibold drop-shadow-lg text-shadow-xl/50 text-transparent"
@@ -718,9 +718,9 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
               </span>
             </h1>
           </AnimateOnScroll>
-          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
-          </p>*/}
+          <p className="text-md font-lexend font-semibold md:px-4 md:text-xl text-gray-300 max-w-4xl mx-auto mb-8 antialiased">
+            Aumenta hasta 25%+ tu rentabilidad con análisis de datos, diseñado perfectamente para tu ferretería — hecho para el empresario ferretero del siglo XXI
+          </p>
           
           <AnimateOnScroll delay={ 1000 }>
             <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Únete ahora" />
@@ -1156,7 +1156,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
           <AnimateOnScroll delay={ 600 }>
             <div className="grid md:grid-cols-2 max-w-xl mx-auto gap-2 mt-6">
               <WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="Analiza ahora tu Ferretería" />
-              <a href="https://calendly.com/soy-christian-barreto/30min" target="_blank" rel="noopener noreferrer" className="text-purple-800 mx-auto flex justify-center max-w-sm items-center gap-2 bg-purple-300 focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-2xl text-md px-5 py-2.5 text-center mx-2 mb-2">
+              <a href="https://calendly.com/soy-christian-barreto/30min" target="_blank" rel="noopener noreferrer" className="font-lexend text-purple-800 mx-auto flex justify-center max-w-sm items-center gap-2 bg-purple-300 focus:ring-4 focus:outline-none focus:ring-purple-300 shadow-lg shadow-purple-800/50 hover:scale-105 font-medium rounded-2xl text-md px-5 py-2.5 text-center mx-2 mb-2">
                   Chatea con el Fundador <FiArrowRight />
               </a>
             </div>

@@ -3335,6 +3335,10 @@ video {
   line-height: 1.25;
 }
 
+.leading-snug {
+  line-height: 1.375;
+}
+
 .tracking-normal {
   letter-spacing: 0em;
 }
@@ -4564,6 +4568,11 @@ animation: var(--animate-spin);
     padding-right: 3rem;
   }
 
+  .md\:px-4 {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
   .md\:text-left {
     text-align: left;
   }
@@ -4600,6 +4609,18 @@ animation: var(--animate-spin);
 
   .md\:leading-relaxed {
     line-height: 1.625;
+  }
+
+  .md\:leading-normal {
+    line-height: 1.5;
+  }
+
+  .md\:leading-snug {
+    line-height: 1.375;
+  }
+
+  .md\:leading-tight {
+    line-height: 1.25;
   }
 }
 
