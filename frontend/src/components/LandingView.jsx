@@ -735,7 +735,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
             </h1>
           </AnimateOnScroll>
           <p className="text-md font-lexend font-semibold md:px-4 md:text-xl text-gray-300 max-w-4xl mx-auto mb-8 antialiased">
-            Aumenta hasta 25%+ tu rentabilidad con análisis de datos, diseñado perfectamente para tu ferretería — hecho para el empresario ferretero del siglo XXI
+            Aumenta hasta 25%+ tu rentabilidad con análisis de datos, diseñado perfectamente para tu ferretería — hecho para el inversionista ferretero del siglo XXI
           </p>
           
           <AnimateOnScroll delay={ 1000 }>
@@ -745,41 +745,6 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
           <AnimateOnScroll delay={ 1100 }>
             {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>*/}
             <DynamicSocialProofText />
-          </AnimateOnScroll>
-        </div>
-      </section>
-
-      {/* Sección 0: Héroe (Ahora con imagen de fondo) */}
-      <section 
-        className="relative flex items-center text-center bg-black bg-center py-12" 
-      >
-        <div className="relative container mx-auto px-6">
-          {/*<h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
-            Tu ferretería tiene <span
-              className="bg-clip-text text-transparent"
-              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
-            >dinero escondido</span>.
-            <br />
-            Te ayudamos a encontrarlo.
-          </h1>*/}
-          <AnimateOnScroll delay={ 300 }>
-            <h1 className="text-3xl max-w-3xl py-2 md:text-4xl justify-center mx-auto font-black mb-4 leading-tight">
-              Analiza los números de tu Ferretería y decide mejor en minutos,{' '}
-              <span
-                className="bg-clip-text font-extrabold text-transparent"
-                style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
-              >
-                <b>no en horas</b>
-              </span>
-            </h1>
-          </AnimateOnScroll>
-          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
-            Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
-          </p>*/}
-          <AnimateOnScroll delay={ 500 }>
-            {/*<WaitlistForm  ref={heroRef} />*/}
-            {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>*/}
-            <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
           </AnimateOnScroll>
         </div>
       </section>
@@ -802,7 +767,7 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
                 Impulsa tu Rentabilidad
               </span>.
             </h2>
-            <p className="text-gray-400 text-center mb-6 max-w-2xl mx-auto">Nuestra plataforma de inteligencia de negocio se conecta de forma simple y segura a tu sistema de ventas actual. No reemplazamos nada, potenciamos lo que ya tienes. Extrae el máximo valor de la información que generas cada día para aumentar tu rentabilidad, fortalecer tu negocio y mitigar los riesgos de seguridad.</p>
+            <p className="text-gray-400 antialiased text-center mb-6 max-w-2xl mx-auto"><span className="text-gray-300 font-bold">Somos 100% independientes,</span> sin afiliaciones con marcas, proveedores o cadenas. Nuestra de inteligencia de negocio se conecta de forma simple y segura a tu sistema de ventas actual. <span className="text-gray-300 font-bold">Tus datos son tuyos y son 100% confidenciales.</span></p>
           </AnimateOnScroll>
           <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-8">
             {/* Bloque 1 */}
@@ -928,6 +893,43 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
           </AnimateOnScroll>
         </div>
       </section>
+
+
+      {/* Sección 0: Héroe (Ahora con imagen de fondo) */}
+      <section 
+        className="relative flex items-center text-center bg-black bg-center py-12" 
+      >
+        <div className="relative container mx-auto px-6">
+          {/*<h1 className="text-4xl md:text-6xl font-black mb-4 leading-tight">
+            Tu ferretería tiene <span
+              className="bg-clip-text text-transparent"
+              style={{ backgroundImage: 'linear-gradient(to right, #560bad, #7209b7, #b5179e)' }}
+            >dinero escondido</span>.
+            <br />
+            Te ayudamos a encontrarlo.
+          </h1>*/}
+          <AnimateOnScroll delay={ 300 }>
+            <h1 className="text-3xl max-w-3xl py-2 md:text-4xl justify-center mx-auto font-black mb-4 leading-tight">
+              Analiza los números de tu Ferretería y decide mejor en minutos,{' '}
+              <span
+                className="bg-clip-text font-extrabold text-transparent"
+                style={{ backgroundImage: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
+              >
+                <b>no en horas</b>
+              </span>
+            </h1>
+          </AnimateOnScroll>
+          {/*<p className="text-lg md:text-xl text-gray-300 max-w-3xl mx-auto mb-8">
+            Ferretero.IA es la primera plataforma de inteligencia de negocios diseñada para el Ferretero Independiente. Convierte la información de tu negocio en decisiones que aumentarán tu rentabilidad.
+          </p>*/}
+          <AnimateOnScroll delay={ 500 }>
+            {/*<WaitlistForm  ref={heroRef} />*/}
+            {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mb-2">Únete a los ferreteros que ya deciden con datos</p>*/}
+            <WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="Quiero analizar mi ferretería" />
+          </AnimateOnScroll>
+        </div>
+      </section>
+
 
       {/* --- NUEVA SECCIÓN DE COMPARACIÓN (RESTILIZADA) --- */}
       <section className="py-20 px-4 bg-black bg-opacity-20">

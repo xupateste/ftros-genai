@@ -339,7 +339,7 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData = null,
     //   setIsLoading(false); // Si hay datos iniciales, no necesitamos cargar nada más
     // }
 
-  }, [context.id, initialData]);
+  }, [context.id, initialData, context.workspace?.id]);
   // }, [context.id, context.workspace?.id]);
 
   // --- NUEVO EFECTO PARA MANEJAR EL FLUJO ANÓNIMO ---

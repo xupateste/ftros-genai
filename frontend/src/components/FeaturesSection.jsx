@@ -50,7 +50,7 @@ const features = [
     description: (
       <>
         Mejoramos constantemente nuestros análisis. Si algún dato no cumple tus expectativas,{' '}
-        <a href="/contact" className="font-semibold antialised text-purple-600 underline-none">
+        <a href="https://calendly.com/soy-christian-barreto/30min" target="_blank" className="font-semibold text-purple-600 underline-none">
           avísanos
         </a>{' '}
         y lo ajustamos para ti.
