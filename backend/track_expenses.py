@@ -926,15 +926,6 @@ def process_csv_analisis_estrategico_rotacion(
     }
 
     # --- 9. Selección y Renombrado de Columnas Finales ---
-    # columnas_salida_optimas = [
-    #     # Identificación
-    #     sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock,
-    #     # Situación Actual y Financiera
-    #     stock_actual_col_stock, precio_compra_actual_col_stock, "Precio de venta actual (S/.)", 'Inversion_Stock_Actual',
-    #     # Diagnóstico y Rendimiento
-    #     'Ventas_Total_Reciente', 'Ventas_Total_General', 'Alta_Tendencia_Crecimiento', 'Dias_Cobertura_Stock_Actual', 'Alerta_Stock',
-    #     'Importancia_Dinamica', 'Clasificacion', 'Clasificacion_BCG', 'PDA_Final', 'PDA_Demanda_Estrategica', 'Precio_Venta_Prom_Reciente'
-    # ]
     columnas_salida_optimas = [
         # Identificación
         sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock,
@@ -2086,7 +2077,7 @@ def process_csv_puntos_alerta_stock(
 
 
 
-def process_csv_lista_basica_reposicion_historico(
+def process_csv_plan_compra_sugerido_bkp(
     df_ventas: pd.DataFrame,
     df_inventario: pd.DataFrame,
     dias_analisis_ventas_recientes: Optional[int] = 30,
@@ -2464,6 +2455,613 @@ def process_csv_lista_basica_reposicion_historico(
         }
     }
 
+
+def process_csv_plan_compra_sugerido(
+    df_ventas: pd.DataFrame,
+    df_inventario: pd.DataFrame,
+    dias_analisis_ventas_recientes: Optional[int] = 30,
+    dias_analisis_ventas_general: Optional[int] = 180,
+    peso_ventas_historicas: float = 0.6,
+    dias_cobertura_ideal_base: int = 10,
+    coef_importancia_para_cobertura_ideal: float = 0.05,
+    coef_rotacion_para_stock_ideal: float = 0.1,
+    dias_cubrir_con_pedido_minimo: int = 3,
+    coef_importancia_para_pedido_minimo: float = 0.1,
+    coef_rotacion_para_stock_minimo: float = 0.15,
+    importancia_minima_para_redondeo_a_1: float = 0.1,
+    incluir_productos_pasivos: bool = True,
+    cantidad_reposicion_para_pasivos: int = 1,
+    excluir_productos_sin_sugerencia_ideal: bool = False,
+    lead_time_dias: float = 7.0,
+    dias_seguridad_base: float = 0,
+    factor_importancia_seguridad: float = 1.0,
+    # --- NUEVOS PARÁMETROS ---
+    pesos_importancia: Optional[Dict[str, float]] = None,
+    excluir_sin_ventas: bool = True,
+    incluir_solo_categorias: Optional[List[str]] = None,
+    incluir_solo_marcas: Optional[List[str]] = None,
+    ordenar_por: str = 'Importancia',
+    filtro_skus: Optional[List[str]] = None,
+) -> pd.DataFrame:
+    # --- 1. Definición de Nombres de Columna Única y Clara ---
+    sku_col = 'SKU / Código de producto'
+    fecha_col_ventas = 'Fecha de venta'
+    cantidad_col_ventas = 'Cantidad vendida'
+    precio_venta_col_ventas = 'Precio de venta unitario (S/.)'
+    marca_col_stock = 'Marca'
+    stock_actual_col_stock = 'Cantidad en stock actual'
+    nombre_prod_col_stock = 'Nombre del producto'
+    categoria_col_stock = 'Categoría'
+    subcategoria_col_stock = 'Subcategoría'
+    precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
+    precio_venta_actual_col_stock = 'Precio de venta actual (S/.)' # Columna del inventario
+    
+    # Nombres para columnas calculadas
+    precio_venta_prom_col = 'Precio_Venta_Prom_Reciente'
+    sugerencia_ideal_col = 'Sugerencia_Pedido_Ideal_Unds'
+
+    # --- 2. Pre-procesamiento y Estandarización de Tipos ---
+    df_ventas_proc = df_ventas.copy()
+    df_inventario_proc = df_inventario.copy()
+
+    # Forzamos la columna de unión a ser string
+    df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
+
+    if filtro_skus:
+        print(f"Ejecutando reporte en modo contextual para {len(filtro_skus)} SKUs.")
+        df_inventario_proc = df_inventario_proc[df_inventario_proc[sku_col].isin(filtro_skus)]
+        df_ventas_proc = df_ventas_proc[df_ventas_proc[sku_col].isin(filtro_skus)]
+
+
+    # Forzamos las columnas numéricas a un tipo que soporta negativos (float)
+    numeric_cols_inv = [stock_actual_col_stock, precio_compra_actual_col_stock, precio_venta_actual_col_stock]
+    for col in numeric_cols_inv:
+        if col in df_inventario_proc.columns:
+            df_inventario_proc[col] = pd.to_numeric(df_inventario_proc[col], errors='coerce')
+
+    numeric_cols_ventas = [cantidad_col_ventas, precio_venta_col_ventas]
+    for col in numeric_cols_ventas:
+        if col in df_ventas_proc.columns:
+            df_ventas_proc[col] = pd.to_numeric(df_ventas_proc[col], errors='coerce')
+    
+    df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
+    df_ventas_proc.dropna(subset=[fecha_col_ventas], inplace=True)
+    if df_ventas_proc.empty: return pd.DataFrame()
+    fecha_max_venta = df_ventas_proc[fecha_col_ventas].max()
+    if pd.isna(fecha_max_venta): return pd.DataFrame()
+    
+    final_dias_recientes, final_dias_general = dias_analisis_ventas_recientes, dias_analisis_ventas_general
+    if dias_analisis_ventas_recientes is None or dias_analisis_ventas_general is None:
+        sug_rec, sug_gen = _sugerir_periodos_analisis(df_ventas_proc, fecha_col_ventas)
+        if final_dias_recientes is None: final_dias_recientes = sug_rec
+        if final_dias_general is None: final_dias_general = sug_gen
+    
+    final_dias_recientes = max(1, final_dias_recientes)
+    final_dias_general = max(1, final_dias_general)
+    if final_dias_general < final_dias_recientes: final_dias_general = final_dias_recientes
+
+    def agregar_ventas_periodo(df_v, periodo_dias, fecha_max, sku_c, fecha_c, cant_c, p_venta_c, sufijo):
+        if pd.isna(fecha_max) or periodo_dias <= 0: return pd.DataFrame(columns=[sku_c, f'Ventas_Total{sufijo}', f'Dias_Con_Venta{sufijo}', f'Precio_Venta_Prom{sufijo}'])
+        fecha_inicio = fecha_max - pd.Timedelta(days=periodo_dias)
+        df_periodo = df_v[df_v[fecha_c] >= fecha_inicio].copy()
+        if df_periodo.empty: return pd.DataFrame(columns=[sku_c, f'Ventas_Total{sufijo}', f'Dias_Con_Venta{sufijo}', f'Precio_Venta_Prom{sufijo}'])
+        agg_ventas = df_periodo.groupby(sku_c).agg(Ventas_Total=(cant_c, 'sum'), Dias_Con_Venta=(fecha_c, 'nunique'), Precio_Venta_Prom=(p_venta_c, 'mean')).reset_index()
+        agg_ventas.columns = [sku_c] + [f'{col}{sufijo}' for col in agg_ventas.columns[1:]]
+        return agg_ventas
+
+    df_ventas_rec_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_recientes, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_Reciente')
+    df_ventas_gen_agg = agregar_ventas_periodo(df_ventas_proc, final_dias_general, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_General')
+
+    df_analisis = pd.merge(df_inventario_proc, df_ventas_rec_agg, on=sku_col, how='left')
+    if not df_ventas_gen_agg.empty: df_analisis = pd.merge(df_analisis, df_ventas_gen_agg, on=sku_col, how='left')
+    # print(f"DEBUG: 1. Después del merge inicial, el DataFrame tiene {len(df_analisis)} filas.")
+
+    cols_a_rellenar = ['Ventas_Total_Reciente', 'Dias_Con_Venta_Reciente', 'Precio_Venta_Prom_Reciente', 'Ventas_Total_General', 'Dias_Con_Venta_General', 'Precio_Venta_Prom_General']
+    for col in cols_a_rellenar:
+        if col not in df_analisis.columns: df_analisis[col] = 0.0
+        else: df_analisis[col] = df_analisis[col].fillna(0)
+    
+    if excluir_sin_ventas:
+        df_analisis = df_analisis[df_analisis['Ventas_Total_General'] > 0].copy()
+    # print(f"DEBUG: 2. Después de filtrar por 'sin ventas', quedan {len(df_analisis)} filas.")
+    
+
+    if incluir_solo_categorias and categoria_col_stock in df_analisis.columns:
+        # Normalizamos la lista de categorías a minúsculas y sin espacios
+        categorias_normalizadas = [cat.strip().lower() for cat in incluir_solo_categorias]
+        
+        # Comparamos contra la columna del DataFrame también normalizada
+        # El .str.lower() y .str.strip() se aplican a cada valor de la columna antes de la comparación
+        df_analisis = df_analisis[
+            df_analisis[categoria_col_stock].str.strip().str.lower().isin(categorias_normalizadas)
+        ].copy()
+    # print(f"DEBUG: 3. Después de filtrar por categorías, quedan {len(df_analisis)} filas.")
+
+    if incluir_solo_marcas and marca_col_stock in df_analisis.columns:
+        # Normalizamos la lista de marcas
+        marcas_normalizadas = [marca.strip().lower() for marca in incluir_solo_marcas]
+        
+        # Comparamos contra la columna de marcas normalizada
+        df_analisis = df_analisis[
+            df_analisis[marca_col_stock].str.strip().str.lower().isin(marcas_normalizadas)
+        ].copy()
+    # print(f"DEBUG: 4. Después de filtrar por marcas, quedan {len(df_analisis)} filas.")
+    
+    if df_analisis.empty:
+        # print("❌ DEBUG: El DataFrame está vacío ANTES del último filtro. La función terminará aquí.")
+        return {
+            "data": pd.DataFrame(),
+            "summary": {
+                "insight": "No se encontraron productos que coincidan con los filtros aplicados.",
+                "kpis": {}
+            }
+        }
+    
+    df_analisis['Margen_Bruto_con_PCA'] = df_analisis['Precio_Venta_Prom_Reciente'] - df_analisis[precio_compra_actual_col_stock]
+    df_analisis['Ingreso_Total_Reciente'] = df_analisis['Ventas_Total_Reciente'] * df_analisis['Precio_Venta_Prom_Reciente']
+    
+    ventas_diarias_recientes = df_analisis['Ventas_Total_Reciente'] / final_dias_recientes
+    ventas_diarias_generales = df_analisis['Ventas_Total_General'] / final_dias_general
+    df_analisis['Ventas_Ponderadas_para_Importancia'] = (ventas_diarias_recientes * (1 - peso_ventas_historicas) + ventas_diarias_generales * peso_ventas_historicas)
+    
+    cols_for_rank = ['Ventas_Ponderadas_para_Importancia', 'Ingreso_Total_Reciente', 'Margen_Bruto_con_PCA', 'Dias_Con_Venta_Reciente']
+    for col_rank in cols_for_rank:
+        df_analisis[col_rank] = pd.to_numeric(df_analisis[col_rank], errors='coerce').fillna(0)
+
+    pesos_default = {'ventas': 0.4, 'ingreso': 0.3, 'margen': 0.2, 'dias_venta': 0.1}
+    pesos_finales = pesos_default
+    if pesos_importancia:
+        pesos_finales = {**pesos_default, **pesos_importancia}
+
+    df_analisis['Importancia_Dinamica'] = (
+        df_analisis['Ventas_Ponderadas_para_Importancia'].rank(pct=True) * pesos_finales['ventas'] +
+        df_analisis['Ingreso_Total_Reciente'].rank(pct=True) * pesos_finales['ingreso'] +
+        df_analisis['Margen_Bruto_con_PCA'].rank(pct=True) * pesos_finales['margen'] +
+        df_analisis['Dias_Con_Venta_Reciente'].rank(pct=True) * pesos_finales['dias_venta']
+    ).fillna(0).round(3)
+
+    # --- SECCIÓN CRÍTICA #1 CORREGIDA ---
+    pda_efectivo_reciente_array = np.where(df_analisis['Dias_Con_Venta_Reciente'] > 0, df_analisis['Ventas_Total_Reciente'] / df_analisis['Dias_Con_Venta_Reciente'], 0)
+    pda_efectivo_general_array = np.where(df_analisis['Dias_Con_Venta_General'] > 0, df_analisis['Ventas_Total_General'] / df_analisis['Dias_Con_Venta_General'], 0)
+    pda_calendario_general_series = df_analisis['Ventas_Total_General'] / final_dias_general if final_dias_general > 0 else 0
+    
+    pda_reciente_a_usar = np.where(pda_efectivo_reciente_array > 0, pda_efectivo_reciente_array, pda_efectivo_general_array)
+    pda_general_a_usar = np.where(pda_efectivo_general_array > 0, pda_efectivo_general_array, pda_calendario_general_series)
+    
+    resultado_pda_array = (pda_reciente_a_usar * (1 - peso_ventas_historicas) + pda_general_a_usar * peso_ventas_historicas)
+    # Conversión explícita a Serie de Pandas ANTES de llamar a .fillna()
+    df_analisis['PDA_Final'] = pd.Series(resultado_pda_array, index=df_analisis.index).fillna(0).round(2)
+
+
+
+    factores_por_categoria_default = {'DEFAULT': 1.0}
+    factores_por_categoria_ej = {'Herramientas manuales': 1.1, 'Herramientas eléctricas': 1.05, 'Material eléctrico': 1.3, 'Tornillería': 1.5, 'Adhesivos y selladores': 1.2}
+    factores_por_categoria_final = {**factores_por_categoria_default, **factores_por_categoria_ej}
+    df_analisis['Factor_Reposicion_Categoria'] = df_analisis[categoria_col_stock].map(factores_por_categoria_final).fillna(factores_por_categoria_final['DEFAULT'])
+    
+    df_analisis['Factor_Rotacion_Crudo'] = df_analisis['Ventas_Total_Reciente'] / (df_analisis[stock_actual_col_stock] + 1e-6)
+    df_analisis['Factor_Rotacion_Ajustado_Ideal'] = 1 + (df_analisis['Factor_Rotacion_Crudo'].rank(pct=True).fillna(0) * coef_rotacion_para_stock_ideal)
+    df_analisis['Factor_Rotacion_Ajustado_Minimo'] = 1 + (df_analisis['Factor_Rotacion_Crudo'].rank(pct=True).fillna(0) * coef_rotacion_para_stock_minimo)
+    df_analisis['Factor_Ajuste_Cobertura_Por_Importancia'] = 1 + (df_analisis['Importancia_Dinamica'] * coef_importancia_para_cobertura_ideal)
+    
+    df_analisis['Dias_Cobertura_Ideal_Ajustados'] = (dias_cobertura_ideal_base * df_analisis['Factor_Ajuste_Cobertura_Por_Importancia']).round(1)
+    df_analisis['Stock_Ideal_Unds'] = (df_analisis['PDA_Final'] * df_analisis['Dias_Cobertura_Ideal_Ajustados'] * df_analisis['Factor_Reposicion_Categoria'] * df_analisis['Factor_Rotacion_Ajustado_Ideal']).round().clip(lower=0)
+    df_analisis['Stock_Minimo_Unds'] = (df_analisis['PDA_Final'] * dias_cubrir_con_pedido_minimo * df_analisis['Factor_Rotacion_Ajustado_Minimo']).round().clip(lower=0)
+    
+    dias_seguridad_adicionales = df_analisis['Importancia_Dinamica'] * factor_importancia_seguridad
+    dias_seguridad_totales = dias_seguridad_base + dias_seguridad_adicionales
+    df_analisis['Stock_de_Seguridad_Unds'] = (df_analisis['PDA_Final'] * dias_seguridad_totales).round()
+    df_analisis['Demanda_Lead_Time_Unds'] = (df_analisis['PDA_Final'] * lead_time_dias).round()
+    df_analisis['Punto_de_Alerta_Ideal_Unds'] = df_analisis['Demanda_Lead_Time_Unds'] + df_analisis['Stock_de_Seguridad_Unds']
+    
+    valor_si_verdadero = np.ceil(df_analisis['Stock_de_Seguridad_Unds'] + df_analisis['PDA_Final'])
+    alerta_minimo_calculado_array = np.where((df_analisis['Ventas_Total_Reciente'] > 1) | (df_analisis['PDA_Final'] > 0), valor_si_verdadero, df_analisis['Stock_de_Seguridad_Unds'])
+    df_analisis['Punto_de_Alerta_Minimo_Unds'] = np.minimum(alerta_minimo_calculado_array, df_analisis['Stock_Minimo_Unds'])
+    
+    df_analisis['Accion_Requerida'] = np.where(df_analisis[stock_actual_col_stock] < df_analisis['Punto_de_Alerta_Minimo_Unds'], 'Sí', 'No')
+    df_analisis['Sugerencia_Pedido_Ideal_Unds'] = (df_analisis['Stock_Ideal_Unds'] - df_analisis[stock_actual_col_stock]).clip(lower=0).round()
+    df_analisis['Sugerencia_Pedido_Minimo_Unds'] = (df_analisis['PDA_Final'] * dias_cubrir_con_pedido_minimo * (1 + df_analisis['Importancia_Dinamica'] * coef_importancia_para_pedido_minimo) * df_analisis['Factor_Rotacion_Ajustado_Minimo']).round().clip(lower=0)
+    
+    cond_importancia_alta = df_analisis['Importancia_Dinamica'] >= importancia_minima_para_redondeo_a_1
+    df_analisis.loc[cond_importancia_alta & (df_analisis['Sugerencia_Pedido_Ideal_Unds'] > 0) & (df_analisis['Sugerencia_Pedido_Ideal_Unds'] < 1), 'Sugerencia_Pedido_Ideal_Unds'] = 1
+    df_analisis.loc[cond_importancia_alta & (df_analisis['Sugerencia_Pedido_Minimo_Unds'] > 0) & (df_analisis['Sugerencia_Pedido_Minimo_Unds'] < 1), 'Sugerencia_Pedido_Minimo_Unds'] = 1
+    
+    cond_pasivo = (df_analisis['PDA_Final'] <= 1e-6) & (df_analisis[stock_actual_col_stock] == 0) & (df_analisis['Ventas_Total_Reciente'] > 0)
+    if incluir_productos_pasivos:
+        df_analisis.loc[cond_pasivo, ['Sugerencia_Pedido_Ideal_Unds', 'Stock_Ideal_Unds', 'Sugerencia_Pedido_Minimo_Unds', 'Stock_Minimo_Unds']] = cantidad_reposicion_para_pasivos
+
+    cobertura_array = np.where(df_analisis['PDA_Final'] > 1e-6, df_analisis[stock_actual_col_stock] / df_analisis['PDA_Final'], np.inf)
+    df_analisis['Dias_Cobertura_Stock_Actual'] = pd.Series(cobertura_array, index=df_analisis.index).fillna(np.inf)
+    df_analisis.loc[df_analisis[stock_actual_col_stock] == 0, 'Dias_Cobertura_Stock_Actual'] = 0
+    df_analisis['Dias_Cobertura_Stock_Actual'] = df_analisis['Dias_Cobertura_Stock_Actual'].round(1)
+    df_analisis['Dias_Cobertura_Stock_Actual'] = df_analisis['Dias_Cobertura_Stock_Actual'].replace(np.inf, 9999)
+
+
+
+    # --- FASE 2: CLASIFICACIÓN BCG (Integración inteligente) ---
+    # Preparamos los argumentos necesarios para la función de análisis estratégico
+    # Usamos los mismos DataFrames y pesos que ya tenemos en esta función
+    args_bcg = {
+        'df_ventas': df_ventas,
+        'df_inventario': df_inventario,
+        'dias_analisis_ventas_recientes': dias_analisis_ventas_recientes,
+        'dias_analisis_ventas_general': dias_analisis_ventas_general,
+        'pesos_importancia': pesos_importancia
+    }
+
+    resultado_bcg_dict = process_csv_analisis_estrategico_rotacion(**args_bcg)
+    df_bcg_resultados = resultado_bcg_dict.get("data")
+
+    if df_bcg_resultados is not None and not df_bcg_resultados.empty:
+        df_clasificacion = df_bcg_resultados[['SKU / Código de producto', 'Clasificación BCG']]
+        df_analisis = pd.merge(df_analisis, df_clasificacion, on='SKU / Código de producto', how='left')
+        df_analisis['Clasificación BCG'].fillna('N/A', inplace=True)
+    else:
+        print("Advertencia: El análisis BCG no devolvió resultados. La prioridad se basará solo en niveles de stock.")
+        df_analisis['Clasificación BCG'] = 'N/A'
+
+    # --- FASE 3: LÓGICA DEL SEMÁFORO (NUEVO) ---
+    df_analisis['Punto_de_Alerta_Minimo_Unds'] = pd.to_numeric(df_analisis['Punto_de_Alerta_Minimo_Unds'], errors='coerce').fillna(0)
+    df_analisis['Stock_Minimo_Unds'] = pd.to_numeric(df_analisis['Stock_Minimo_Unds'], errors='coerce').fillna(0)
+    
+    condiciones = [
+        # 1. ROJO (CRÍTICO)
+        (df_analisis[stock_actual_col_stock] < df_analisis['Punto_de_Alerta_Minimo_Unds']),
+        # 2. ÁMBAR (PRIORIDAD ALTA)
+        (df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
+        (df_analisis[stock_actual_col_stock] < df_analisis['Stock_Minimo_Unds']),
+        # 3. AMARILLO (PRIORIDAD NORMAL)
+        (~df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
+        (df_analisis[stock_actual_col_stock] < df_analisis['Stock_Minimo_Unds'])
+    ]
+    
+    opciones = [
+        '🔴 CRÍTICO (Pedir Hoy)',
+        '🟠 ALTA (Priorizar Pedido)',
+        '🟡 NORMAL (Incluir en Pedido)'
+    ]
+    
+    df_analisis['Prioridad'] = np.select(condiciones, opciones, default='⚪️ OK')
+
+    df_resultado = df_analisis.copy()
+
+    if excluir_productos_sin_sugerencia_ideal:
+        df_resultado = df_resultado[df_resultado[sugerencia_ideal_col] > 0]
+        if df_resultado.empty: 
+            return {"data": pd.DataFrame(), "summary": {"insight": "No se encontraron productos para reponer con los filtros aplicados.", "kpis": {}}}
+
+    print("Calculando el Índice de Urgencia para todos los productos...")
+
+    # 1. Identificamos los productos que están en un estado de urgencia.
+    condicion_urgencia = df_resultado[stock_actual_col_stock] < df_resultado['Punto_de_Alerta_Minimo_Unds']
+
+    # 2. Calculamos la "Severidad del Faltante" (de 0 a 1+).
+    #    Usamos .replace() para evitar la división por cero de forma segura.
+    punto_alerta_minimo_safe = df_resultado['Punto_de_Alerta_Minimo_Unds'].replace(0, 1e-6)
+    score_necesidad = 1 - (df_resultado[stock_actual_col_stock] / punto_alerta_minimo_safe)
+    
+    # 3. Calculamos el Índice de Urgencia ponderado por la importancia.
+    urgency_score_series = score_necesidad * df_resultado['Importancia_Dinamica']
+
+    # 4. Creamos la nueva columna permanente.
+    #    Tendrá un valor solo para los productos que cumplen la condición; el resto será 0.
+    temp_urgency_array = np.where(condicion_urgencia, urgency_score_series, 0)
+    df_resultado['Índice de Urgencia'] = pd.Series(temp_urgency_array, index=df_resultado.index).fillna(0)
+
+    # --- SECCIÓN DE ORDENAMIENTO DINÁMICO ---
+    if ordenar_por == 'Inversion Requerida':
+        df_resultado['temp_sort_col'] = df_resultado['Sugerencia_Pedido_Ideal_Unds'] * df_resultado[precio_compra_actual_col_stock]
+        df_resultado = df_resultado.sort_values(by='temp_sort_col', ascending=False)
+    elif ordenar_por == 'Cantidad a Comprar':
+        df_resultado = df_resultado.sort_values(by='Sugerencia_Pedido_Ideal_Unds', ascending=False)
+    elif ordenar_por == 'Margen Potencial':
+        df_resultado['temp_sort_col'] = (df_resultado['Precio_Venta_Prom_Reciente'] - df_resultado[precio_compra_actual_col_stock]) * df_resultado['Sugerencia_Pedido_Ideal_Unds']
+        df_resultado = df_resultado.sort_values(by='temp_sort_col', ascending=False)
+    elif ordenar_por == 'Categoría' and categoria_col_stock in df_resultado.columns:
+        df_resultado = df_resultado.sort_values(by=[categoria_col_stock, 'Importancia_Dinamica'], ascending=[True, False])
+    elif ordenar_por == 'Próximos a Agotarse':
+        df_resultado = df_resultado.sort_values(by='Dias_Cobertura_Stock_Actual', ascending=True)
+    elif ordenar_por == 'Índice de Urgencia':
+         df_resultado.sort_values(by='Índice de Urgencia', ascending=False, inplace=True)
+    elif ordenar_por == 'rotacion':
+        df_resultado = df_resultado.sort_values(by='Factor_Rotacion_Crudo', ascending=False)
+    else: # Por defecto, 'Importancia'
+        df_resultado = df_resultado.sort_values(by='Importancia_Dinamica', ascending=False)
+    
+    # print(f"df_resultado.columns 2 {df_resultado.columns}")
+
+
+    # --- INICIO DE LA NUEVA LÓGICA DE RESUMEN ---
+
+    # --- PASO 9: CÁLCULO Y EXPOSICIÓN DE MÁRGENES PARA DEBUG ---
+    print("Calculando márgenes detallados para auditoría...")
+
+    # Aseguramos que las columnas necesarias existan y sean numéricas antes de usarlas
+    for col in [precio_venta_actual_col_stock, precio_compra_actual_col_stock, precio_venta_prom_col]:
+        if col in df_resultado.columns:
+            df_resultado[col] = pd.to_numeric(df_resultado[col], errors='coerce').fillna(0)
+        else:
+            df_resultado[col] = 0 # Si no existe, la creamos con ceros para evitar errores
+
+    # Margen Teórico: Basado en el precio de lista actual del inventario.
+    df_resultado['debug_margen_lista'] = df_resultado[precio_venta_actual_col_stock] - df_resultado[precio_compra_actual_col_stock]
+    
+    # Margen Real: Basado en el precio promedio de las ventas recientes.
+    df_resultado['debug_margen_promedio'] = df_resultado[precio_venta_prom_col] - df_resultado[precio_compra_actual_col_stock]
+
+
+    # --- PASO 10: CÁLCULO DE KPIs Y RESUMEN (usando los márgenes auditados) ---
+    
+    df_a_reponer = df_resultado[df_resultado[sugerencia_ideal_col] > 0].copy()
+
+    if not df_a_reponer.empty:
+        inversion_total = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer[precio_compra_actual_col_stock]).sum()
+        skus_a_reponer = int(df_a_reponer[sku_col].nunique())
+        unidades_a_pedir = int(df_a_reponer[sugerencia_ideal_col].sum())
+        
+        # CÁLCULO CORREGIDO: Para el margen potencial, solo sumamos los productos que generan ganancia real.
+        # Usamos .clip(lower=0) para tratar cualquier margen negativo como 0 en la suma.
+        # margen_potencial = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer['debug_margen_promedio'].clip(lower=0)).sum()
+        margen_potencial = (df_a_reponer[sugerencia_ideal_col] * df_a_reponer['debug_margen_lista'].clip(lower=0)).sum()
+    else:
+        inversion_total, skus_a_reponer, unidades_a_pedir, margen_potencial = 0, 0, 0, 0
+
+    insight_text = f"Hemos identificado {skus_a_reponer} productos que necesitan una inversión de S/ {inversion_total:,.2f} para optimizar tu inventario."
+    if skus_a_reponer == 0:
+        insight_text = "¡Buen trabajo! Tu inventario parece estar bien abastecido."
+
+    kpis = {
+        "Inversión Total Sugerida": f"S/ {inversion_total:,.2f}",
+        "SKUs a Reponer": skus_a_reponer,
+        "Unidades Totales a Pedir": unidades_a_pedir,
+        "Margen Potencial de la Compra": f"S/ {margen_potencial:,.2f}"
+    }
+    # --- FIN DE LA NUEVA LÓGICA DE RESUMEN ---
+
+
+    columnas_salida_deseadas = [
+        sku_col, nombre_prod_col_stock, categoria_col_stock, subcategoria_col_stock, marca_col_stock, 
+        precio_compra_actual_col_stock, stock_actual_col_stock, 'Prioridad',
+        'Dias_Cobertura_Stock_Actual',
+        'Punto_de_Alerta_Minimo_Unds', 'Punto_de_Alerta_Ideal_Unds',
+        'Clasificación BCG', 'Accion_Requerida', 'Stock_de_Seguridad_Unds',
+        'Stock_Minimo_Unds', 'Stock_Ideal_Unds', 
+        'Sugerencia_Pedido_Minimo_Unds', 'Sugerencia_Pedido_Ideal_Unds', 
+        'Importancia_Dinamica', 'Índice de Urgencia', 'PDA_Final',
+        'Ventas_Total_Reciente', 'Ventas_Total_General'
+        # precio_venta_prom_col,
+        # 'debug_margen_promedio',
+        # precio_venta_actual_col_stock,
+        # 'debug_margen_lista'
+    ]
+       
+    df_resultado_final = df_resultado[[col for col in columnas_salida_deseadas if col in df_resultado.columns]].copy()
+    
+    if 'temp_sort_col' in df_resultado_final.columns:
+        df_resultado_final = df_resultado_final.drop(columns=['temp_sort_col'])
+    
+    if not df_resultado_final.empty:
+        column_rename_map = {
+            stock_actual_col_stock: 'Stock Actual (Unds)',
+            precio_compra_actual_col_stock: 'Precio Compra Actual (S/.)',
+            'PDA_Final': 'Promedio Venta Diaria (Unds)',
+            'Dias_Cobertura_Stock_Actual': 'Cobertura Actual (Días)',
+            'Punto_de_Alerta_Ideal_Unds': 'Punto de Alerta Ideal (Unds)',
+            'Punto_de_Alerta_Minimo_Unds': 'Punto de Alerta Mínimo (Unds)',
+            'Accion_Requerida': '¿Pedir Ahora?',
+            'Stock_de_Seguridad_Unds': 'Stock de Seguridad (Unds)',
+            'Stock_Minimo_Unds': 'Stock Mínimo Sugerido (Unds)',
+            'Stock_Ideal_Unds': 'Stock Ideal Sugerido (Unds)',
+            'Sugerencia_Pedido_Ideal_Unds': 'Pedido Ideal Sugerido (Unds)',
+            'Sugerencia_Pedido_Minimo_Unds': 'Pedido Mínimo Sugerido (Unds)',
+            'Importancia_Dinamica': 'Índice de Importancia',
+            'Ventas_Total_Reciente': f'Ventas Recientes ({final_dias_recientes}d) (Unds)',
+            'Ventas_Total_General' : f'Ventas Periodo General ({final_dias_general}d) (Unds)',
+            # 'debug_margen_lista': '[Debug] Margen s/ P. Lista',
+            # 'debug_margen_promedio': '[Debug] Margen s/ P. Promedio',
+            # precio_venta_prom_col: '[Debug] Precio Venta Promedio',
+            # precio_venta_actual_col_stock: '[Debug] Precio Venta Lista',
+        }
+        df_resultado_final.rename(columns=column_rename_map, inplace=True)
+
+    # --- PASO 11: LIMPIEZA FINAL PARA COMPATIBILIDAD CON JSON ---
+    # Este bloque ahora se aplica de forma segura al final.
+    if not df_resultado_final.empty:
+        # Reemplazamos infinitos con NaN
+        df_resultado_final = df_resultado_final.replace([np.inf, -np.inf], np.nan)
+        # Reemplazamos NaN con None, que es compatible con JSON (se convierte en 'null')
+        df_resultado_final = df_resultado_final.where(pd.notna(df_resultado_final), None)
+   
+    # return resultado_final_json_safe
+    return {
+        "data": df_resultado_final,
+        "summary": {
+            "insight": insight_text,
+            "kpis": kpis
+        }
+    }
+
+
+def generar_plan_compra_semaforo(
+    df_ventas: pd.DataFrame,
+    df_inventario: pd.DataFrame,
+    # Parámetros del Plan de Compra
+    dias_analisis_ventas_recientes: int = 30,
+    dias_analisis_ventas_general: int = 180,
+    peso_ventas_historicas: float = 0.6,
+    dias_cobertura_ideal_base: int = 10,
+    lead_time_dias: float = 7.0,
+    dias_seguridad_base: float = 0,
+    # Parámetros del Análisis Estratégico (BCG y Prioridad)
+    pesos_importancia: Optional[Dict[str, float]] = None
+) -> Dict[str, Any]:
+    """
+    Genera un Plan de Compra Sugerido enriquecido con una clasificación de prioridad
+    tipo semáforo (Rojo, Ámbar, Amarillo) basada en la urgencia y la importancia
+    estratégica de cada producto (Matriz BCG).
+    """
+    print("Iniciando generación de Plan de Compra con Semáforo...")
+
+    # --- FASE 1: PRE-PROCESAMIENTO Y CÁLCULOS BASE (Adaptado de plan_compra) ---
+    # Esta sección calcula todas las métricas numéricas necesarias.
+    
+    # (El código de pre-procesamiento, cálculo de PDA, Importancia, Stock Ideal,
+    # Stock Mínimo y Punto de Alerta Mínimo es prácticamente idéntico al de
+    # tu función process_csv_plan_compra_sugerido. Lo incluimos aquí.)
+
+    # ... (Copiar aquí toda la lógica de cálculo desde process_csv_plan_compra_sugerido
+    #      hasta justo antes de la sección de ordenamiento y selección de columnas finales) ...
+    # ASUMIREMOS QUE ESA LÓGICA YA SE EJECUTÓ Y TENEMOS UN df_analisis CON LAS SIGUIENTES COLUMNAS:
+    # 'SKU / Código de producto', 'Stock Actual (Unds)', 'Importancia_Dinamica', 
+    # 'Punto_de_Alerta_Minimo_Unds', 'Stock Mínimo Sugerido (Unds)', etc.
+
+    # --- Para que el código sea funcional, aquí está la lógica completa ---
+    sku_col = 'SKU / Código de producto'
+    fecha_col_ventas = 'Fecha de venta'
+    cantidad_col_ventas = 'Cantidad vendida'
+    precio_venta_col_ventas = 'Precio de venta unitario (S/.)'
+    stock_actual_col_stock = 'Cantidad en stock actual'
+    precio_compra_actual_col_stock = 'Precio de compra actual (S/.)'
+    
+    df_ventas_proc = df_ventas.copy()
+    df_inventario_proc = df_inventario.copy()
+
+    df_ventas_proc[sku_col] = df_ventas_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[sku_col] = df_inventario_proc[sku_col].astype(str).str.strip()
+    df_inventario_proc[stock_actual_col_stock] = pd.to_numeric(df_inventario_proc[stock_actual_col_stock], errors='coerce').fillna(0)
+    df_inventario_proc[precio_compra_actual_col_stock] = pd.to_numeric(df_inventario_proc[precio_compra_actual_col_stock], errors='coerce').fillna(0)
+    
+    df_ventas_proc[cantidad_col_ventas] = pd.to_numeric(df_ventas_proc[cantidad_col_ventas], errors='coerce').fillna(0)
+    df_ventas_proc[precio_venta_col_ventas] = pd.to_numeric(df_ventas_proc[precio_venta_col_ventas], errors='coerce').fillna(0)
+    df_ventas_proc[fecha_col_ventas] = pd.to_datetime(df_ventas_proc[fecha_col_ventas], format='%d/%m/%Y', errors='coerce')
+    df_ventas_proc.dropna(subset=[fecha_col_ventas], inplace=True)
+
+    if df_ventas_proc.empty: return {"data": pd.DataFrame(), "summary": {"insight": "No hay datos de ventas.", "kpis": {}}}
+    fecha_max_venta = df_ventas_proc[fecha_col_ventas].max()
+    if pd.isna(fecha_max_venta): return {"data": pd.DataFrame(), "summary": {"insight": "No se pudieron procesar las fechas de venta.", "kpis": {}}}
+
+    df_ventas_rec_agg = agregar_ventas_periodo(df_ventas_proc, dias_analisis_ventas_recientes, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_Reciente')
+    df_ventas_gen_agg = agregar_ventas_periodo(df_ventas_proc, dias_analisis_ventas_general, fecha_max_venta, sku_col, fecha_col_ventas, cantidad_col_ventas, precio_venta_col_ventas, '_General')
+
+    df_analisis = pd.merge(df_inventario_proc, df_ventas_rec_agg, on=sku_col, how='left')
+    if not df_ventas_gen_agg.empty: df_analisis = pd.merge(df_analisis, df_ventas_gen_agg, on=sku_col, how='left')
+    
+    cols_a_rellenar = ['Ventas_Total_Reciente', 'Dias_Con_Venta_Reciente', 'Precio_Venta_Prom_Reciente', 'Ventas_Total_General', 'Dias_Con_Venta_General']
+    for col in cols_a_rellenar:
+        if col not in df_analisis.columns: df_analisis[col] = 0.0
+        else: df_analisis[col] = df_analisis[col].fillna(0)
+    
+    # (Cálculo de Importancia_Dinamica, PDA_Final, Stock Mínimo, Punto de Alerta, etc.)
+    df_analisis['Margen_Bruto_Reciente'] = df_analisis['Precio_Venta_Prom_Reciente'] - df_analisis[precio_compra_actual_col_stock]
+    df_analisis['Ingreso_Total_Reciente'] = df_analisis['Ventas_Total_Reciente'] * df_analisis['Precio_Venta_Prom_Reciente']
+    pesos_default = {'ventas': 0.4, 'ingreso': 0.3, 'margen': 0.2, 'dias_venta': 0.1}
+    pesos_finales = pesos_default if pesos_importancia is None else {**pesos_default, **pesos_importancia}
+    df_analisis['Importancia_Dinamica'] = (df_analisis['Ventas_Total_Reciente'].rank(pct=True) * pesos_finales['ventas'] + df_analisis['Ingreso_Total_Reciente'].rank(pct=True) * pesos_finales['ingreso'] + df_analisis['Margen_Bruto_Reciente'].rank(pct=True) * pesos_finales['margen'] + df_analisis['Dias_Con_Venta_Reciente'].rank(pct=True) * pesos_finales['dias_venta']).fillna(0)
+    pda_efectivo_reciente = np.where(df_analisis['Dias_Con_Venta_Reciente'] > 0, df_analisis['Ventas_Total_Reciente'] / df_analisis['Dias_Con_Venta_Reciente'], 0)
+    pda_efectivo_general = np.where(df_analisis['Dias_Con_Venta_General'] > 0, df_analisis['Ventas_Total_General'] / df_analisis['Dias_Con_Venta_General'], 0)
+    pda_reciente_a_usar = np.where(pda_efectivo_reciente > 0, pda_efectivo_reciente, pda_efectivo_general)
+    pda_general_a_usar = np.where(pda_efectivo_general > 0, pda_efectivo_general, (df_analisis['Ventas_Total_General'] / dias_analisis_ventas_general))
+    df_analisis['PDA_Final'] = (pda_reciente_a_usar * (1 - peso_ventas_historicas) + pda_general_a_usar * peso_ventas_historicas).fillna(0)
+    df_analisis['Stock_Minimo_Sugerido (Unds)'] = (df_analisis['PDA_Final'] * dias_cobertura_ideal_base).round().clip(lower=0)
+    df_analisis['Demanda_Lead_Time_Unds'] = (df_analisis['PDA_Final'] * lead_time_dias).round()
+    df_analisis['Stock_de_Seguridad_Unds'] = (df_analisis['PDA_Final'] * (dias_seguridad_base + df_analisis['Importancia_Dinamica'] * 1.0)).round()
+    df_analisis['Punto_de_Alerta_Minimo (Unds)'] = df_analisis['Demanda_Lead_Time_Unds'] + df_analisis['Stock_de_Seguridad_Unds']
+    df_analisis['Stock Ideal Sugerido (Unds)'] = (df_analisis['PDA_Final'] * (dias_cobertura_ideal_base + df_analisis['Importancia_Dinamica'])).round().clip(lower=0)
+    df_analisis['Pedido Ideal Sugerido (Unds)'] = (df_analisis['Stock Ideal Sugerido (Unds)'] - df_analisis[stock_actual_col_stock]).clip(lower=0).round()
+    
+    # --- FASE 2: CLASIFICACIÓN BCG (Integrado de analisis_estrategico) ---
+    print("Fase 2: Integrando clasificación BCG...")
+    velocidad_reciente = df_analisis['Ventas_Total_Reciente'] / dias_analisis_ventas_recientes
+    velocidad_general = df_analisis['Ventas_Total_General'] / dias_analisis_ventas_general
+    df_analisis['Alta_Tendencia_Crecimiento'] = velocidad_reciente > (velocidad_general * 1.1)
+    umbral_importancia = df_analisis['Importancia_Dinamica'].median()
+
+    def clasificar_bcg(row):
+        es_importante = row['Importancia_Dinamica'] >= umbral_importancia
+        esta_creciendo = row['Alta_Tendencia_Crecimiento']
+        if es_importante and esta_creciendo: return '🌟 Estrella'
+        elif es_importante and not esta_creciendo: return '🐄 Vaca Lechera'
+        elif not es_importante and esta_creciendo: return '❓ Dilema'
+        else: return '🐕 Perro'
+    
+    df_analisis['Clasificación BCG'] = df_analisis.apply(clasificar_bcg, axis=1)
+
+    # --- FASE 3: LÓGICA DEL SEMÁFORO (NUEVO) ---
+    print("Fase 3: Aplicando la jerarquía de prioridad del Semáforo...")
+    
+    condiciones = [
+        # 1. ROJO (CRÍTICO)
+        (df_analisis[stock_actual_col_stock] < df_analisis['Punto_de_Alerta_Minimo (Unds)']),
+        # 2. ÁMBAR (PRIORIDAD ALTA)
+        (df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
+        (df_analisis[stock_actual_col_stock] < df_analisis['Stock_Minimo_Sugerido (Unds)']),
+        # 3. AMARILLO (PRIORIDAD NORMAL)
+        (~df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
+        (df_analisis[stock_actual_col_stock] < df_analisis['Stock_Minimo_Sugerido (Unds)'])
+    ]
+    
+    opciones = [
+        '🔴 CRÍTICO (Pedir Hoy)',
+        '🟠 ALTA (Priorizar Pedido)',
+        '🟡 NORMAL (Incluir en Pedido)'
+    ]
+    
+    # Usamos np.select para aplicar la jerarquía. El valor por defecto es 'OK'.
+    df_analisis['Prioridad'] = np.select(condiciones, opciones, default='⚪️ OK')
+
+    # --- FASE 4: FINALIZACIÓN Y FORMATEO ---
+    print("Fase 4: Compilando el reporte final...")
+    
+    # Selección de columnas para el reporte final
+    columnas_finales = [
+        'SKU / Código de producto', 'Nombre del producto', 'Categoría', 'Marca',
+        'Prioridad', # <-- La nueva columna estrella
+        'Clasificación BCG',
+        'Stock Actual (Unds)',
+        'Punto_de_Alerta_Minimo (Unds)',
+        'Stock Mínimo Sugerido (Unds)',
+        'Stock Ideal Sugerido (Unds)',
+        'Pedido Ideal Sugerido (Unds)',
+        'Índice de Importancia',
+        'Promedio Venta Diaria (Unds)'
+    ]
+    
+    # Renombramos algunas columnas que calculamos con nombres internos
+    df_analisis.rename(columns={
+        'Importancia_Dinamica': 'Índice de Importancia',
+        'PDA_Final': 'Promedio Venta Diaria (Unds)'
+    }, inplace=True)
+
+    # Aseguramos que solo seleccionamos columnas que existen
+    df_final = df_analisis[[col for col in columnas_finales if col in df_analisis.columns]].copy()
+    
+    # Ordenamos por la nueva columna Prioridad para máxima accionabilidad
+    # Creamos un orden customizado para que los críticos aparezcan primero
+    prioridad_orden = pd.CategoricalDtype(
+        ['🔴 CRÍTICO (Pedir Hoy)', '🟠 ALTA (Priorizar Pedido)', '🟡 NORMAL (Incluir en Pedido)', '⚪️ OK'], 
+        ordered=True
+    )
+    df_final['Prioridad'] = df_final['Prioridad'].astype(prioridad_orden)
+    df_final.sort_values(by=['Prioridad', 'Índice de Importancia'], ascending=[True, False], inplace=True)
+    
+    # KPIs para el resumen
+    kpis = {
+        "🔴 Críticos (Pedir Hoy)": int((df_final['Prioridad'] == '🔴 CRÍTICO (Pedir Hoy)').sum()),
+        "🟠 Prioridad Alta": int((df_final['Prioridad'] == '🟠 ALTA (Priorizar Pedido)').sum()),
+        "🟡 Prioridad Normal": int((df_final['Prioridad'] == '🟡 NORMAL (Incluir en Pedido)').sum()),
+        "⚪️ Productos OK": int((df_final['Prioridad'] == '⚪️ OK').sum())
+    }
+    insight_text = f"Se identificaron {kpis['🔴 Críticos (Pedir Hoy)']} productos en estado crítico que requieren acción inmediata."
+
+    return {
+        "data": df_final,
+        "summary": {
+            "insight": insight_text,
+            "kpis": kpis
+        }
+    }
 
 
 
@@ -3632,10 +4230,10 @@ def generar_auditoria_inventario(
         return {"puntaje_salud": 0, "kpis_dolor": {}, "plan_de_accion": []}
 
     # 1.2 Ejecutamos el Plan de Compra para obtener métricas de reposición
-    resultado_reposicion = process_csv_lista_basica_reposicion_historico(df_ventas.copy(), df_inventario.copy(), ordenar_por = "Índice de Urgencia")
+    resultado_reposicion = process_csv_plan_compra_sugerido(df_ventas.copy(), df_inventario.copy(), ordenar_por = "Índice de Urgencia")
     df_reposicion = resultado_reposicion.get("data")
     if df_reposicion is not None and not df_reposicion.empty:
-        cols_a_unir = [SKU_COL, 'Pedido Mínimo Sugerido (Unds)', '¿Pedir Ahora?', 'Ventas Recientes (30) (Unds)', 'Ventas Periodo General (180d) (Unds)', 'Punto de Alerta Mínimo (Unds)', 'Stock Ideal Sugerido (Unds)', 'Accion_Requerida', 'Stock Mínimo Sugerido (Unds)', 'Precio Compra Actual (S/.)', 'Pedido Ideal Sugerido (Unds)', 'Índice de Urgencia']
+        cols_a_unir = [SKU_COL, 'Pedido Mínimo Sugerido (Unds)', '¿Pedir Ahora?', 'Prioridad', 'Ventas Recientes (30) (Unds)', 'Ventas Periodo General (180d) (Unds)', 'Punto de Alerta Mínimo (Unds)', 'Punto de Alerta Ideal (Unds)', 'Stock Ideal Sugerido (Unds)', 'Accion_Requerida', 'Stock Mínimo Sugerido (Unds)', 'Precio Compra Actual (S/.)', 'Pedido Ideal Sugerido (Unds)', 'Índice de Urgencia']
         df_maestro = pd.merge(df_maestro, df_reposicion[[col for col in cols_a_unir if col in df_reposicion.columns]], on=SKU_COL, how='left', suffixes=('', '_right'))
         # df_maestro = pd.merge(df_maestro, df_reposicion[cols_a_unir], on='SKU / Código de producto', how='left')
         df_maestro['Stock Ideal Sugerido (Unds)'].fillna(0, inplace=True)

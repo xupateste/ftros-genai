@@ -448,25 +448,67 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
 
     const body = dataToUse.map(row => {
         const rowData = headers.map(header => {
-            const value = row[header] || '';
+            // const value = row[header] || '';
+            const value = row[header];
             // Si la columna es la de clasificación, le quitamos los emojis
             if (header === 'Clasificación BCG') {
                 return stripEmojis(value);
             }
-            return value;
+            // return value;
+            return value !== null && value !== undefined ? String(value) : '';
         });
         rowData.push(''); // Añadimos el valor vacío para 'Check ✓'
         rowData.push(''); // Añadimos el valor vacío para 'Cant. Final'
         return rowData;
     });
 
+    // autoTable(doc, {
+    //     head: [finalHeaders],
+    //     body: body,
+    //     startY: currentY, // La tabla empieza después del encabezado de contexto
+    //     styles: { fontSize: 11 },
+    //     headStyles: { fillColor: [67, 56, 202] }
+    // });
+
+    // --- INICIO DE LA NUEVA LÓGICA DE FORMATO CONDICIONAL ---
+
+    // 1. Buscamos los índices de las columnas que nos interesan
+    const prioridadColIndex = headers.indexOf('Prioridad');
+    const stockColIndex = headers.indexOf('Stock Actual (Unds)');
+
     autoTable(doc, {
-        head: [finalHeaders],
-        body: body,
-        startY: currentY, // La tabla empieza después del encabezado de contexto
-        styles: { fontSize: 11 },
-        headStyles: { fillColor: [67, 56, 202] }
+      head: [headers],
+      body: body,
+      startY: 25, // Ajusta según tu header
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [86, 11, 173] }, // Un morado más oscuro
+      
+      // 2. Usamos el hook 'willDrawCell' para pintar las celdas
+      willDrawCell: function (data) {
+        // Nos aseguramos de que los índices sean válidos
+        if (prioridadColIndex === -1 || stockColIndex === -1) {
+            return;
+        }
+
+        // Solo aplicamos la lógica a la columna de 'Stock Actual (Unds)'
+        if (data.column.index === stockColIndex) {
+            const rowData = data.row.raw;
+            const prioridadValue = String(rowData[prioridadColIndex] || '');
+
+            if (prioridadValue.includes('CRÍTICO')) {
+                doc.setFillColor(255, 199, 206); // Rojo claro (FFC7CE)
+                doc.setTextColor(156, 0, 6); // Rojo oscuro (9C0006)
+            } else if (prioridadValue.includes('ALTA')) {
+                doc.setFillColor(255, 235, 156); // Ámbar claro (FFEB9C)
+                doc.setTextColor(156, 87, 0); // Ámbar oscuro (9C5700)
+            } else if (prioridadValue.includes('NORMAL')) {
+                doc.setFillColor(255, 255, 235); // Amarillo claro (FFFFEB)
+                doc.setTextColor(156, 101, 0); // Amarillo oscuro (9C6500)
+            }
+        }
+      }
     });
+    // --- FIN DE LA NUEVA LÓGICA DE FORMATO CONDICIONAL ---
 
 
     // --- NUEVA SECCIÓN: "ANUNCIO DE VALOR" EN EL PDF ---
@@ -541,7 +583,8 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
       'SKU / Código de producto': 10,
       'Nombre del producto': 50,
       'Categoría': 23,
-      'Subcategoría': 23
+      'Subcategoría': 23,
+      'Prioridad':25,
     };
 
     columns.forEach(col => {
@@ -586,15 +629,66 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
     // 4. Añadimos los datos
     worksheet.addRows(dataToUse);
 
+    const headers = Object.keys(dataToUse[0]);
+
+    // --- INICIO DE LA NUEVA LÓGICA DE FORMATO CONDICIONAL ---
+    // 1. Definimos la paleta de colores (fill = fondo, font = texto)
+    const styles = {
+        CRÍTICO: {
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFC7CE' } },
+            font: { color: { argb: '9C0006' }, bold: true }
+        },
+        ALTA: {
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFEB9C' } },
+            font: { color: { argb: '9C5700' }, bold: true }
+        },
+        NORMAL: {
+            fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFEB' } },
+            font: { color: { argb: '9C6500' }, bold: true }
+        }
+    };
+    // 2. Buscamos los números de las columnas que nos interesan
+    const prioridadColNumber = headers.indexOf('Prioridad') + 1;
+    const stockColNumber = headers.indexOf('Stock Actual (Unds)') + 1;
+
+    if (prioridadColNumber > 0 && stockColNumber > 0) {
+        // 3. Iteramos sobre cada fila de datos (saltando la cabecera)
+        worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+            if (rowNumber > 1) { // Saltar la fila de la cabecera
+                const prioridadCell = row.getCell(prioridadColNumber);
+                const prioridadValue = prioridadCell.value || '';
+
+                let styleToApply = null;
+
+                if (prioridadValue.includes('CRÍTICO')) {
+                    styleToApply = styles.CRÍTICO;
+                } else if (prioridadValue.includes('ALTA')) {
+                    styleToApply = styles.ALTA;
+                } else if (prioridadValue.includes('NORMAL')) {
+                    styleToApply = styles.NORMAL;
+                }
+
+                if (styleToApply) {
+                    // 4. Aplicamos el estilo SOLO a la celda de Stock Actual
+                    const stockCell = row.getCell(stockColNumber);
+                    stockCell.style = styleToApply;
+                }
+            }
+        });
+    }
+    // --- FIN DE LA NUEVA LÓGICA DE FORMATO CONDICIONAL ---
+
+
     // Logica para ocultar columnas
     const columnsToHide = new Set([
         "PDA_Final",
         "PDA_Demanda_Estrategica",
         "Ingreso_Total_Reciente",
-        "ventas_diarias_promedio"
+        "ventas_diarias_promedio",
+        "Índice de Importancia",
+        "Índice de Urgencia",
+        "¿Pedir Ahora?",
     ]);
-
-    const headers = Object.keys(dataToUse[0]);
 
     // 4. Itera sobre los encabezados y oculta las columnas correspondientes.
     headers.forEach((header, index) => {

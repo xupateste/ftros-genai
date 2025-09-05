@@ -22,7 +22,6 @@ export default {
       fontFamily: {
         default: ['Inter', 'sans-serif'],
         poppins: ['Poppins', 'sans-serif'],
-        outfit: ['Outfit', 'sans-serif'],
         lexend: ['Lexend Deca', 'sans-serif'],
       },
       animation: {

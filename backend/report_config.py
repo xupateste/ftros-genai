@@ -851,6 +851,7 @@ REPORTS_CONFIG = {
         "SKU / Código de producto",
         "Nombre del producto",
         "Stock Actual (Unds)",
+        "Prioridad",
         "Stock Mínimo Sugerido (Unds)",
         "Precio Compra Actual (S/.)",
         "Pedido Ideal Sugerido (Unds)"
@@ -861,17 +862,18 @@ REPORTS_CONFIG = {
         # "Diferencia (Stock vs Alerta Mín.)", "¿Pedir Ahora?", "Índice de Importancia"
         
         "SKU / Código de producto", "Nombre del producto", "Categoría", "Subcategoría", "Marca",
-        "Precio Compra Actual (S/.)", "Stock Actual (Unds)", "Cobertura Actual (Días)",
-        "Punto de Alerta Mínimo (Unds)", "Punto de Alerta Ideal (Unds)", "¿Pedir Ahora?",
+        "Precio Compra Actual (S/.)", "Stock Actual (Unds)", "Prioridad", "Cobertura Actual (Días)",
+        "Punto de Alerta Mínimo (Unds)", "Punto de Alerta Ideal (Unds)", "Clasificación BCG",
         "Stock de Seguridad (Unds)", "Stock Mínimo Sugerido (Unds)", "Stock Ideal Sugerido (Unds)",
         "Pedido Mínimo Sugerido (Unds)", "Pedido Ideal Sugerido (Unds)", "Índice de Importancia",
         "Promedio Venta Diaria (Unds)", "Ventas Recientes ({dias_recientes}d) (Unds)", "Ventas Periodo General ({dias_general}d) (Unds)"
     ],
     "preview_details": [
         { "label": "Stock Actual", "data_key": "Stock Actual (Unds)", "suffix": " Unds" },
+        { "label": "Prioridad", "data_key": "Prioridad"},
         { "label": "Stock Mínimo Sugerido", "data_key": "Stock Mínimo Sugerido (Unds)", "suffix": " Unds" },
         { "label": "Precio de Compra", "data_key": "Precio Compra Actual (S/.)", "prefix": "S/ " },
-        { "label": "Sugerencia de Pedido", "data_key": "Pedido Ideal Sugerido (Unds)", "suffix": " Unds" }
+        # { "label": "Sugerencia de Pedido", "data_key": "Pedido Ideal Sugerido (Unds)", "suffix": " Unds" }
     ],
     "basic_parameters": [
       { "name": 'ordenar_por', "label": 'Ordenar reporte por', "type": 'select', "tooltip_key": "ordenar_por",

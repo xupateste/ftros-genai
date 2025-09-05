@@ -31,7 +31,7 @@ from datetime import datetime, timedelta, time, timezone # Para pd.Timestamp.now
 from track_expenses import process_csv, summarise_expenses, clean_data, get_top_expenses_by_month
 from track_expenses import process_csv_abc, procesar_stock_muerto
 from track_expenses import process_csv_puntos_alerta_stock
-from track_expenses import process_csv_lista_basica_reposicion_historico, process_csv_analisis_estrategico_rotacion
+from track_expenses import process_csv_plan_compra_sugerido, process_csv_analisis_estrategico_rotacion
 from track_expenses import generar_reporte_maestro_inventario, auditar_margenes_de_productos_nuevo
 from track_expenses import auditar_margenes_de_productos, diagnosticar_catalogo, auditar_calidad_datos
 from track_expenses import generar_auditoria_inventario
@@ -2359,7 +2359,7 @@ async def lista_basica_reposicion_historico(
         ventas_file_id=ventas_file_id,
         inventario_file_id=inventario_file_id,
         report_key="ReporteListaBasicaReposicionHistorica",
-        processing_function=process_csv_lista_basica_reposicion_historico, # Pasamos la función de lógica como argumento
+        processing_function=process_csv_plan_compra_sugerido, # Pasamos la función de lógica como argumento
         processing_params=processing_params,
         output_filename="ReporteListaBasicaReposicionHistorica.xlsx",
         user_id=user_id,

@@ -777,6 +777,10 @@ export function AnalysisWorkspace({ context, onLoginSuccess, initialData = null,
           </div>
         </div>
 
+        {/*<button onClick={() => handleRunNewAudit(uploadedFileIds)} className="bg-purple-600 text-white font-bold py-3 px-6 rounded-lg hover:bg-purple-700 flex items-center justify-center gap-2 mx-auto">
+          <FiRefreshCw /> Generar Nueva Auditoría
+        </button>*/}
+
         {renderMainContent()}
 
         {filesReady && (
