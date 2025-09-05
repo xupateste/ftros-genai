@@ -454,11 +454,14 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
             if (header === 'Clasificación BCG') {
                 return stripEmojis(value);
             }
+            if (header === 'Prioridad') {
+                return stripEmojis(value);
+            }
             // return value;
             return value !== null && value !== undefined ? String(value) : '';
         });
-        rowData.push(''); // Añadimos el valor vacío para 'Check ✓'
-        rowData.push(''); // Añadimos el valor vacío para 'Cant. Final'
+        // rowData.push(''); // Añadimos el valor vacío para 'Check ✓'
+        // rowData.push(''); // Añadimos el valor vacío para 'Cant. Final'
         return rowData;
     });
 
@@ -479,8 +482,8 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
     autoTable(doc, {
       head: [headers],
       body: body,
-      startY: 25, // Ajusta según tu header
-      styles: { fontSize: 8 },
+      startY: currentY, // Ajusta según tu header
+      styles: { fontSize: 9 },
       headStyles: { fillColor: [86, 11, 173] }, // Un morado más oscuro
       
       // 2. Usamos el hook 'willDrawCell' para pintar las celdas
@@ -547,7 +550,7 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
     }  
     
     // 5. Abrimos el PDF en una nueva pestaña
-    doc.output('bloburl', { filename: `AnalaisisFerretero_${reportConfig.key}_Accionable.pdf` });
+    doc.output('bloburl', { filename: `AnalisisFerretero_${reportConfig.key}_Accionable.pdf` });
     window.open(doc.output('bloburl'), '_blank');
   };
 
@@ -564,7 +567,7 @@ export function ReportModal({ reportConfig, context, creditsInfo, initialResult 
       return;
     }
 
-    const filename = `AnalaisisFerretero_${analysisResult.report_key}_Detallado.xlsx`;
+    const filename = `AnalisisFerretero_${analysisResult.report_key}_Detallado.xlsx`;
     
     // 1. Creamos un nuevo libro de trabajo
     const workbook = new ExcelJS.Workbook();
