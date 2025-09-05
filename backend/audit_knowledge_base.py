@@ -18,7 +18,7 @@ AUDIT_KNOWLEDGE_BASE = {
         ]
     },
     "oportunidad_clase_b": {
-        "why": "Un producto '🐄 Vaca Lechera' con una velocidad de venta creciente es una futura '🌟 Estrella'. Identificarlo a tiempo te permite potenciar su crecimiento antes que tu competencia y asegurar tus futuras fuentes de ingreso.",
+        "why": "Un producto '🐮 Vaca Lechera' con una velocidad de venta creciente es una futura '🌟 Estrella'. Identificarlo a tiempo te permite potenciar su crecimiento antes que tu competencia y asegurar tus futuras fuentes de ingreso.",
         "how": [
             "Ejecuta el 'Análisis Estratégico de Rotación' para monitorear su 'Índice de Importancia' y su tendencia.",
             "Asegúrate de que nunca tenga quiebres de stock. Trátalo como si ya fuera un '🌟 Estrella'.",
@@ -27,7 +27,7 @@ AUDIT_KNOWLEDGE_BASE = {
         ]
     },
     "heroes_en_declive": {
-        "why": "Esta es una alerta crítica. Un producto que era importante y rentable ('🌟 Estrella' o '🐄 Vaca Lechera') y que está perdiendo popularidad rápidamente es un indicador temprano de un futuro problema de stock muerto y una señal de un posible cambio en el mercado.",
+        "why": "Esta es una alerta crítica. Un producto que era importante y rentable ('🌟 Estrella' o '🐮 Vaca Lechera') y que está perdiendo popularidad rápidamente es un indicador temprano de un futuro problema de stock muerto y una señal de un posible cambio en el mercado.",
         "how": [
             "Ejecuta el 'Análisis Estratégico de Rotación' para investigar a fondo la tendencia de este producto.",
             "Habla con tu equipo de ventas: ¿Los clientes han dejado de preguntar por él? ¿Hay un producto sustituto (tuyo o de la competencia) que lo esté desplazando?",
@@ -36,7 +36,7 @@ AUDIT_KNOWLEDGE_BASE = {
         ]
     },
     "inversion_ineficiente_perro": {
-        "why": "Un producto '🐕 Perro' es un activo de bajo rendimiento. Invertir capital en reponerlo, cuando podría usarse para comprar '🌟 Estrellas' o 'Vacas Lecheras', es una ineficiencia. Esta alerta te ayuda a optimizar cada sol de tu presupuesto de compras.",
+        "why": "Un producto '🐶 Perro' es un activo de bajo rendimiento. Invertir capital en reponerlo, cuando podría usarse para comprar '🌟 Estrellas' o 'Vacas Lecheras', es una ineficiencia. Esta alerta te ayuda a optimizar cada sol de tu presupuesto de compras.",
         "how": [
             "Ejecuta el 'Plan de Compra Sugerido' para ver la lista completa de estos productos.",
             "Para estos items, considera usar el 'Pedido Mínimo Sugerido' en lugar del 'Ideal' para minimizar la inversión.",
@@ -62,7 +62,7 @@ AUDIT_KNOWLEDGE_BASE = {
         ]
     },
     "stock_muerto_perro": {
-        "why": "Un producto '🐕 Perro' con stock muerto es capital inmovilizado en un activo de bajo rendimiento. Ocupa espacio y consume recursos sin contribuir significativamente a tu negocio.",
+        "why": "Un producto '🐶 Perro' con stock muerto es capital inmovilizado en un activo de bajo rendimiento. Ocupa espacio y consume recursos sin contribuir significativamente a tu negocio.",
         "how": [
             "Ejecuta el 'Plan de Liquidación' para ver la lista completa y priorizar por valor.",
             "Considera una liquidación agresiva (ofertas 2x1, descuentos) para recuperar el capital rápidamente.",
@@ -70,7 +70,7 @@ AUDIT_KNOWLEDGE_BASE = {
         ]
     },
     "stock_muerto_heroe_caido": {
-        "why": "Esta es una alerta crítica. Un producto que era importante ('🐄 Vaca Lechera' o '🌟 Estrella') y que ha dejado de venderse indica un cambio significativo en el mercado, la aparición de un competidor o un problema con el producto mismo.",
+        "why": "Esta es una alerta crítica. Un producto que era importante ('🐮 Vaca Lechera' o '🌟 Estrella') y que ha dejado de venderse indica un cambio significativo en el mercado, la aparición de un competidor o un problema con el producto mismo.",
         "how": [
             "Ejecuta la 'Investigación de Causa Raíz' para un análisis de 360° del producto.",
             "Habla con tu equipo de ventas: ¿Los clientes han dejado de preguntar por él? ¿Por qué?",
@@ -104,7 +104,7 @@ AUDIT_KNOWLEDGE_BASE = {
             "Ejecuta el 'Análisis Estratégico de Rotación' para entender la cobertura en días.",
             "Considera una promoción temporal para reducir el exceso sin dañar la percepción del precio a largo plazo.",
             "Revisa y ajusta las cantidades de tus órdenes de compra para estos productos.",
-            "Usa el capital liberado para invertir en productos '🐄 Vaca Lechera' emergentes."
+            "Usa el capital liberado para invertir en productos '🐮 Vaca Lechera' emergentes."
         ]
     },
     # --- OPORTUNIDADES DE OPTIMIZACIÓN ---

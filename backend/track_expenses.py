@@ -801,11 +801,11 @@ def process_csv_analisis_estrategico_rotacion(
         if es_importante and esta_creciendo:
             return '🌟 Estrella'
         elif es_importante and not esta_creciendo:
-            return '🐄 Vaca Lechera'
+            return '🐮 Vaca Lechera'
         elif not es_importante and esta_creciendo:
             return '❓ Dilema'
         else:
-            return '🐕 Perro'
+            return '🐶 Perro'
 
     df_analisis['Clasificacion_BCG'] = df_analisis.apply(clasificar_bcg, axis=1)
 
@@ -912,17 +912,17 @@ def process_csv_analisis_estrategico_rotacion(
 
     total_productos = len(df_analisis)
     estrellas = df_analisis[df_analisis['Clasificacion_BCG'] == '🌟 Estrella']
-    vacas = df_analisis[df_analisis['Clasificacion_BCG'] == '🐄 Vaca Lechera']
+    vacas = df_analisis[df_analisis['Clasificacion_BCG'] == '🐮 Vaca Lechera']
     dilemas = df_analisis[df_analisis['Clasificacion_BCG'] == '❓ Dilema']
-    perros = df_analisis[df_analisis['Clasificacion_BCG'] == '🐕 Perro']
+    perros = df_analisis[df_analisis['Clasificacion_BCG'] == '🐶 Perro']
 
     insight_text = f"Tu portafolio se compone de {len(estrellas)} Estrellas (motores de crecimiento) y {len(vacas)} Vacas Lecheras (pilares de rentabilidad). Presta atención a los {len(dilemas)} Dilemas."
     
     kpis = {
         "# de Estrellas 🌟": len(estrellas),
-        "# de Vacas Lecheras 🐄": len(vacas),
+        "# de Vacas Lecheras 🐮": len(vacas),
         "# de Dilemas ❓": len(dilemas),
-        "# de Perros 🐕": len(perros)
+        "# de Perros 🐶": len(perros)
     }
 
     # --- 9. Selección y Renombrado de Columnas Finales ---
@@ -2710,10 +2710,10 @@ def process_csv_plan_compra_sugerido(
         # 1. ROJO (CRÍTICO)
         (df_analisis[stock_actual_col_stock] < df_analisis['Punto_de_Alerta_Minimo_Unds']),
         # 2. ÁMBAR (PRIORIDAD ALTA)
-        (df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
+        (df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐮 Vaca Lechera'])) & 
         (df_analisis[stock_actual_col_stock] < df_analisis['Stock_Minimo_Unds']),
         # 3. AMARILLO (PRIORIDAD NORMAL)
-        (~df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
+        (~df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐮 Vaca Lechera'])) & 
         (df_analisis[stock_actual_col_stock] < df_analisis['Stock_Minimo_Unds'])
     ]
     
@@ -2982,9 +2982,9 @@ def generar_plan_compra_semaforo(
         es_importante = row['Importancia_Dinamica'] >= umbral_importancia
         esta_creciendo = row['Alta_Tendencia_Crecimiento']
         if es_importante and esta_creciendo: return '🌟 Estrella'
-        elif es_importante and not esta_creciendo: return '🐄 Vaca Lechera'
+        elif es_importante and not esta_creciendo: return '🐮 Vaca Lechera'
         elif not es_importante and esta_creciendo: return '❓ Dilema'
-        else: return '🐕 Perro'
+        else: return '🐶 Perro'
     
     df_analisis['Clasificación BCG'] = df_analisis.apply(clasificar_bcg, axis=1)
 
@@ -2995,10 +2995,10 @@ def generar_plan_compra_semaforo(
         # 1. ROJO (CRÍTICO)
         (df_analisis[stock_actual_col_stock] < df_analisis['Punto_de_Alerta_Minimo (Unds)']),
         # 2. ÁMBAR (PRIORIDAD ALTA)
-        (df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
+        (df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐮 Vaca Lechera'])) & 
         (df_analisis[stock_actual_col_stock] < df_analisis['Stock_Minimo_Sugerido (Unds)']),
         # 3. AMARILLO (PRIORIDAD NORMAL)
-        (~df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) & 
+        (~df_analisis['Clasificación BCG'].isin(['🌟 Estrella', '🐮 Vaca Lechera'])) & 
         (df_analisis[stock_actual_col_stock] < df_analisis['Stock_Minimo_Sugerido (Unds)'])
     ]
     
@@ -4310,7 +4310,7 @@ def generar_auditoria_inventario(
         venta_perdida_estimada = (alerta1_df['PDA_Demanda_Estrategica'] * alerta1_df['Precio Venta (S/.)'] * 20).sum()
         tasks.append({
             "id": "task_quiebre_stock_a", "type": "error",
-            "title": f"Tienes {len(alerta1_df)} productos '🌟 Estrella' en riesgo de quiebre de stock.",
+            "title": f"Tienes {len(alerta1_df)} productos '🌟 Estrellas' en riesgo de quiebre de stock.",
             "impact": f"Riesgo de pérdida de ventas: S/ {venta_perdida_estimada:,.2f} este mes.",
             "solution_button_text": "Ver y Reponer Urgentes",
             "target_report": target_report_key,
@@ -4320,11 +4320,52 @@ def generar_auditoria_inventario(
             "skus_afectados": skus_afectados
         })
 
+    # Alerta 0: Quiebre de Stock en "Vacas Lecheras"
+    alerta2_df = df_maestro[(df_maestro['Clasificación BCG'].isin(['🐮 Vaca Lechera'])) & (df_maestro['Alerta de Stock'].isin(['Agotado', 'Stock Bajo'])) & (df_maestro['Ventas Periodo General (180d) (Unds)'] > 0)].copy()
+    # print(f"alerta2_df {alerta2_df}")
+    if not alerta2_df.empty:
+        skus_afectados_2 = alerta2_df['SKU / Código de producto'].tolist()
+
+        target_report_key_2 = "ReportePlanDeCompra"
+
+        if 'Índice de Importancia' in alerta2_df.columns:
+            alerta2_df.sort_values(by='Índice de Importancia', ascending=False, inplace=True)
+       
+        column_templates_2 = REPORTS_CONFIG.get(target_report_key_2, {}).get('detalle_columns', [])
+        preview_cols_2 = [
+            col.format(**dynamic_params) for col in column_templates_2
+        ]
+
+        preview_df_2 = alerta2_df[[col for col in preview_cols_2 if col in alerta2_df.columns]].head(3)
+        preview_data_2 = _clean_preview_data(preview_df_2) # _clean_preview_data ahora devuelve una lista        
+
+        preview_headers_2 = [
+            col for col in preview_df_2.columns 
+            if col not in ['SKU / Código de producto', 'Nombre del producto']
+        ]
+        # print(f"alerta2_df {alerta2_df.columns}")
+        if alerta2_df['Precio Venta (S/.)'].dtype == 'object':
+            precios_limpios_2 = alerta2_df['Precio Venta (S/.)'].astype(str).str.replace(r'[S/.,]', '', regex=True)
+            alerta2_df['Precio Venta (S/.)'] = pd.to_numeric(precios_limpios_2, errors='coerce')
+
+        venta_perdida_estimada_2 = (alerta2_df['PDA_Demanda_Estrategica'] * alerta2_df['Precio Venta (S/.)'] * 20).sum()
+        tasks.append({
+            "id": "task_quiebre_stock_b", "type": "error",
+            "title": f"Tienes {len(alerta2_df)} productos '🐮 Vacas Lecheras' en riesgo de quiebre de stock.",
+            "impact": f"Riesgo de pérdida de ventas: S/ {venta_perdida_estimada_2:,.2f} este mes.",
+            "solution_button_text": "Ver y Reponer Urgentes",
+            "target_report": target_report_key_2,
+            "knowledge": AUDIT_KNOWLEDGE_BASE.get("quiebre_stock_clase_b"),
+            "preview_data": preview_data_2,
+            "preview_headers": preview_headers_2, # <-- LA LISTA ORDENADA
+            "skus_afectados": skus_afectados_2
+        })
+
     # Primero, identificamos todo el stock muerto
     df_stock_muerto_general = df_maestro[df_maestro['Clasificación Diagnóstica'] == 'Stock Muerto'].copy()
 
     # Alerta 3 (Advertencia): "Capital Inmovilizado en Productos 'Perro'"
-    alerta3_df = df_stock_muerto_general[df_stock_muerto_general['Clasificación BCG'] == '🐕 Perro'].copy()
+    alerta3_df = df_stock_muerto_general[df_stock_muerto_general['Clasificación BCG'] == '🐶 Perro'].copy()
     # print(f"alerta3_df.colums {alerta3_df.columns}")
     # print(f"alerta3_df {alerta3_df}")
     if not alerta3_df.empty:
@@ -4347,7 +4388,7 @@ def generar_auditoria_inventario(
         tasks.append({
             "id": "task_stock_muerto_perro",
             "type": "warning",
-            "title": f"Tienes {len(alerta3_df)} productos '🐕 Perro' (baja importancia) como stock muerto.",
+            "title": f"Tienes {len(alerta3_df)} productos '🐶 Perros' (baja importancia) como stock muerto.",
             "impact": f"Capital inmovilizado: S/ {capital_inmovilizado:,.2f}.",
             "solution_button_text": "Ver y Crear Plan de Liquidación",
             "target_report": target_report_key_3,
@@ -4358,7 +4399,7 @@ def generar_auditoria_inventario(
         })
    
     # Alerta 4 (Error Crítico): "Héroes Caídos: Productos Importantes en Riesgo"
-    alerta4_df = df_stock_muerto_general[df_stock_muerto_general['Clasificación BCG'].isin(['🐄 Vaca Lechera', '🌟 Estrella'])].copy()
+    alerta4_df = df_stock_muerto_general[df_stock_muerto_general['Clasificación BCG'].isin(['🐮 Vaca Lechera', '🌟 Estrella'])].copy()
     if not alerta4_df.empty:
         valor_estrategico_riesgo = alerta4_df['Valor stock (S/.)'].sum()
         skus_afectados_4 = alerta4_df['SKU / Código de producto'].tolist()
@@ -4393,7 +4434,7 @@ def generar_auditoria_inventario(
 
     # Primero, identificamos todo el exceso de stock en productos importantes
     df_exceso_stock_general = df_maestro[
-        (df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])) &
+        (df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐮 Vaca Lechera'])) &
         (df_maestro['Alerta de Stock'] == 'Sobre-stock')
     ].copy()
 
@@ -4417,7 +4458,7 @@ def generar_auditoria_inventario(
         tasks.append({
             "id": "task_exceso_stock_estrella",
             "type": "opportunity",
-            "title": f"Tienes {len(alerta5_df)} productos '🌟 Estrella' con exceso de stock.",
+            "title": f"Tienes {len(alerta5_df)} productos '🌟 Estrellas' con exceso de stock.",
             "impact": f"Capital excedente que puedes optimizar: S/ {capital_excedente:,.2f}.",
             "solution_button_text": "Ajustar Plan de Compra",
             "target_report": target_report_key_5,
@@ -4428,7 +4469,7 @@ def generar_auditoria_inventario(
         })
 
     # Nueva Alerta #6 (Advertencia): "Liberar Capital de 'Vacas Lecheras'"
-    alerta6_df = df_exceso_stock_general[df_exceso_stock_general['Clasificación BCG'] == '🐄 Vaca Lechera'].copy()
+    alerta6_df = df_exceso_stock_general[df_exceso_stock_general['Clasificación BCG'] == '🐮 Vaca Lechera'].copy()
     if not alerta6_df.empty:
         capital_perezoso = alerta6_df['Inversión Stock Actual (S/.)'].sum()
         skus_afectados_6 = alerta6_df['SKU / Código de producto'].tolist()
@@ -4446,7 +4487,7 @@ def generar_auditoria_inventario(
         tasks.append({
             "id": "task_exceso_stock_vaca",
             "type": "warning",
-            "title": f"Tienes {len(alerta6_df)} productos '🐄 Vacas Lecheras' con exceso de stock.",
+            "title": f"Tienes {len(alerta6_df)} productos '🐮 Vacas Lecheras' con exceso de stock.",
             "impact": f"Capital perezoso inmovilizado: S/ {capital_perezoso:,.2f}.",
             "solution_button_text": "Analizar Rotación y Cobertura",
             "target_report": target_report_key_6,
@@ -4463,8 +4504,8 @@ def generar_auditoria_inventario(
     # if all(col in df_maestro.columns for col in required_cols_alert7):
         
     # Filtramos para obtener solo los productos de Clase B
-    # alerta7_df = df_maestro[df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])].copy()
-    alerta7_df = df_maestro[df_maestro['Clasificación BCG'] == '🐄 Vaca Lechera'].copy()
+    # alerta7_df = df_maestro[df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐮 Vaca Lechera'])].copy()
+    alerta7_df = df_maestro[df_maestro['Clasificación BCG'] == '🐮 Vaca Lechera'].copy()
     if not alerta7_df.empty:
         # Calculamos la velocidad de venta para ambos períodos
         velocidad_reciente = alerta7_df['Ventas Recientes (30d) (Unds)'] / 30
@@ -4492,7 +4533,7 @@ def generar_auditoria_inventario(
             tasks.append({
                 "id": "task_estrellas_emergentes",
                 "type": "opportunity",
-                "title": f"Se han detectado {len(estrellas_emergentes)} productos '🐄 Vacas Lecheras' con aceleración en ventas.",
+                "title": f"Se han detectado {len(estrellas_emergentes)} productos '🐮 Vacas Lecheras' con aceleración en ventas.",
                 "impact": "Potencial de convertirse en tus nuevas '🌟 Estrellas'.",
                 "solution_button_text": "Analizar Productos de Alto Potencial",
                 "target_report": target_report_key_7,
@@ -4511,7 +4552,7 @@ def generar_auditoria_inventario(
     # if all(col in df_maestro.columns for col in required_cols_alert6):
         
     # Filtramos para obtener solo los productos importantes
-    alerta8_df = df_maestro[df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐄 Vaca Lechera'])].copy()
+    alerta8_df = df_maestro[df_maestro['Clasificación BCG'].isin(['🌟 Estrella', '🐮 Vaca Lechera'])].copy()
     
     if not alerta8_df.empty:
         # Identificamos los productos cuya tendencia de crecimiento es fuertemente negativa
@@ -4556,7 +4597,7 @@ def generar_auditoria_inventario(
     # Filtramos para encontrar productos 'Perro' que el sistema sugiere reponer
     alerta9_df = df_maestro[
         (df_maestro['¿Pedir Ahora?'].str.contains('Sí', na=False)) & 
-        (df_maestro['Clasificación BCG'] == '🐕 Perro')
+        (df_maestro['Clasificación BCG'] == '🐶 Perro')
     ].copy()
 
     if not alerta9_df.empty:
@@ -4585,7 +4626,7 @@ def generar_auditoria_inventario(
         tasks.append({
             "id": "task_inversion_ineficiente_perro",
             "type": "opportunity",
-            "title": f"Se sugiere reponer {len(alerta9_df)} productos '🐕 Perro' (baja importancia).",
+            "title": f"Se sugiere reponer {len(alerta9_df)} productos '🐶 Perros' (baja importancia).",
             "impact": f"Inversión de baja prioridad sugerida: S/ {inversion_ineficiente:,.2f}.",
             "solution_button_text": "Optimizar Plan de Compra",
             "target_report": target_report_key_9,
@@ -4660,7 +4701,7 @@ def generar_auditoria_inventario(
     if all(col in df_maestro.columns for col in required_cols_alert11):
         
         # Filtramos para obtener solo los productos importantes (Clase A y B)
-        df_importantes = df_maestro[df_maestro['Clasificación BCG'].isin(['🐄 Vaca Lechera', '🌟 Estrella'])].copy()
+        df_importantes = df_maestro[df_maestro['Clasificación BCG'].isin(['🐮 Vaca Lechera', '🌟 Estrella'])].copy()
         
         # Definimos las condiciones de los problemas de datos
         condicion_precio_cero = df_importantes['Precio Compra (S/.)'].fillna(0) == 0

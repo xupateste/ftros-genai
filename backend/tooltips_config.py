@@ -146,9 +146,9 @@ KPI_TOOLTIPS_GLOSSARY = {
     "Valor en Sobre-stock": "La suma total del costo de tu inventario que está clasificado como 'Sobre-stock'. Es el capital que podrías liberar con promociones o liquidaciones.",
     "Rotación Promedio (Ejemplo)": "Una métrica futura que medirá la velocidad promedio a la que rota todo tu inventario.",
     "# de Estrellas 🌟": "El número de productos que son a la vez muy importantes para tu negocio y están creciendo en ventas. Estos son tus motores de crecimiento futuro; la estrategia es invertir en ellos.",
-    "# de Vacas Lecheras 🐄": "El número de productos que son muy importantes pero tienen un crecimiento estable. Son los pilares sólidos que financian tu negocio. La estrategia es proteger su rentabilidad.",
+    "# de Vacas Lecheras 🐮": "El número de productos que son muy importantes pero tienen un crecimiento estable. Son los pilares sólidos que financian tu negocio. La estrategia es proteger su rentabilidad.",
     "# de Dilemas ❓": "El número de productos que aún no son muy importantes pero cuyas ventas están acelerando. Son tus 'apuestas' o potenciales futuras Estrellas. La estrategia es analizarlos de cerca.",
-    "# de Perros 🐕": "El número de productos de baja importancia y bajo crecimiento. A menudo inmovilizan capital y espacio. La estrategia es considerar su liquidación o descontinuación.",
+    "# de Perros 🐶": "El número de productos de baja importancia y bajo crecimiento. A menudo inmovilizan capital y espacio. La estrategia es considerar su liquidación o descontinuación.",
 
     # --- Tooltips para Reporte ABC ---
     "SKUs Clase A (Vitales)": "El número de productos que son críticos para tu negocio. Son pocos, pero generan la mayor parte de tu valor.",

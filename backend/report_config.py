@@ -624,9 +624,9 @@ REPORTS_CONFIG = {
         "defaultValue": [],
         "static_options": [
             { "value": "🌟 Estrella", "label": "🌟 Estrella" },
-            { "value": "🐄 Vaca Lechera", "label": "🐄 Vaca Lechera" },
+            { "value": "🐮 Vaca Lechera", "label": "🐮 Vaca Lechera" },
             { "value": "❓ Dilema", "label": "❓ Dilema" },
-            { "value": "🐕 Perro", "label": "🐕 Perro" }
+            { "value": "🐶 Perro", "label": "🐶 Perro" }
         ]
       }
     ],
