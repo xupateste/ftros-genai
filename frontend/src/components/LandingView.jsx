@@ -9,6 +9,7 @@ import { AnimateOnScroll } from './AnimateOnScroll'; // <-- Importamos el nuevo 
 import api from '../utils/api'; // Usamos nuestro cliente API centralizado
 import { LoginModalBeta } from './LoginModalBeta'
 
+import { TrustManifesto } from '../components/TrustManifesto';
 
 import { Helmet } from 'react-helmet-async';
 import * as analytics from '../utils/analytics';
@@ -631,6 +632,7 @@ const OnboardingModal = ({ isOpen, onClose, onRegisterClick }) => {
 export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onLoginSuccess }) {
   const heroRef = useRef(null);
   const [isHeroVisible, setIsHeroVisible] = useState(true);
+  const manifestoRef = useRef(null);
 
   const [showActionButtons, setShowActionButtons] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false); // Estado para el modal
@@ -650,6 +652,11 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
     analytics.trackBeginOnboarding();
     setIsModalOpen(true);
   };
+
+  const handleScroll = () => {
+    manifestoRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -735,12 +742,28 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
             </h1>
           </AnimateOnScroll>
           <p className="text-md font-lexend font-semibold md:px-4 md:text-xl text-gray-300 max-w-4xl mx-auto mb-8 antialiased">
-            Aumenta hasta 25%+ tu rentabilidad con análisis de datos, diseñado perfectamente para tu ferretería — hecho para el inversionista ferretero del siglo XXI
+            Aumenta hasta 25%+ tu rentabilidad con análisis de datos, diseñado perfectamente para tu ferretería — hecho para el inversionista ferretero
           </p>
           
           <AnimateOnScroll delay={ 1000 }>
-            <WaitlistForm ref={heroRef} ctaClick={() => openOnboardingModal()} buttonText="Únete ahora" />
-            <SlidingAvatars ctaClick={() => openOnboardingModal()} />
+            <div className="w-full justify-center gap-4 grid md:grid-cols-2">
+              {/*<WaitlistForm ctaClick={() => openOnboardingModal()} buttonText="Unete" />*/}
+              <div className="w-full" onClick={() => openOnboardingModal()}>
+                <div
+                  className="cursor-pointer flex w-80 gap-2 text-md bg-purple-900 font-bold font-mono text-white md:w-64 px-4 leading-tight rounded-lg antialiased justify-center h-12 md:h-14 hover:scale-103 items-center md:float-right"
+                  style={{ background: 'linear-gradient(to right, #6608d2, #c700ff, #b5179e)' }}
+                >
+                  UNETE AHORA <FiArrowRight />
+                </div>
+              </div>
+              <div
+                className="cursor-pointer flex bg-gray-50 text-sm font-mono text-gray-800 w-80 md:w-64 px-14 md:px-4 leading-tight rounded-lg antialiased justify-center  h-12 md:h-14 hover:scale-103 hover:bg-white items-center"
+                onClick={handleScroll}
+              >
+                LEER EL MANIFIESTO DE DATOS Y CONFIANZA
+              </div>
+            </div>
+            <SlidingAvatars ref={heroRef} ctaClick={() => openOnboardingModal()} />
           </AnimateOnScroll>
           <AnimateOnScroll delay={ 1100 }>
             {/*<p className="text-xs max-w-sm text-gray-400 justify-center mx-auto mt-2">Asegura tu lugar en nuestra beta privada</p>*/}
@@ -891,6 +914,13 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
               Somos 100% independientes. Sin acuerdos con marcas o proveedores. Solo trabajamos para una parte: <b>Para tu Ferretería</b>. Cada recomendación busca una sola cosa: <b>Tu Rentabilidad.</b>
             </p>
           </AnimateOnScroll>
+        </div>
+      </section>
+
+
+      <section ref={manifestoRef} className="bg-black bg-opacity-60">
+        <div className="container mx-auto max-w-4xl w-full">
+          <TrustManifesto />
         </div>
       </section>
 
@@ -1177,6 +1207,8 @@ export function LandingView({ onStartSession, onLoginClick, onRegisterClick, onL
           </AnimateOnScroll>
         </div>
       </section>
+
+      
 
       {/* Sección 4: Beneficios Clave */}
       {/*<section className="py-20 bg-black bg-opacity-30">
